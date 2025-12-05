@@ -2159,7 +2159,7 @@
   resolved "https://registry.npmjs.org/@medusajs/order/-/order-2.11.3.tgz"
   integrity sha512-bAt2mUbrVdQwy4OPwcesYOAeZqj/zCctn4nEW8toRHgeia0bqWG7UL0rEtP9sP3HZflPc1fCVcsjOhK+5D/C2A==
 
-"@medusajs/payment-stripe@2.11.3":
+"@medusajs/payment-stripe@^2.11.3", "@medusajs/payment-stripe@2.11.3":
   version "2.11.3"
   resolved "https://registry.npmjs.org/@medusajs/payment-stripe/-/payment-stripe-2.11.3.tgz"
   integrity sha512-C2n8Fp3OFj3mjGNb6M0O7iExpYr7ehJlmcuvH1dqeFF9NmsReu42xznaF4ReoyYZOYwckYtmiIE8eBIWDjgRLg==

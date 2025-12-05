@@ -13,13 +13,27 @@ module.exports = defineConfig({
       cookieSecret: process.env.COOKIE_SECRET || "psawebshop",
     }
   },
-   modules: [
+  modules: [
+    // Add other required modules first
     {
-      resolve: "@medusajs/medusa/payment",
+      resolve: "@medusajs/stock-location",
+      options: {}
+    },
+    {
+      resolve: "@medusajs/inventory",
+      options: {}
+    },
+    // {
+    //   resolve: "@medusajs/cache-inmemory",
+    //   options: { ttl: 0 }
+    // },
+    // Then add payment module
+    {
+      resolve: "@medusajs/payment",
       options: {
         providers: [
           {
-            resolve: "@medusajs/medusa/payment-stripe",
+            resolve: "@medusajs/payment-stripe",
             id: "stripe",
             options: {
               apiKey: process.env.STRIPE_API_KEY,
