@@ -1,4 +1,5 @@
 import { loadEnv, defineConfig } from '@medusajs/framework/utils'
+import { join } from "path"
 
 loadEnv(process.env.NODE_ENV || 'development', process.cwd())
 
@@ -41,6 +42,7 @@ module.exports = defineConfig({
           },
         ],
       },
-    },
+    }
   ]
+ 
 })
