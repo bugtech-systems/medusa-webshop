@@ -94,7 +94,7 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
 
 
     if (groupKey && !(groupKey == 'nonmember' || groupKey == 'default')) {
-      const group = await resolveGroup(groupKey)
+      const group = await resolveGroup(groupKey) as any;
       rules.customer_group_id = group.id
     }
 
