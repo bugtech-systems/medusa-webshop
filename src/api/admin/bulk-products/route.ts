@@ -101,6 +101,7 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
 
     return {
       ...price,
+      title: (groupKey == 'nonmember' || groupKey == 'default') ? 'nonmember' : groupKey,
       amount: Number(price.amount) / 100,
       currency_code: price.currency_code.toLowerCase(),
       rules,
@@ -183,11 +184,11 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
       collection_id,
       shipping_profile_id: defaultShipping.id,
       weight: product.weight,
-      categories: [{id: category_id}],
       sales_channels: [{id:defaultChannel.id}], // Assign default sales channel
+      ...(category_id ? { categories: [{id: category_id}]} : {}),
       options: [ {
               title: "Format",
-              values: [product.publishFormat],
+              values: [product.publishFormat ? product.publishFormat : "default"],
             }],
       variants,
     }
@@ -236,12 +237,12 @@ if (existingProduct) {
     collection_id,
     shipping_profile_id: defaultShipping.id,
     weight: product.weight,
-    categories: [{id: category_id}],
-    sales_channels: [{id: defaultChannel.id}], // Assign default sales channel
-    options: [  {
+      ...(category_id ? { categories: [{id: category_id}]} : {}),
+      options: [ {
               title: "Format",
-              values: [product.publishFormat],
+              values: [product.publishFormat ? product.publishFormat : "default"],
             }],
+    sales_channels: [{id: defaultChannel.id}], // Assign default sales channel
     variants: resolvedVariants,
   })
 } else {
