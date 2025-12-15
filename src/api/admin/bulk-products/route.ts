@@ -407,7 +407,11 @@ if (existingProduct) {
       for (const variant of prod.variants || []) {
         const sku = variant.sku
         const variantId = variant.id
-        const incomingPrices = incomingPricesBySku[sku] ?? []
+        let incomingPrices = [] as any;
+        
+        if(sku){
+        incomingPrices = incomingPricesBySku[sku] 
+        }
 
         
 

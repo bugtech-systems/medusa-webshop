@@ -1,7 +1,6 @@
 // src/api/admin/customers/[id]/route.ts
 import { MedusaRequest, MedusaResponse } from "@medusajs/framework/http";
 import { ICustomerModuleService } from "@medusajs/types";
-import { isFeatureFlagEnabled } from "@medusajs/utils";
 
 // Type for query parameters
 interface GetCustomerQueryParams {
@@ -33,8 +32,6 @@ export async function GET(
     const requestedFields = parseFieldsParameter(fields || expand || "");
     
     // Backward compatibility with old query parameters
-    const includeOrders = include_orders === "true" || requestedFields.includes("orders");
-    const includeGroups = include_groups === "true" || requestedFields.includes("groups");
     
     logger.debug(`Fetching customer ${id} with fields: ${requestedFields.join(",")}`);
     
@@ -81,7 +78,7 @@ export async function GET(
 }
 
 // Helper function to parse fields parameter
-function parseFieldsParameter(fields: string): string[] {
+function parseFieldsParameter(fields: any): any {
   if (!fields || fields === "*") {
     return []; // Return all fields
   }
