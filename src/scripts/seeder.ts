@@ -92,6 +92,7 @@ export default async function seedAustraliaStore({ container }: ExecArgs) {
       ],
     },
   });
+  
   const region = regionResult[0];
   logger.info("Finished seeding Australia region.");
 

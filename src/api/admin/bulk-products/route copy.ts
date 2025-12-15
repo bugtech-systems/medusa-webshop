@@ -88,24 +88,26 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
 
   const resolvePriceRules = async (price: IncomingPrice) => {
     const [regionKey, groupKey] = price.region_id_or_name.split("-")
-    const currency = price.currency_code
 
-    const region = await resolveRegion(currency)
+    
+    
+    
     const rules: Record<string, any> = (groupKey == 'nonmember' || groupKey == 'default') ? {} : {}
-
+     
 
     if (groupKey && !(groupKey == 'nonmember' || groupKey == 'default')) {
       const group = await resolveGroup(groupKey) as any;
       // rules.customer_group_id = group.id
     }
+    
 
 
     return {
       ...price,
       title: (groupKey == 'nonmember' || groupKey == 'default') ? 'nonmember' : groupKey,
       amount: Number(price.amount) / 100,
-      currency_code: price.currency_code.toLowerCase(),
-      region,
+      currency_code: defaultRegion.currency_code,
+      region: defaultRegion,
       rules,
     }
   }
@@ -134,7 +136,8 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
   // ----------------------
   const createPayload: any[] = []
   const updatePayload: any[] = []
-
+  const regions = await regionModule.listRegions();
+  const defaultRegion = regions[0];
 
 
   for (const product of payload) {
@@ -160,20 +163,21 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
         metadata[price.title] = price.amount;
         
         if(price.title == 'nonmember'){
-        prices.push(price)
+        prices.push(price);
+        prices.push({...price, rules: { region_id: defaultRegion.id  }});
         } else {
-        
         incomingPricesBySku[variant.sku].push({
            amount: price.amount,
-           currency_code: price.currency_code,
+           currency_code: price.region.currency_code,
            group_name: price.title,
            region_id: price.region.id
         })
-        
         }
       }  
    }
       
+      
+      console.log(prices, 'PRICEWSS')
       variants.push({
         ...(variant?.id ? {id: variant.id} : {}),
         title: variant.sku,
@@ -231,11 +235,9 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
     }
 
 
-
-
 if (existingProduct) {
   // Map incoming variants to existing ones
-  const updatedVariants = product.variants.map((v) => {
+  const updatedVariants = payloadObj.variants.map((v) => {
     const existingVariant = existingProduct.variants.find((ev: any) => ev.sku === v.sku)
     if (existingVariant) {
       // Update existing variant
@@ -247,7 +249,7 @@ if (existingProduct) {
         ...(product.publishFormat ? { options: {
           Format: product.publishFormat
         }} : {}),
-        prices: v.prices.map(async (p) => await resolvePriceRules(p)), // resolve prices
+        prices: v.prices
       }
       
       
@@ -261,7 +263,7 @@ if (existingProduct) {
         ...(product.publishFormat ? { options: {
           Format: product.publishFormat
         }} : {}),
-        prices: v.prices.map(async (p) => await resolvePriceRules(p)),
+        prices: v.prices,
       }
     }
   })
@@ -298,8 +300,7 @@ if (existingProduct) {
   )
   createPayload.push({ ...payloadObj, variants: resolvedVariants })
 }
-
-  }
+}
 
 
 
