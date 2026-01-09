@@ -1,4 +1,3 @@
-// modules/salesforce-auth/src/api/store/auth/salesforce/callback/route.ts
 import {
   MedusaRequest,
   MedusaResponse,
@@ -55,7 +54,7 @@ export async function GET(
     })
 
     // Use the Salesforce service directly
-    const salesforceService = req.scope.resolve("Salesforce_Auth")
+    const salesforceService = req.scope.resolve("Salesforce_Auth") as any;
         const customerService = req.scope.resolve("customer")
     const authIdentityService = req.scope.resolve("auth")
 
@@ -86,7 +85,6 @@ export async function GET(
       throw new Error("JWT secret not configured")
     }
 
-console.log(authResult, jwtSecret, 'jwwt')
 
     const sessionToken = jwt.sign(
       {
