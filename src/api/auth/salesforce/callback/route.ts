@@ -92,7 +92,8 @@ export async function GET(
         auth_identity_id: authResult.authIdentity.id,
         actor_type: "customer",
         app_metadata: {
-          customer_id: authResult.customer.id
+          customer_id: authResult.customer.id,
+          customer_name: authResult.customer.first_name
         }
       },
       jwtSecret,
@@ -113,7 +114,6 @@ export async function GET(
       Object.assign(cookieOptions, { domain: process.env.COOKIE_DOMAIN })
     }
 
-    res.cookie("_medusa_jwt", sessionToken, cookieOptions)
 
     // Redirect with success
     const successUrl = new URL(redirectTo)
@@ -124,7 +124,16 @@ export async function GET(
       successUrl.searchParams.set("customer_id", authResult.customer.id)
     }
 
-    return res.redirect(successUrl.toString())
+
+    // Clear code_verifier cookie
+    res.setHeader("Set-Cookie", "sf_code_verifier=; Path=/; Max-Age=0; SameSite=Lax")
+    // res.cookie("_medusa_jwt", sessionToken, cookieOptions)
+
+    console.log(sessionToken, 'SESSION TOKEN', cookieOptions, process.env.NODE_ENV)
+
+    return res.json({ token: sessionToken })
+
+    // return res.redirect(successUrl.toString())
 
   } catch (error: any) {
     console.error("Salesforce callback error:", error)
@@ -142,6 +151,6 @@ export async function GET(
     errorUrl.searchParams.set("error", "callback_error")
     errorUrl.searchParams.set("message", encodeURIComponent(error.message))
 
-    return res.redirect(errorUrl.toString())
+    return res.status(500).json({ message: "Salesforce authentication failed", details: error.response?.data })
   }
 }
