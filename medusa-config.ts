@@ -1,5 +1,4 @@
 import { loadEnv, defineConfig, Modules } from "@medusajs/framework/utils"
-import { QUOTE_MODULE } from "./src/modules/quote"
 import { SALESFORCE_AUTH } from "./src/modules/salesforce"
 
 
@@ -34,15 +33,8 @@ export default defineConfig({
     [Modules.WORKFLOW_ENGINE]: {
       resolve: "@medusajs/medusa/workflow-engine-inmemory",
     },
-
+    
     /* -------------------- Custom Modules -------------------- */
-    companyModuleService: {
-      resolve: "./modules/company",
-    },
-
-    [QUOTE_MODULE]: {
-      resolve: "./modules/quote",
-    },
 
     /* -------------------- Payment -------------------- */
     [Modules.PAYMENT]: {
