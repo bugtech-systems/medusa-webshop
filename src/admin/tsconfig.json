@@ -16,9 +16,13 @@
 
     /* Linting */
     "strict": false,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
-    "noFallthroughCasesInSwitch": true
+    // "noUnusedLocals": true,
+    // "noUnusedParameters": true,
+    // "noFallthroughCasesInSwitch": true,
+    "paths": {
+      "@/*": ["./*"]
+    }
   },
-  "include": ["."]
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", "."]
 }
+

@@ -14,7 +14,7 @@
   ],
   "scripts": {
     "build": "medusa build",
-    "seed": "medusa exec ./src/scripts/seeder.ts",
+    "seed": "medusa exec ./src/scripts/seed.ts",
     "debug": "medusa exec ./src/scripts/debug.ts",
     "start": "medusa start",
     "dev": "medusa develop",
@@ -28,6 +28,10 @@
     "@medusajs/framework": "2.11.3",
     "@medusajs/medusa": "2.11.3",
     "@medusajs/payment-stripe": "^2.11.3",
+    "@tabler/icons-react": "^3.36.0",
+    "axios": "^1.13.2",
+    "jsonwebtoken": "^9.0.3",
+    "simple-oauth2": "^5.1.0",
     "typeorm": "^0.3.28"
   },
   "devDependencies": {
