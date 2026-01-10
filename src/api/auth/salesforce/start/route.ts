@@ -3,35 +3,24 @@ import crypto from "crypto"
 
 export async function GET(req: MedusaRequest, res: MedusaResponse) {
   const isProd = process.env.NODE_ENV === "production"
-  const isSandBox = process.env.SALESFORCE_SANDBOX == "true";
-
-  // -------- PKCE ----------
+  const isSandbox = process.env.SALESFORCE_SANDBOX === "false"
   const codeVerifier = crypto.randomBytes(32).toString("hex")
-  const codeChallenge = crypto
-    .createHash("sha256")
-    .update(codeVerifier)
-    .digest("base64url")
+  const codeChallenge = crypto.createHash("sha256").update(codeVerifier).digest("base64url")
 
-  // -------- Store PKCE cookie ----------
   res.cookie("sf_code_verifier", codeVerifier, {
     httpOnly: true,
-    secure: isProd,                                 // HTTPS in production
-    sameSite: isProd ? "none" : "lax",             // cross-site in prod
+    secure: isProd,
+    sameSite: isProd ? "none" : "lax",
     domain: isProd ? process.env.COOKIE_DOMAIN : undefined,
     path: "/",
-    maxAge: 10 * 60 * 1000,                        // 10 min
+    maxAge: 10 * 60 * 1000
   })
 
-  // -------- State ----------
-  const statePayload = {
-    redirectTo: `${process.env.STORE_FRONTEND_URL}/auth/salesforce`,
-  }
-  const state = Buffer.from(JSON.stringify(statePayload)).toString("base64")
+  const state = Buffer.from(JSON.stringify({
+    redirectTo: `${process.env.STORE_FRONTEND_URL}/auth/salesforce`
+  })).toString("base64")
 
-  // -------- Salesforce endpoint ----------
-  const salesforceBase = !isSandBox
-    ? "https://login.salesforce.com"
-    : "https://test.salesforce.com"
+  const salesforceBase = isSandbox ? "https://login.salesforce.com" : "https://test.salesforce.com"
 
   const params = new URLSearchParams({
     response_type: "code",
@@ -40,7 +29,7 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
     scope: "openid email profile",
     code_challenge: codeChallenge,
     code_challenge_method: "S256",
-    state,
+    state
   })
 
   return res.redirect(`${salesforceBase}/services/oauth2/authorize?${params}`)

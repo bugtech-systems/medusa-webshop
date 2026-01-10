@@ -1,18 +1,20 @@
 import { loadEnv, defineConfig, Modules } from "@medusajs/framework/utils"
 import { SALESFORCE_AUTH } from "./src/modules/salesforce"
 
-
+// Load environment variables based on NODE_ENV (default: development)
 loadEnv(process.env.NODE_ENV || "development", process.cwd())
+
+const isProd = process.env.NODE_ENV === "production"
 
 export default defineConfig({
   projectConfig: {
     databaseUrl: process.env.DATABASE_URL,
     http: {
-      storeCors: process.env.STORE_CORS || "https://*.ngrok-free.app",
-      adminCors: process.env.ADMIN_CORS || "https://*.ngrok-free.app",
-      authCors: process.env.AUTH_CORS || "https://*.ngrok-free.app",
-      jwtSecret: process.env.JWT_SECRET || "psawebshop",
-      cookieSecret: process.env.COOKIE_SECRET || "psawebshop",
+      storeCors: process.env.STORE_CORS || "*", // allow your storefront domain
+      adminCors: process.env.ADMIN_CORS || "*", // allow your admin panel domain
+      authCors: process.env.AUTH_CORS || "*",
+      jwtSecret: process.env.MEDUSA_JWT_SECRET || "supersecret",
+      cookieSecret: process.env.MEDUSA_COOKIE_SECRET || "supersecret"
     },
   },
 
@@ -33,10 +35,8 @@ export default defineConfig({
     [Modules.WORKFLOW_ENGINE]: {
       resolve: "@medusajs/medusa/workflow-engine-inmemory",
     },
-    
-    /* -------------------- Custom Modules -------------------- */
 
-    /* -------------------- Payment -------------------- */
+    /* -------------------- Payments -------------------- */
     [Modules.PAYMENT]: {
       resolve: "@medusajs/payment",
       options: {
@@ -51,14 +51,16 @@ export default defineConfig({
         ],
       },
     },
+
+    /* -------------------- Salesforce OAuth -------------------- */
     [SALESFORCE_AUTH]: {
       resolve: "./modules/salesforce",
       options: {
-            clientId: process.env.SALESFORCE_CLIENT_ID,
-            clientSecret: process.env.SALESFORCE_CLIENT_SECRET,
-            callbackUrl: process.env.SALESFORCE_CALLBACK_URL,
-            sandbox: process.env.SALESFORCE_SANDBOX === "true"
-          }
+        clientId: process.env.SALESFORCE_CLIENT_ID,
+        clientSecret: process.env.SALESFORCE_CLIENT_SECRET,
+        callbackUrl: process.env.SALESFORCE_CALLBACK_URL,
+        sandbox: process.env.SALESFORCE_SANDBOX == "true",
+      },
     },
   },
 })
