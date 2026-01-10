@@ -24,7 +24,7 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
     }
 
     if (!code) {
-      return res.status(400).json({ message: "Missing authorization code" })
+      return res.status(400).json({ message: "Missing authorization code", isProduction, req: req.cookies, query: req.query })
     }
 
     /* ---------------------- Parse State ---------------------- */
@@ -44,7 +44,7 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
     /* ---------------------- PKCE Verifier ---------------------- */
     const codeVerifier = req.cookies?.sf_code_verifier
     if (!codeVerifier) {
-      return res.status(400).json({ message: "Authentication session expired" })
+      return res.status(400).json({ message: "Authentication session expired", isProduction, req: req })
     }
 
     /* ---------------------- Resolve Services ---------------------- */
