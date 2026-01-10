@@ -3,6 +3,7 @@ import crypto from "crypto"
 
 export async function GET(req: MedusaRequest, res: MedusaResponse) {
   const isProd = process.env.NODE_ENV === "production"
+  const isSandBox = process.env.SALESFORCE_SANDBOX == "true";
 
   // -------- PKCE ----------
   const codeVerifier = crypto.randomBytes(32).toString("hex")
@@ -28,7 +29,7 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
   const state = Buffer.from(JSON.stringify(statePayload)).toString("base64")
 
   // -------- Salesforce endpoint ----------
-  const salesforceBase = isProd
+  const salesforceBase = !isSandBox
     ? "https://login.salesforce.com"
     : "https://test.salesforce.com"
 
