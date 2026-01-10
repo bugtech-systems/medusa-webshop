@@ -5,7 +5,7 @@ import {
 import jwt from "jsonwebtoken"
 
 export async function GET(req: MedusaRequest, res: MedusaResponse) {
-  const isProduction = process.env.NODE_ENV === "production" || process.env.SALESFORCE_SANDBOX == "false";
+  const isProduction = process.env.NODE_ENV === "production";
 
   try {
     const { code, state, error, error_description } = req.query as Record<string, string>

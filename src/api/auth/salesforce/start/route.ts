@@ -2,7 +2,9 @@ import { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
 import crypto from "crypto"
 
 export async function GET(req: MedusaRequest, res: MedusaResponse) {
-  const isProd = process.env.NODE_ENV === "production" || process.env.SALESFORCE_SANDBOX == "false";
+  const isProd = process.env.NODE_ENV === "production" 
+  const isSandbox = process.env.SALESFORCE_SANDBOX == "false";
+
 
   /* ---------------- PKCE ---------------- */
   const codeVerifier = crypto.randomBytes(32).toString("hex")
@@ -40,7 +42,7 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
   })
 
   // Use sandbox for localhost, production otherwise
-  const salesforceBase = isProd
+  const salesforceBase = !isSandbox
     ? "https://login.salesforce.com"
     : "https://test.salesforce.com"
 
