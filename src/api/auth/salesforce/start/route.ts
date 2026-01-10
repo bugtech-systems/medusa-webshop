@@ -42,7 +42,7 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
   })
 
   // Use sandbox for localhost, production otherwise
-  const salesforceBase = !isSandbox
+  const salesforceBase = isSandbox
     ? "https://login.salesforce.com"
     : "https://test.salesforce.com"
 
