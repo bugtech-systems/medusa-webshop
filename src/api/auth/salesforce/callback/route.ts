@@ -1,62 +1,47 @@
-import {
-  MedusaRequest,
-  MedusaResponse,
-} from "@medusajs/framework/http"
+import { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
 import jwt from "jsonwebtoken"
 
 export async function GET(req: MedusaRequest, res: MedusaResponse) {
-  const isProduction = process.env.NODE_ENV === "production";
-
   try {
-    const { code, state, error, error_description } = req.query as Record<string, string>
-
+    const { code, state, error } = req.query as Record<string, string>
     let redirectTo = process.env.STORE_FRONTEND_URL || "/"
 
-    /* ---------------------- OAuth Error Handling ---------------------- */
     if (error) {
-      console.error("Salesforce OAuth error:", error, error_description)
-
-      const errorUrl = new URL(redirectTo)
-      errorUrl.searchParams.set("error", "oauth_error")
-      errorUrl.searchParams.set("error_code", error)
-
-      return res.redirect(errorUrl.toString())
+      return res.redirect(`${redirectTo}/account?error=${error}`)
     }
 
     if (!code) {
-      return res.status(400).json({ message: "Missing authorization code", isProduction, req: req.cookies, query: req.query })
+      return res.status(400).json({ message: "Missing authorization code" })
     }
 
-    /* ---------------------- Parse State ---------------------- */
+    // Parse state for redirect
     if (state) {
       try {
-        const decoded = JSON.parse(
-          Buffer.from(state, "base64").toString("utf8")
-        )
-        if (decoded?.redirectTo) {
-          redirectTo = decoded.redirectTo
-        }
-      } catch {
-        console.warn("Invalid OAuth state payload")
-      }
+        const stateData = JSON.parse(Buffer.from(state, "base64").toString())
+        redirectTo = stateData.redirectTo || redirectTo
+      } catch {}
     }
 
-    /* ---------------------- PKCE Verifier ---------------------- */
+    // Read PKCE cookie
     const codeVerifier = req.cookies?.sf_code_verifier
     if (!codeVerifier) {
-      return res.status(400).json({ message: "Authentication session expired", isProduction, req: req.cookies, query: req.query })
+      return res.status(400).json({ message: "Authentication session expired" })
     }
 
-    /* ---------------------- Resolve Services ---------------------- */
+    // Clear PKCE cookie immediately
+    res.clearCookie("sf_code_verifier", {
+      path: "/",
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+      domain: process.env.NODE_ENV === "production" ? process.env.COOKIE_DOMAIN : undefined,
+    })
+
+    // Resolve services
     const salesforceService = req.scope.resolve("Salesforce_Auth") as any
     const customerService = req.scope.resolve("customer")
     const authIdentityService = req.scope.resolve("auth")
 
-    if (!salesforceService) {
-      throw new Error("Salesforce service not registered")
-    }
-
-    /* ---------------------- Authenticate ---------------------- */
     const authResult = await salesforceService.authenticate(
       code,
       codeVerifier,
@@ -64,64 +49,36 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
       authIdentityService
     )
 
-    if (!authResult?.success) {
-      const failUrl = new URL(redirectTo)
-      failUrl.searchParams.set("error", "auth_failed")
-      return res.redirect(failUrl.toString())
+    if (!authResult.success) {
+      return res.redirect(`${redirectTo}/account?error=auth_failed`)
     }
 
-    /* ---------------------- JWT Creation ---------------------- */
-    const jwtSecret =
-      process.env.MEDUSA_JWT_SECRET || process.env.JWT_SECRET
-
-    if (!jwtSecret) {
-      throw new Error("JWT secret not configured")
-    }
-
+    // Create JWT
+    const jwtSecret = process.env.MEDUSA_JWT_SECRET || process.env.JWT_SECRET
     const token = jwt.sign(
       {
         actor_id: authResult.customer.id,
         actor_type: "customer",
         auth_identity_id: authResult.authIdentity.id,
       },
-      jwtSecret,
+      jwtSecret!,
       { expiresIn: "7d" }
     )
 
-    /* ---------------------- Cookies ---------------------- */
-    res.clearCookie("sf_code_verifier", {
-      path: "/",
-      httpOnly: true,
-      secure: isProduction,
-      sameSite: isProduction ? "none" : "lax",
-      domain: isProduction ? process.env.COOKIE_DOMAIN : undefined,
-    })
-
+    // Set session cookie
     res.cookie("_medusa_jwt", token, {
       httpOnly: true,
-      secure: isProduction,
-      sameSite: isProduction ? "none" : "lax",
-      domain: isProduction ? process.env.COOKIE_DOMAIN : undefined,
-      maxAge: 7 * 24 * 60 * 60 * 1000,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+      domain: process.env.NODE_ENV === "production" ? process.env.COOKIE_DOMAIN : undefined,
       path: "/",
+      maxAge: 7 * 24 * 60 * 60 * 1000,
     })
 
-    /* ---------------------- Redirect Success ---------------------- */
-    const successUrl = new URL(redirectTo)
-    successUrl.searchParams.set("auth", "success")
-    successUrl.searchParams.set("provider", "salesforce")
-
-    return res.redirect(successUrl.toString())
-
-  } catch (err: any) {
-    console.error("Salesforce callback error:", err)
-
-    res.clearCookie("sf_code_verifier", { path: "/" })
-
-    const frontend = process.env.STORE_FRONTEND_URL || "/"
-    const errorUrl = new URL(frontend)
-    errorUrl.searchParams.set("error", "callback_error")
-
-    return res.redirect(errorUrl.toString())
+    // Redirect to storefront
+    return res.redirect(redirectTo)
+  } catch (err) {
+    console.error(err)
+    return res.redirect(`${process.env.STORE_FRONTEND_URL}/account?error=callback_error`)
   }
 }
