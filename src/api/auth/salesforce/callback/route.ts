@@ -44,7 +44,7 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
     /* ---------------------- PKCE Verifier ---------------------- */
     const codeVerifier = req.cookies?.sf_code_verifier
     if (!codeVerifier) {
-      return res.status(400).json({ message: "Authentication session expired", isProduction, req: req })
+      return res.status(400).json({ message: "Authentication session expired", isProduction, req: req.cookies, query: req.query })
     }
 
     /* ---------------------- Resolve Services ---------------------- */
