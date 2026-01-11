@@ -61,7 +61,7 @@ export default function LoginPage({ setCurrentView }: any) {
 
     // window.location.href = `https://test.salesforce.com/services/oauth2/authorize?${params.toString()}`
     window.location.href =
-    `${process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL}/auth/salesforce/start?redirect_to=/faq`
+    `${process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL}/auth/salesforce/start?redirect_to=/account`
   }
 
   if(loading) return (
