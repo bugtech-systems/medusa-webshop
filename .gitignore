@@ -85,3 +85,7 @@ dump.rdb
 /blob-report/
 /playwright/.cache/
 /playwright/.auth
+
+
+
+/apps/storefront/.next/
