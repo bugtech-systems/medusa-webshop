@@ -1,0 +1,20 @@
+import ChatBubble from "@/components/Chat/site-chat-bubble";
+import Contact from "@/components/Contact";
+
+import { Metadata } from "next";
+export const metadata: Metadata = {
+  title: "Contact Page | PSA Webshop",
+  description: "This is Contact Page for PSA Webshop",
+  // other metadata
+};
+
+const ContactPage = () => {
+  return (
+    <main>
+      <Contact />
+      <ChatBubble/>
+    </main>
+  );
+};
+
+export default ContactPage;
