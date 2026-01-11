@@ -69,6 +69,7 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
     /* ---------------- Redirect with token ---------------- */
     const successUrl = new URL(redirectTo)
     successUrl.searchParams.set("token", token)
+    successUrl.searchParams.set("login_token", token)
     successUrl.searchParams.set("provider", "salesforce")
 
     return res.redirect(successUrl.toString())
