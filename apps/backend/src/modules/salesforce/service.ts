@@ -23,7 +23,7 @@ export default class SalesforceAuthService {
       loginUrl: config.sandbox
         ? "https://test.salesforce.com"
         : "https://login.salesforce.com",
-      scopes: config.scopes ?? ["api", "refresh_token", "openid", "profile", "email"],
+      scopes: config.scopes ?? ["openid", "profile", "email"],
     }
   }
 
@@ -192,11 +192,11 @@ const [createdIdentity] = await authService.createAuthIdentities([
   }
 
   generateAuthorizationUrl(redirectTo = "/") {
-    const codeVerifier = crypto.randomBytes(64).toString("base64url")
-    const codeChallenge = crypto
-      .createHash("sha256")
-      .update(codeVerifier)
-      .digest("base64url")
+const codeVerifier = crypto.randomBytes(32).toString("hex")
+  const codeChallenge = crypto
+    .createHash("sha256")
+    .update(codeVerifier)
+    .digest("base64url")
 
     const state = Buffer.from(JSON.stringify({ redirectTo, ts: Date.now() })).toString("base64")
 
@@ -204,7 +204,7 @@ const [createdIdentity] = await authService.createAuthIdentities([
       response_type: "code",
       client_id: this.config_.clientId,
       redirect_uri: this.config_.callbackUrl,
-      scope: this.config_.scopes.join(" "),
+      scope: "openid profile email",
       state,
       code_challenge: codeChallenge,
       code_challenge_method: "S256",
