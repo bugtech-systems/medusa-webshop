@@ -1,8 +1,5 @@
 import { MedusaError } from "@medusajs/utils"
-import {
-  IAuthModuleService,
-  ICustomerModuleService,
-} from "@medusajs/framework/types"
+
 import {
   createCustomersWorkflow,
   updateCustomersWorkflow,
@@ -33,8 +30,8 @@ export default class SalesforceAuthService {
   async authenticate(
     code: string,
     codeVerifier: string | undefined,
-    customerService: ICustomerModuleService,
-    authService: IAuthModuleService
+    customerService: any,
+    authService: any
   ) {
     /** 1️⃣ Exchange OAuth code for tokens */
     const tokens = await this.exchangeCodeForTokens(code, codeVerifier)
