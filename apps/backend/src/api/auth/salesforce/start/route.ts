@@ -3,7 +3,7 @@ import { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
 export async function GET(req: MedusaRequest, res: MedusaResponse) {
 
 
-        const salesforceAuthService = req.scope.resolve("Salesforce_Auth")
+        const salesforceAuthService = req.scope.resolve("Salesforce_Auth") as any;
     
     // Get where to redirect after successful login
     const redirectTo = req.query.redirect_to?.toString() || "/account"
