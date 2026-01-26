@@ -33,13 +33,9 @@ console.log(product, 'product2')
 
   return (
     <>
-      <Breadcrumb
-        title={[product?.title]}
-        titles={[product?.categories[0]?.name, product?.title]}
-        pages={[`/categories/${product?.categories[0]?.handle}`, `/products/${product?.handle}`]}
-      />
+
       
-      <section className="overflow-hidden py-20 bg-gray-2">
+      <section className="overflow-hidden py-20 bg-gray-2 pt-[159px] sm:pt-[155px] lg:pt-[95px] xl:pt-[175px]">
         <div className="max-w-[1170px] w-full mx-auto px-4 sm:px-8 xl:px-0">
           <div className="flex flex-col lg:flex-row gap-7.5 xl:gap-12.5">
             

@@ -1,30 +1,20 @@
-import React from "react";
-import Cart from "@/components/Cart";
+import { CartProvider } from "@/lib/context/cart-context"
+import { retrieveCart } from "@/lib/data/cart"
+import { retrieveCustomer } from "@/lib/data/customer"
+import CartTemplate from "@/modules/cart/templates"
+import { Metadata } from "next"
 
-import { Metadata } from "next";
-import { retrieveCart } from "@lib/data/cart";
-import { notFound } from "next/navigation";
-import { retrieveCustomer } from "@lib/data/customer";
 export const metadata: Metadata = {
-  title: "Cart Page | PSA Web shop",
-  description: "This is Cart Page for PSA Web shop",
-  // other metadata
-};
+  title: "Cart",
+  description: "View your cart",
+}
 
-const CartPage = async () => {
-
-  const cart = await retrieveCart().catch((error) => {
-    console.error(error)
-    return notFound()
-  })
-
+export default async function Cart() {
+  const cart = await retrieveCart().catch(() => null)
   const customer = await retrieveCustomer()
-
   return (
-    <>
-      <Cart cart={cart} customer={customer}/>
-    </>
-  );
-};
-
-export default CartPage;
+    <CartProvider cart={cart}>
+      <CartTemplate cart={cart} customer={customer} />
+    </CartProvider>
+  )
+}

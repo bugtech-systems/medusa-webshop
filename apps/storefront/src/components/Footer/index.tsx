@@ -8,7 +8,6 @@ const Footer = async () => {
   let store = await retrieveStore() as any;
 
 
-console.log(store, 'STORE')
 
   return (
     <footer className="overflow-hidden">

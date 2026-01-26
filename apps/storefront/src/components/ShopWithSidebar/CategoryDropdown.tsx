@@ -61,7 +61,7 @@ const CategoryItem = ({ category, regionCode, isActive }: CategoryItemProps) => 
   );
 };
 
-const CategoryDropdown = ({ categories }: CategoryDropdownProps) => {
+const CategoryDropdown = ({ categories = [] }: CategoryDropdownProps) => {
   const [toggleDropdown, setToggleDropdown] = useState<boolean>(true);
   const [mounted, setMounted] = useState<boolean>(false);
   const pathname = usePathname();

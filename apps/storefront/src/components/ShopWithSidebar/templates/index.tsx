@@ -10,12 +10,14 @@ const ShopWithSidebar = ({
   sortBy,
   page,
   countryCode,
-  searchParams
+  searchParams,
+  categories
 }: {
   sortBy?: SortOptions
   page?: string
   countryCode: string
   searchParams?: any
+  categories?: any
 }) => {
   const pageNumber = page ? parseInt(page) : 1
   const sort = sortBy || "created_at"
@@ -34,6 +36,7 @@ const ShopWithSidebar = ({
             page={pageNumber}
             countryCode={countryCode}
             searchParams={searchParams}
+            categories={categories}
           />
         </Suspense>
         </section>

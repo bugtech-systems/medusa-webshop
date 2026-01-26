@@ -52,11 +52,10 @@ export default function ProductPrice({
 
 
   return (
-    <div className="space-y-4 mb-5">
+    <div className="space-y-4 my-5">
       {/* User's Price */}
       <div>
-
-        <div className="font-medium text-md text-dark mb-1">
+        <div className="font-medium text-md text-dark ">
           {membership !== "nonmember" ? `${membership.charAt(0).toUpperCase() + membership.slice(1)} Price` : "Price"}
         </div>
         <div className="flex items-baseline gap-2">

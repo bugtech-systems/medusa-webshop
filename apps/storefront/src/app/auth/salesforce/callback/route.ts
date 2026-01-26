@@ -34,7 +34,9 @@ export async function GET(req: NextRequest) {
   console.log(token, 'TOKEENNING')
        setAuthToken(token)
        const customerCacheTag = await getCacheTag("customers")
-       revalidateTag(customerCacheTag)
+       const cartCacheTag = await getCacheTag("carts")
+      await revalidateTag(customerCacheTag)
+      await revalidateTag(cartCacheTag)
   // Redirect to storefront with token
   return NextResponse.redirect(`${process.env.NEXT_PUBLIC_STORE_FRONTEND_URL}/account?token=${token}`)
 }

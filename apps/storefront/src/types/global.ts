@@ -19,11 +19,11 @@ export type VariantPrice = {
   percentage_diff: string
 }
 
-export type StoreFreeShippingPrice = StorePrice & {
-  target_reached: boolean
-  target_remaining: number
-  remaining_percentage: number
-}
+// export type StoreFreeShippingPrice = StorePrice & {
+//   target_reached: boolean
+//   target_remaining: number
+//   remaining_percentage: number
+// }
 
 
 export enum SpendingLimitResetFrequency {

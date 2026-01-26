@@ -16,11 +16,10 @@ const LineItemPrice = ({
   style = "default",
   currencyCode,
 }: LineItemPriceProps) => {
-  const { total, original_item_total, original_subtotal } = item
+  const {  original_item_total, original_subtotal } = item
   const originalPrice = original_item_total 
-  const currentPrice = total
+  const currentPrice = original_subtotal
   const hasReducedPrice = currentPrice < originalPrice
-
 
 
   return (
@@ -52,7 +51,7 @@ const LineItemPrice = ({
           })}
           data-testid="product-price"
         >
-          {formatPrice( currentPrice, currencyCode)}
+          {formatPrice(currentPrice, currencyCode)}
         </span>
       </div>
     </div>

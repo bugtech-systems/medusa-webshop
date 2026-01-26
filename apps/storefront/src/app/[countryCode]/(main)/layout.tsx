@@ -1,6 +1,9 @@
 import { Metadata } from "next"
 import "styles/css/euclid-circular-a-font.css";
 import "styles/css/style.css";
+import "styles/globals.css"
+
+
 
 import { listCartOptions, retrieveCart } from "@lib/data/cart"
 import { retrieveCustomer } from "@lib/data/customer"
@@ -13,6 +16,8 @@ import QuickViewModal from "@/components/Common/QuickViewModal";
 import CartSidebarModal from "@/components/Common/CartSidebarModal";
 import PreviewSliderModal from "@/components/Common/PreviewSlider";
 import Footer from "@/components/Footer"
+import CartDrawer from "@modules/cart/components/cart-drawer";
+import { CartProvider } from "@lib/context/cart-context";
 
 
 
@@ -35,7 +40,7 @@ export default async function PageLayout(props: { children: React.ReactNode }) {
     <>
        <div className="min-h-screen bg-gray-100">
       <Header />
-      <main className="max-w-7xl mx-auto relative" >
+      <main className="mx-auto relative">
         {customer && cart && (
         <CartMismatchBanner customer={customer} cart={cart} />
       )}
@@ -53,9 +58,10 @@ export default async function PageLayout(props: { children: React.ReactNode }) {
     </div>
       
                     <QuickViewModal />
-                    <CartSidebarModal cart={cart}/>
+                        <CartProvider cart={cart}>
+                          <CartDrawer customer={customer}  />
+                        </CartProvider>
                     <PreviewSliderModal />    
-
     </>
   )
 }

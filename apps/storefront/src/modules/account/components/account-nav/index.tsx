@@ -88,6 +88,19 @@ const AccountNav = ({
                     <ChevronDown className="transform -rotate-90" />
                   </LocalizedClientLink>
                 </li>
+              <li>
+                  <LocalizedClientLink
+                    href="/account/quotes"
+                    className="flex items-center justify-between py-4 border-b border-gray-200 px-8"
+                    data-testid="orders-link"
+                  >
+                    <div className="flex items-center gap-x-2">
+                      <Package size={20} />
+                      <span>Quotes</span>
+                    </div>
+                    <ChevronDown className="transform -rotate-90" />
+                  </LocalizedClientLink>
+                </li>
                 <li>
                   <button
                     type="button"
@@ -148,6 +161,15 @@ const AccountNav = ({
                   data-testid="orders-link"
                 >
                   Orders
+                </AccountNavLink>
+              </li>
+             <li>
+                <AccountNavLink
+                  href="/account/quotes"
+                  route={route!}
+                  data-testid="orders-link"
+                >
+                  Quotes
                 </AccountNavLink>
               </li>
               <li className="text-grey-700">

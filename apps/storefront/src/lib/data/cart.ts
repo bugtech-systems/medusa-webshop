@@ -250,10 +250,10 @@ export async function addToCart({
 
 export async function updateLineItem({
   lineId,
-  quantity,
+  data,
 }: {
   lineId: string
-  quantity: number
+  data: HttpTypes.StoreUpdateCartLineItem
 }) {
   if (!lineId) {
     throw new Error("Missing lineItem ID when updating line item")
@@ -270,7 +270,7 @@ export async function updateLineItem({
   }
 
   await sdk.store.cart
-    .updateLineItem(cartId, lineId, { quantity }, {}, headers)
+    .updateLineItem(cartId, lineId, data, {}, headers)
     .then(async () => {
       const cartCacheTag = await getCacheTag("carts")
       revalidateTag(cartCacheTag)
@@ -595,4 +595,62 @@ export async function listCartOptions() {
     headers,
     cache: "force-cache",
   })
+}
+
+
+export async function addToCartBulk({
+  lineItems,
+  countryCode
+}: {
+  lineItems: HttpTypes.StoreAddCartLineItem[]
+  countryCode: string
+  companyId?: string
+}) {
+  const cart = await getOrSetCart(countryCode)
+
+  if (!cart) {
+    throw new Error("Error retrieving or creating cart")
+  }
+
+  const headers = {
+    "Content-Type": "application/json",
+    ...(await getAuthHeaders()),
+  } as Record<string, any>
+
+  if (process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY) {
+    headers["x-publishable-api-key"] =
+      process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY
+  }
+
+  await fetch(
+    `${process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL}/store/carts/${cart.id}/line-items/bulk`,
+    {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ line_items: lineItems }),
+    }
+  )
+    .then(async () => {
+      const fullfillmentCacheTag = await getCacheTag("fulfillment")
+      revalidateTag(fullfillmentCacheTag)
+      const cartCacheTag = await getCacheTag("carts")
+      revalidateTag(cartCacheTag)
+      await updateCart({metadata: { company_id: companyId }})
+    })
+    .catch(medusaError)
+}
+
+
+export async function emptyCart() {
+  const cart = await retrieveCart()
+  if (!cart) {
+    throw new Error("No existing cart found when emptying cart")
+  }
+
+  for (const item of cart.items || []) {
+    await deleteLineItem(item.id)
+  }
+
+  const cartCacheTag = await getCacheTag("carts")
+  revalidateTag(cartCacheTag)
 }

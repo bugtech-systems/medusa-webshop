@@ -1,7 +1,5 @@
 import Footer from "@/components/Footer"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
-import ChevronDown from "@modules/common/icons/chevron-down"
-import MedusaCTA from "@modules/layout/components/medusa-cta"
 import Image from "next/image"
 import "styles/globals.css"
 

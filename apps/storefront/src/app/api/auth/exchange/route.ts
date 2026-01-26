@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from "next/server"
+import { revalidateTag } from "next/cache";
+import { getCacheTag } from "@lib/data/cookies";
 
 export async function GET(req: NextRequest) {
   const login_token = req.nextUrl.searchParams.get("login_token")
   if (!login_token) {
     return NextResponse.redirect(new URL("/login?error=missing_token", req.url))
   }
+
+
 
   // Exchange login_token with Medusa backend
   const res = await fetch(`${process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL}/auth/exchange`, {
@@ -29,6 +33,10 @@ export async function GET(req: NextRequest) {
     maxAge: 7 * 24 * 60 * 60,
     sameSite: "lax",
   })
+
+    revalidateTag(await getCacheTag("carts"));
+
+
 
   return response
 }

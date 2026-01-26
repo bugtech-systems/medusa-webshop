@@ -7,9 +7,8 @@ import { ReduxProvider } from "@/redux/provider";
 import { PreviewSliderProvider } from "@/lib/context/PreviewSliderContext";
 
 
-import "styles/globals.css"
-// import "styles/css/euclid-circular-a-font.css";
-// import "styles/css/style.css";
+import "styles/css/euclid-circular-a-font.css";
+import "styles/css/style.css";
 
 export const metadata: Metadata = {
   metadataBase: new URL(getBaseURL()),

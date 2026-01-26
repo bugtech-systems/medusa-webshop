@@ -7,6 +7,7 @@ import {
   Transition,
 } from "@headlessui/react"
 import { useCartModalContext } from "@lib/context/CartSidebarModalContext"
+import { formatPrice } from "@lib/formatters/prices"
 import { convertToLocale } from "@lib/util/money"
 import { HttpTypes } from "@medusajs/types"
 import { Button } from "@medusajs/ui"
@@ -42,7 +43,7 @@ const CartDropdown = ({
       return acc + item.quantity
     }, 0) || 0
 
-  const subtotal = cartState?.subtotal ?? 0
+  const total = cartState?.subtotal ?? 0
   const itemRef = useRef<number>(totalItems || 0)
 
   const timedOpen = () => {
@@ -130,10 +131,7 @@ const CartDropdown = ({
                       cart
                     </span>
                     <p className="font-medium text-custom-sm text-dark">
-                      $  {convertToLocale({
-                        amount: subtotal,
-                        currency_code: '',
-                      })}
+                      {formatPrice(total, cartState?.currency_code)}
                     </p>
                   </div>
                 </button>

@@ -170,7 +170,6 @@ let membership = customer?.membership ?? 'nonmember'
         </div>
 
          <ProductPrice product={product} variant={selectedVariant} membership={membership} currencyCode={region.currency_code}/> 
-
         <Button
           onClick={handleAddToCart}
           disabled={
@@ -181,7 +180,7 @@ let membership = customer?.membership ?? 'nonmember'
             !isValidVariant
           }
           variant="primary"
-          className="w-full h-10"
+          className="w-full h-10  text-white bg-blue"
           isLoading={isAdding}
           data-testid="add-product-button"
         >

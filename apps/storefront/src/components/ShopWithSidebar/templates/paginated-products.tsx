@@ -5,6 +5,7 @@ import { SortOptions } from "@modules/store/components/refinement-list/sort-prod
 import StoreTemplate from ".."
 import { Pagination } from "../pagination"
 import { listCategories } from "@lib/data/categories"
+import { getProductPrice } from "@lib/util/get-product-price"
 
 const PRODUCT_LIMIT = 12
 
@@ -25,6 +26,7 @@ export default async function PaginatedProducts({
   productsIds,
   countryCode,
   searchParams, // New prop for search
+  categories
 
 }: {
   sortBy?: SortOptions
@@ -34,6 +36,7 @@ export default async function PaginatedProducts({
   productsIds?: string[]
   countryCode: string
   searchParams?: string
+  categories?: any
 }) {
   const queryParams: PaginatedProductsParams = {
     limit: 12,
@@ -75,16 +78,24 @@ export default async function PaginatedProducts({
     countryCode,
   })
 
-  let categories = await listCategories();
 
   const totalPages = Math.ceil(count / PRODUCT_LIMIT)
+  
+  let newProducts = products.map(a => {
+      const { cheapestPrice } = getProductPrice({
+      product: a,
+    })
+    
+    return {...a, cheapestPrice}
+  })
+
 
 
 
   return (
     <>
       <StoreTemplate
-          products={products}  
+          products={newProducts}  
           page={page}
           totalPages={totalPages}
           categories={categories}

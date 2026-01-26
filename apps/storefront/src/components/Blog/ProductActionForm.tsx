@@ -20,7 +20,11 @@ const ProductActionForm: React.FC<ProductTemplateProps> = ({
 
   return (
     <div className="flex justify-center items-center shadow-1 bg-white rounded-xl px-5 py-5">
+    
         <div className="small:sticky small:top-48 small:py-0 small:max-w-[300px] w-full">
+                     <h2 className="font-bold text-2xl  text-dark">
+                    {product.title}
+                  </h2>
           {/* <ProductOnboardingCta /> */}
           <Suspense
             fallback={
