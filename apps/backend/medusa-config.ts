@@ -1,5 +1,8 @@
 import { loadEnv, defineConfig, Modules } from "@medusajs/framework/utils"
 import { SALESFORCE_AUTH } from "./src/modules/salesforce"
+import { APPROVAL_MODULE } from "@/modules/approval"
+import { COMPANY_MODULE } from "@/modules/company"
+import { QUOTE_MODULE } from "@/modules/quote"
 
 
 loadEnv(process.env.NODE_ENV || "development", process.cwd())
@@ -28,6 +31,15 @@ export default defineConfig({
 
     [Modules.INVENTORY]: {
       resolve: "@medusajs/inventory",
+    },
+    [APPROVAL_MODULE]: {
+      resolve: "./modules/approval",
+    },
+    [COMPANY_MODULE]: {
+      resolve: "./modules/company",
+    },
+    [QUOTE_MODULE]: {
+      resolve: "./modules/quote",
     },
 
     [Modules.CACHE]: {
