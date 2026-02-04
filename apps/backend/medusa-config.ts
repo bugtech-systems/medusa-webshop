@@ -1,9 +1,9 @@
 import { loadEnv, defineConfig, Modules } from "@medusajs/framework/utils"
-import { SALESFORCE_AUTH } from "./src/modules/salesforce"
-import { APPROVAL_MODULE } from "@/modules/approval"
-import { COMPANY_MODULE } from "@/modules/company"
-import { QUOTE_MODULE } from "@/modules/quote"
 
+import { SALESFORCE_AUTH } from "./src/modules/salesforce"
+import { APPROVAL_MODULE } from "./src/modules/approval"
+import { COMPANY_MODULE } from "./src/modules/company"
+import { QUOTE_MODULE } from "./src/modules/quote"
 
 loadEnv(process.env.NODE_ENV || "development", process.cwd())
 
@@ -18,9 +18,9 @@ export default defineConfig({
       cookieSecret: process.env.COOKIE_SECRET || "psawebshop",
     },
     cookieOptions: {
-      secure: process.env.NODE_ENV === "production" ? true : false, // Set to false for HTTP on localhost
-      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax", // or "none" if required; see Step 4
-    }
+      secure: process.env.NODE_ENV === "production",
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+    },
   },
 
   modules: {
@@ -32,15 +32,6 @@ export default defineConfig({
     [Modules.INVENTORY]: {
       resolve: "@medusajs/inventory",
     },
-    [APPROVAL_MODULE]: {
-      resolve: "./modules/approval",
-    },
-    [COMPANY_MODULE]: {
-      resolve: "./modules/company",
-    },
-    [QUOTE_MODULE]: {
-      resolve: "./modules/quote",
-    },
 
     [Modules.CACHE]: {
       resolve: "@medusajs/medusa/cache-inmemory",
@@ -49,8 +40,29 @@ export default defineConfig({
     [Modules.WORKFLOW_ENGINE]: {
       resolve: "@medusajs/medusa/workflow-engine-inmemory",
     },
-    
+
     /* -------------------- Custom Modules -------------------- */
+    [APPROVAL_MODULE]: {
+      resolve: "./modules/approval",
+    },
+
+    [COMPANY_MODULE]: {
+      resolve: "./modules/company",
+    },
+
+    [QUOTE_MODULE]: {
+      resolve: "./modules/quote",
+    },
+
+    [SALESFORCE_AUTH]: {
+      resolve: "./modules/salesforce",
+      options: {
+        clientId: process.env.SALESFORCE_CLIENT_ID,
+        clientSecret: process.env.SALESFORCE_CLIENT_SECRET,
+        callbackUrl: process.env.SALESFORCE_CALLBACK_URL,
+        sandbox: process.env.SALESFORCE_SANDBOX === "true",
+      },
+    },
 
     /* -------------------- Payment -------------------- */
     [Modules.PAYMENT]: {
@@ -66,15 +78,6 @@ export default defineConfig({
           },
         ],
       },
-    },
-    [SALESFORCE_AUTH]: {
-      resolve: "./modules/salesforce",
-      options: {
-            clientId: process.env.SALESFORCE_CLIENT_ID,
-            clientSecret: process.env.SALESFORCE_CLIENT_SECRET,
-            callbackUrl: process.env.SALESFORCE_CALLBACK_URL,
-            sandbox: process.env.SALESFORCE_SANDBOX == "true"
-          }
     },
   },
 })
