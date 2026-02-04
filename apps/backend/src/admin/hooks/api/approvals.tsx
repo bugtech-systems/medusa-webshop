@@ -5,7 +5,7 @@ import {
   AdminApprovalsResponse,
   AdminUpdateApproval,
   AdminUpdateApprovalSettings,
-} from "../../../types1";
+} from "../../../types";
 import {
   useMutation,
   UseMutationOptions,

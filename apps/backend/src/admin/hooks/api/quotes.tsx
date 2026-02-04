@@ -1,4 +1,4 @@
-import { HttpTypes } from "@medusajs/framework/types";
+import { HttpTypes } from "@medusajs/types";
 import { ClientHeaders, FetchError } from "@medusajs/js-sdk";
 import {
   AdminCreateQuoteMessage,
@@ -6,7 +6,7 @@ import {
   QuoteFilterParams,
   StoreQuoteResponse,
   StoreQuotesResponse,
-} from "../../../types1";
+} from "../../../types";
 import {
   QueryKey,
   useMutation,
