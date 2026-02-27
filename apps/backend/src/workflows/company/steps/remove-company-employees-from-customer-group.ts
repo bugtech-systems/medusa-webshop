@@ -1,3 +1,4 @@
+import { ICustomerModuleService } from "@medusajs/framework/types";
 import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils";
 import { createStep, StepResponse } from "@medusajs/framework/workflows-sdk";
 
@@ -14,7 +15,7 @@ export const removeCompanyEmployeesFromCustomerGroupStep = createStep(
       fields: ["id", "customer_group.*", "employees.*", "employees.customer.*"],
     });
 
-    const customerModuleService = container.resolve(
+    const customerModuleService = container.resolve<ICustomerModuleService>(
       Modules.CUSTOMER
     );
 
@@ -59,7 +60,7 @@ export const removeCompanyEmployeesFromCustomerGroupStep = createStep(
     input: { customer_ids: string[]; group_id: string },
     { container }
   ) => {
-    const customerModuleService = container.resolve(
+    const customerModuleService = container.resolve<ICustomerModuleService>(
       Modules.CUSTOMER
     );
 

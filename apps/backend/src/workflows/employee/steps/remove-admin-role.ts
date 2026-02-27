@@ -1,3 +1,4 @@
+import { IAuthModuleService } from "@medusajs/framework/types";
 import { Modules } from "@medusajs/framework/utils";
 import { createStep, StepResponse } from "@medusajs/framework/workflows-sdk";
 import { ContainerRegistrationKeys } from "@medusajs/framework/utils";
@@ -8,7 +9,7 @@ export const removeAdminRoleStep = createStep(
     input: { email: string },
     { container }
   ): Promise<StepResponse<undefined, string>> => {
-    const authModuleService = container.resolve(
+    const authModuleService = container.resolve<IAuthModuleService>(
       Modules.AUTH
     );
 
@@ -37,7 +38,7 @@ export const removeAdminRoleStep = createStep(
     return new StepResponse(undefined, providerIdentity.id);
   },
   async (providerIdentityId: string, { container }) => {
-    const authModuleService = container.resolve(
+    const authModuleService = container.resolve<IAuthModuleService>(
       Modules.AUTH
     );
 

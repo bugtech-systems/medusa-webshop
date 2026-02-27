@@ -21,6 +21,7 @@ const Quotes = () => {
 export const config = defineRouteConfig({
   label: "Quotes",
   icon: DocumentText,
+  rank: 2
 });
 
 export default Quotes;

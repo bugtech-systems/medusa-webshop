@@ -3,7 +3,7 @@ import { Modules } from "@medusajs/framework/utils";
 import { when } from "@medusajs/framework/workflows-sdk";
 import { createWorkflow, WorkflowResponse } from "@medusajs/workflows-sdk";
 import { COMPANY_MODULE } from "../../../modules/company";
-import { ModuleCreateEmployee, ModuleEmployee } from "../../../types";
+import { ModuleCreateEmployee, ModuleEmployee } from "../../../types1";
 import { createEmployeesStep, setAdminRoleStep } from "../steps";
 import { addEmployeeToCustomerGroupStep } from "../steps/add-employee-to-customer-group";
 

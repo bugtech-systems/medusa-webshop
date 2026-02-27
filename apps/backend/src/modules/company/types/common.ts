@@ -1,3 +1,5 @@
+import { CustomerDTO, CustomerGroupDTO, ProductDTO } from "@medusajs/framework/types";
+import CompanyModuleService from "../service";
 
 export interface CompanyDTO {
   id: string;
@@ -15,26 +17,26 @@ export interface CompanyDTO {
   employees?: EmployeeDTO[];
   currency_code: string | null;
   business_type?: string | null;
-  products?: any;
-  customer_group?: any;
+  products?: ProductDTO[];
+  customer_group?: CustomerGroupDTO;
   created_at: Date;
   updated_at: Date;
 }
 
-export interface EmployeeDTO {
+export interface EmployeeDTO extends CustomerDTO {
   id: string;
   spending_limit: number;
   is_admin: boolean;
   company_id: string;
   company?: CompanyDTO;
-  customer?: any;
+  customer?: CustomerDTO;
   created_at: Date;
   updated_at: Date;
 }
 
 
-// declare module "@medusajs/types" {
-//   export interface ModuleImplementations {
-//     companyModuleService: CompanyModuleService;
-//   }
-// }
+declare module "@medusajs/types" {
+  export interface ModuleImplementations {
+    companyModuleService: CompanyModuleService;
+  }
+}

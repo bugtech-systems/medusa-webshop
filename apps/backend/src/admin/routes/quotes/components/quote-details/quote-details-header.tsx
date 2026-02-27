@@ -1,7 +1,7 @@
 import { EllipsisHorizontal, PencilSquare } from "@medusajs/icons";
 import { DropdownMenu, Heading, IconButton } from "@medusajs/ui";
 import { useNavigate } from "react-router-dom";
-import { AdminQuoteResponse } from "../../../../../types";
+import { AdminQuoteResponse } from "@/types1";
 import QuoteStatusBadge from "../quote-status-badge";
 
 export const QuoteDetailsHeader = ({

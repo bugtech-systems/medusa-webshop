@@ -1,9 +1,9 @@
-import { MedusaError } from "@medusajs/utils"
+import { MedusaError } from "@medusajs/framework/utils"
 
 import {
   createCustomersWorkflow,
   updateCustomersWorkflow,
-} from "@medusajs/core-flows"
+} from "@medusajs/medusa/core-flows"
 import axios from "axios"
 import crypto from "crypto"
 import { URLSearchParams } from "url"

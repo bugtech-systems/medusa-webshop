@@ -1,28 +1,17 @@
 {
+  "extends": "../../tsconfig.json",
   "compilerOptions": {
-    "target": "ES2020",
-    "useDefineForClassFields": true,
-    "lib": ["ES2020", "DOM", "DOM.Iterable"],
-    "module": "ESNext",
-    "skipLibCheck": true,
-
-    /* Bundler mode */
-    "moduleResolution": "bundler",
-    "allowImportingTsExtensions": true,
-    "resolveJsonModule": true,
+    "module": "Node16",
+    "moduleResolution": "Node16",
+    "target": "ES2021",
+    "esModuleInterop": true,
+    // Add these for Monaco compatibility:
+    "allowSyntheticDefaultImports": true,
     "isolatedModules": true,
+    "lib": ["dom", "dom.iterable", "esnext"],
     "noEmit": true,
     "jsx": "react-jsx",
-
-    /* Linting */
-    "strict": false,
-    // "noUnusedLocals": true,
-    // "noUnusedParameters": true,
-    // "noFallthroughCasesInSwitch": true,
-    "paths": {
-      "@/*": ["./*"]
-    }
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", "."]
+  "include": ["."],
+  "exclude": ["**/*.spec.js"]
 }
-

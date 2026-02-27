@@ -1,3 +1,4 @@
+import { ICustomerModuleService } from "@medusajs/framework/types";
 import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils";
 import { createStep, StepResponse } from "@medusajs/framework/workflows-sdk";
 
@@ -22,7 +23,7 @@ export const addCompanyEmployeesToCustomerGroupStep = createStep(
       { throwIfKeyNotFound: true }
     );
 
-    const customerModuleService = container.resolve(
+    const customerModuleService = container.resolve<ICustomerModuleService>(
       Modules.CUSTOMER
     );
     const customerGroupCustomers = employees
@@ -55,7 +56,7 @@ export const addCompanyEmployeesToCustomerGroupStep = createStep(
     input: { customer_ids: string[]; group_id: string },
     { container }
   ) => {
-    const customerModuleService = container.resolve(
+    const customerModuleService = container.resolve<ICustomerModuleService>(
       Modules.CUSTOMER
     );
 

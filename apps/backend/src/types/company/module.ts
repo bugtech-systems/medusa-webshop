@@ -1,5 +1,6 @@
 /* Entity: Company */
 
+import { CustomerGroupDTO } from "@medusajs/framework/types";
 import { CustomerDTO } from "@medusajs/types";
 import { ModuleApprovalSettings } from "../approval/module";
 
@@ -26,7 +27,7 @@ export type ModuleCompany = {
   spending_limit_reset_frequency: ModuleCompanySpendingLimitResetFrequency;
   created_at: Date;
   updated_at: Date;
-  customer_group: any;
+  customer_group: CustomerGroupDTO;
   approval_settings: ModuleApprovalSettings;
 };
 

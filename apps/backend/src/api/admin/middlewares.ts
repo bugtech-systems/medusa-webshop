@@ -1,10 +1,10 @@
 import { MiddlewareRoute } from "@medusajs/medusa";
-// import { adminCompaniesMiddlewares } from "./companies/middlewares";
+import { adminCompaniesMiddlewares } from "./companies/middlewares";
 import { adminQuotesMiddlewares } from "./quotes/middlewares";
-// import { adminApprovalsMiddlewares } from "./approvals/middlewares";
+import { adminApprovalsMiddlewares } from "./approvals/middlewares";
 
 export const adminMiddlewares: MiddlewareRoute[] = [
-  // ...adminCompaniesMiddlewares,
+  ...adminCompaniesMiddlewares,
   ...adminQuotesMiddlewares,
-  // ...adminApprovalsMiddlewares,
+  ...adminApprovalsMiddlewares,
 ];

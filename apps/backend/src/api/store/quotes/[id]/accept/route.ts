@@ -3,7 +3,7 @@ import type {
   MedusaResponse,
 } from "@medusajs/framework";
 import { ContainerRegistrationKeys } from "@medusajs/framework/utils";
-import { customerAcceptQuoteWorkflow } from "../../../../../workflows/quote/workflows";
+import { customerAcceptQuoteWorkflow } from "@/workflows/quote/workflows";
 import { AcceptQuoteType } from "../../validators";
 
 export const POST = async (

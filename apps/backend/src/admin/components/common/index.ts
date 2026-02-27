@@ -3,3 +3,4 @@ export * from "./cool-switch";
 export * from "./delete-prompt";
 export * from "./table";
 export * from "./thumbnail";
+export * from "./icons";

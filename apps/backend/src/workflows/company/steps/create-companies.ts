@@ -1,5 +1,5 @@
 import { createStep, StepResponse } from "@medusajs/framework/workflows-sdk";
-import { ICompanyModuleService, ModuleCreateCompany } from "../../../types";
+import { ICompanyModuleService, ModuleCreateCompany } from "../../../types1";
 import { COMPANY_MODULE } from "../../../modules/company";
 
 export const createCompaniesStep = createStep(

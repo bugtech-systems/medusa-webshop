@@ -32,7 +32,7 @@ export const useQuotesTableColumns = () => {
         header: t("fields.total"),
         cell: ({ getValue, row }) => {
           <TextCell
-            text={`${row.original.draft_order.currency_code.toUpperCase()} ${getValue()}`}
+            text={`${row.original.draft_order?.currency_code.toUpperCase()} ${getValue()}`}
           />;
         },
       }),

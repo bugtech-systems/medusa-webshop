@@ -2,6 +2,10 @@ import type {
   AuthenticatedMedusaRequest,
   MedusaResponse,
 } from "@medusajs/framework";
+import {
+  IOrderModuleService,
+  RemoteQueryFunction,
+} from "@medusajs/framework/types";
 import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils";
 
 export const GET = async (
@@ -9,7 +13,7 @@ export const GET = async (
   res: MedusaResponse
 ) => {
   const { id } = req.params;
-  const query = req.scope.resolve(
+  const query = req.scope.resolve<RemoteQueryFunction>(
     ContainerRegistrationKeys.QUERY
   );
 
@@ -24,7 +28,7 @@ export const GET = async (
     { throwIfKeyNotFound: true }
   );
 
-  const orderModuleService = req.scope.resolve(
+  const orderModuleService: IOrderModuleService = req.scope.resolve(
     Modules.ORDER
   );
 

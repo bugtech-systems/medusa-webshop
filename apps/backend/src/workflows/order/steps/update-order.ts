@@ -1,4 +1,4 @@
-
+import { IOrderModuleService } from "@medusajs/framework/types";
 import {
   convertItemResponseToUpdateRequest,
   getSelectsAndRelationsFromObjectArray,
@@ -19,7 +19,7 @@ export const updateOrderStep = createStep(
     { container }
   ) => {
     const { id, ...rest } = data;
-    const orderModule = container.resolve(Modules.ORDER);
+    const orderModule: IOrderModuleService = container.resolve(Modules.ORDER);
 
     const { selects, relations } = getSelectsAndRelationsFromObjectArray([
       data,

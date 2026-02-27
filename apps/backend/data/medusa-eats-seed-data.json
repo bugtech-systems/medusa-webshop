@@ -1,0 +1,148 @@
+{
+  "merchant": {
+    "name": "Rufrance LPG Trading",
+    "handle": "rufrance-lpg",
+    "address": "Barangay Baras, Palo Leyte, Philippines",
+    "email": "sales@rufrancelpg.ph",
+    "phone": "+63 917 123 4567",
+    "logo_url": "/rufrance-lpg-banner.jpg",
+    "is_open": true
+  },
+  "categories": [
+    {
+      "name": "LPG Canisters",
+      "handle": "lpg-canisters",
+      "description": "Small disposable LPG canisters for portable stoves and burners.",
+      "is_active": true
+    },
+    {
+      "name": "Portable LPG Cylinders",
+      "handle": "portable-lpg-cylinders",
+      "description": "Compact LPG cylinders ideal for camping and outdoor cooking.",
+      "is_active": true
+    },
+    {
+      "name": "Household LPG Cylinders",
+      "handle": "household-lpg-cylinders",
+      "description": "Standard LPG cylinders for home and commercial use.",
+      "is_active": true
+    }
+  ],
+  "products": [
+    {
+      "title": "Rufrance LPG Butane Canister",
+      "handle": "rufrance-lpg-butane-canister",
+      "description": "Disposable Rufrance LPG butane canister suitable for portable gas stoves.",
+      "is_giftcard": false,
+      "status": "published",
+      "thumbnail": "/rufrance-canister-small.jpg",
+      "discountable": true,
+      "category": "lpg-canisters",
+      "variants": [
+        {
+          "title": "Standard Canister",
+          "manage_inventory": false,
+          "sku": "RFLPG-CAN-37",
+          "prices": [
+            {
+              "amount": 37,
+              "currency_code": "php"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Rufrance LPG Premium Canister",
+      "handle": "rufrance-lpg-premium-canister",
+      "description": "Premium Rufrance LPG canister with enhanced burn efficiency.",
+      "is_giftcard": false,
+      "status": "published",
+      "thumbnail": "/rufrance-canister-premium.jpg",
+      "discountable": true,
+      "category": "lpg-canisters",
+      "variants": [
+        {
+          "title": "Premium Canister",
+          "manage_inventory": false,
+          "sku": "RFLPG-CAN-42",
+          "prices": [
+            {
+              "amount": 42,
+              "currency_code": "php"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Rufrance Portable LPG Cylinder",
+      "handle": "rufrance-portable-lpg-cylinder",
+      "description": "Portable Rufrance LPG cylinder ideal for outdoor and mobile cooking.",
+      "is_giftcard": false,
+      "status": "published",
+      "thumbnail": "/rufrance-portable-cylinder.jpg",
+      "discountable": true,
+      "category": "portable-lpg-cylinders",
+      "variants": [
+        {
+          "title": "Portable Cylinder",
+          "manage_inventory": false,
+          "sku": "RFLPG-PORT-399",
+          "prices": [
+            {
+              "amount": 399,
+              "currency_code": "php"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Rufrance LPG Cylinder 5kg",
+      "handle": "rufrance-lpg-cylinder-5kg",
+      "description": "Rufrance LPG cylinder with 5kg net content, suitable for small households.",
+      "is_giftcard": false,
+      "status": "published",
+      "thumbnail": "/rufrance-5kg-cylinder.jpg",
+      "discountable": true,
+      "category": "household-lpg-cylinders",
+      "variants": [
+        {
+          "title": "5kg Cylinder",
+          "manage_inventory": false,
+          "sku": "RFLPG-5KG-1199",
+          "prices": [
+            {
+              "amount": 1199,
+              "currency_code": "php"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Rufrance LPG Cylinder 11kg",
+      "handle": "rufrance-lpg-cylinder-11kg",
+      "description": "Standard 11kg Rufrance LPG cylinder for household and commercial use.",
+      "is_giftcard": false,
+      "status": "published",
+      "thumbnail": "/rufrance-11kg-cylinder.jpg",
+      "discountable": true,
+      "category": "household-lpg-cylinders",
+      "variants": [
+        {
+          "title": "11kg Cylinder",
+          "manage_inventory": false,
+          "sku": "RFLPG-11KG-1999",
+          "prices": [
+            {
+              "amount": 1999,
+              "currency_code": "php"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

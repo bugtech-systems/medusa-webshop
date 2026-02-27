@@ -4,7 +4,7 @@ import {
   IQuoteModuleService,
   ModuleCreateQuoteMessage,
   ModuleQuoteMessage,
-} from "../../../types";
+} from "../../../types1";
 
 /*
   A step to create a quote's message.

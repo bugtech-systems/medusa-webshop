@@ -1,6 +1,6 @@
 import { createStep, StepResponse } from "@medusajs/framework/workflows-sdk";
 import { APPROVAL_MODULE } from "../../../modules/approval";
-import { IApprovalModuleService } from "../../../types";
+import { IApprovalModuleService } from "../../../types1";
 
 export const deleteApprovalsStep = createStep(
   "delete-approvals",

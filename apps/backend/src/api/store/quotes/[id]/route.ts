@@ -2,6 +2,7 @@ import {
   AuthenticatedMedusaRequest,
   MedusaResponse,
 } from "@medusajs/framework";
+import { RemoteQueryFunction } from "@medusajs/framework/types";
 import { ContainerRegistrationKeys } from "@medusajs/framework/utils";
 import { GetQuoteParamsType } from "../validators";
 
@@ -10,7 +11,7 @@ export const GET = async (
   res: MedusaResponse
 ) => {
   const { id } = req.params;
-  const query = req.scope.resolve(
+  const query = req.scope.resolve<RemoteQueryFunction>(
     ContainerRegistrationKeys.QUERY
   );
 

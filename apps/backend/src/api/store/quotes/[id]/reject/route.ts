@@ -1,6 +1,7 @@
 import type { MedusaRequest, MedusaResponse } from "@medusajs/framework";
+import { RemoteQueryFunction } from "@medusajs/framework/types";
 import { ContainerRegistrationKeys } from "@medusajs/framework/utils";
-import { customerRejectQuoteWorkflow } from "../../../../../workflows/quote/workflows";
+import { customerRejectQuoteWorkflow } from "@/workflows/quote/workflows";
 import { RejectQuoteType } from "../../validators";
 
 export const POST = async (
@@ -8,7 +9,7 @@ export const POST = async (
   res: MedusaResponse
 ) => {
   const { id } = req.params;
-  const query = req.scope.resolve(
+  const query = req.scope.resolve<RemoteQueryFunction>(
     ContainerRegistrationKeys.QUERY
   );
 

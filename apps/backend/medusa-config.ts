@@ -1,70 +1,57 @@
-import { loadEnv, defineConfig, Modules } from "@medusajs/framework/utils"
+import { loadEnv, defineConfig, Modules } from "@medusajs/framework/utils";
+import { QUOTE_MODULE } from "./src/modules/quote";
+import { COMPANY_MODULE } from "./src/modules/company";
+import { AI_MODULE } from "./src/modules/ai";
+import { ACTION_ENGINE_MODULE } from "./src/modules/action-engine";
+import { DYNAMIC_QUERY_MODULE } from "./src/modules/dynamic-query";
+import { SALESFORCE_AUTH } from "./src/modules/salesforce";
+import { APPROVAL_MODULE } from './src/modules/approval';
 
-import { SALESFORCE_AUTH } from "./src/modules/salesforce"
-import { APPROVAL_MODULE } from "./src/modules/approval"
-import { COMPANY_MODULE } from "./src/modules/company"
-import { QUOTE_MODULE } from "./src/modules/quote"
-
-loadEnv(process.env.NODE_ENV || "development", process.cwd())
+loadEnv(process.env.NODE_ENV as any, process.cwd());
 
 export default defineConfig({
   projectConfig: {
-    databaseUrl: process.env.SUPABASE_DATABASE_URL,
+    databaseUrl: process.env.DATABASE_URL,
     http: {
       storeCors: process.env.STORE_CORS || "*",
       adminCors: process.env.ADMIN_CORS || "*",
       authCors: process.env.AUTH_CORS || "*",
-      jwtSecret: process.env.JWT_SECRET || "psawebshop",
-      cookieSecret: process.env.COOKIE_SECRET || "psawebshop",
-    },
-    cookieOptions: {
-      secure: process.env.NODE_ENV === "production",
-      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+      jwtSecret: process.env.JWT_SECRET || "supersecret",
+      cookieSecret: process.env.COOKIE_SECRET || "supersecret",
     },
   },
-
   modules: {
-    /* -------------------- Core Required Modules -------------------- */
+    [ACTION_ENGINE_MODULE]: { 
+    resolve: "./modules/action-engine",
+    options: { 
+          connection_url: process.env.DATABASE_URL,
+          max_connections: 20,
+          idle_timeout_ms: 30000,
+          connection_timeout_ms: 5000,
+          ssl: process.env.NODE_ENV === 'production'
+      },
+    },
+    [APPROVAL_MODULE]: { resolve: "./modules/approval" },
+    [AI_MODULE]: { resolve: "./modules/ai" },
+    [COMPANY_MODULE]: { resolve: "./modules/company" },
+    [QUOTE_MODULE]: { resolve: "./modules/quote" },
+    [DYNAMIC_QUERY_MODULE]: { resolve: "./modules/dynamic-query" },
+    [Modules.CACHE]: { resolve: "@medusajs/medusa/cache-inmemory" },
     [Modules.STOCK_LOCATION]: {
       resolve: "@medusajs/stock-location",
     },
-
     [Modules.INVENTORY]: {
       resolve: "@medusajs/inventory",
     },
-
-    [Modules.CACHE]: {
-      resolve: "@medusajs/medusa/cache-inmemory",
-    },
-
-    [Modules.WORKFLOW_ENGINE]: {
-      resolve: "@medusajs/medusa/workflow-engine-inmemory",
-    },
-
-    /* -------------------- Custom Modules -------------------- */
-    [APPROVAL_MODULE]: {
-      resolve: "./modules/approval",
-    },
-
-    [COMPANY_MODULE]: {
-      resolve: "./modules/company",
-    },
-
-    [QUOTE_MODULE]: {
-      resolve: "./modules/quote",
-    },
-
-    [SALESFORCE_AUTH]: {
-      resolve: "./modules/salesforce",
+    [Modules.WORKFLOW_ENGINE]: { resolve: "@medusajs/medusa/workflow-engine-inmemory" },
+    [Modules.FULFILLMENT]: {
       options: {
-        clientId: process.env.SALESFORCE_CLIENT_ID,
-        clientSecret: process.env.SALESFORCE_CLIENT_SECRET,
-        callbackUrl: process.env.SALESFORCE_CALLBACK_URL,
-        sandbox: process.env.SALESFORCE_SANDBOX === "true",
+        providers: [
+          { resolve: "@medusajs/fulfillment-manual", id: "manual-provider" }
+        ],
       },
     },
-
-    /* -------------------- Payment -------------------- */
+        /* -------------------- Payment -------------------- */
     [Modules.PAYMENT]: {
       resolve: "@medusajs/payment",
       options: {
@@ -79,5 +66,28 @@ export default defineConfig({
         ],
       },
     },
-  },
-})
+    [Modules.FILE]: {
+      resolve: "@medusajs/medusa/file",
+      options: {
+        providers: [
+          {
+            resolve: "@medusajs/medusa/file-local",
+            id: "local",
+            options: {
+              backend_url: 'http://localhost:9000/static'
+            },
+          },
+        ],
+      },
+    },
+    [SALESFORCE_AUTH]: {
+      resolve: "./modules/salesforce",
+      options: {
+        clientId: process.env.SALESFORCE_CLIENT_ID,
+        clientSecret: process.env.SALESFORCE_CLIENT_SECRET,
+        callbackUrl: process.env.SALESFORCE_CALLBACK_URL,
+        sandbox: process.env.SALESFORCE_SANDBOX === "true",
+      },
+    },
+  }
+});

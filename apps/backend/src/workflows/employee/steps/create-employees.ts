@@ -5,7 +5,7 @@ import {
   ICompanyModuleService,
   ModuleCreateEmployee,
   ModuleEmployee,
-} from "../../../types";
+} from "../../../types1";
 
 export const createEmployeesStep = createStep(
   "create-employees",

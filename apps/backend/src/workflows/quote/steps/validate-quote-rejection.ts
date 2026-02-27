@@ -1,6 +1,6 @@
 import { MedusaError } from "@medusajs/framework/utils";
 import { createStep } from "@medusajs/framework/workflows-sdk";
-import { QueryQuote } from "../../../types";
+import { QueryQuote } from "../../../types1";
 
 export const validateQuoteRejectionStep = createStep(
   "validate-quote-rejection-step",

@@ -1,5 +1,5 @@
 import { model } from "@medusajs/framework/utils";
-import { ApprovalStatusType, ApprovalType } from "../../../types/approval";
+import { ApprovalStatusType, ApprovalType } from "../../../types1/approval";
 
 export const Approval = model.define("approval", {
   id: model

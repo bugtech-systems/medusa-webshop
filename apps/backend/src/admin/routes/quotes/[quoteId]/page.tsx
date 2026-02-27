@@ -118,8 +118,10 @@ const QuoteDetails = () => {
     return <></>;
   }
 
+  console.log(preview, quote, quoteId, 'PREVIEW')
+
   if (!isPreviewLoading && !preview) {
-    throw "preview not found";
+    return <>preview not found</>
   }
 
   return (

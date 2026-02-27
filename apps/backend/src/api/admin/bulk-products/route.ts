@@ -365,7 +365,6 @@ if (existingProduct) {
     //  console.log(foundLists, 'FOUND LISTS')
  
       let found = (foundLists || []).find((pl: any) => pl.title === plTitle)
-      console.log(found, 'FOUNDED')
       if (!found) {
           found = await pricingModule.createPriceLists([{
             title: plTitle,
@@ -443,7 +442,6 @@ if (existingProduct) {
     }
     
     
-    console.log(groupToPriceList, priceBatchesByListId, 'PRICE BATCHERS')
     
   
     // Execute addPrices per price list id (Medusa will add or update)
@@ -453,7 +451,6 @@ if (existingProduct) {
       
       
       
-      console.log(priceListId, 'PRICELIST ID', prices.length)
     addPricePromises.push(batchPriceListPricesWorkflow(req.scope)
     .run({
       input: {

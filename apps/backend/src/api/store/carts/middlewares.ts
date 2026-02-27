@@ -21,7 +21,7 @@ export const storeCartsMiddlewares: MiddlewareRoute[] = [
         retrieveCartTransformQueryConfig
       ),
     ],
-  },
+  },  
   {
     method: ["POST"],
     matcher: "/store/carts/:id/approvals",

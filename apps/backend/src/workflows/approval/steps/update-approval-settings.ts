@@ -3,7 +3,7 @@ import { APPROVAL_MODULE } from "../../../modules/approval";
 import {
   IApprovalModuleService,
   ModuleUpdateApprovalSettings,
-} from "../../../types";
+} from "../../../types1";
 
 export const updateApprovalSettingsStep = createStep(
   "update-approval-settings",

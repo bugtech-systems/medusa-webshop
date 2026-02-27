@@ -4,7 +4,7 @@ import {
   AdminEmployeeResponse,
   AdminEmployeesResponse,
   AdminUpdateEmployee,
-} from "../../../types";
+} from "../../../types1";
 import {
   QueryKey,
   useMutation,
