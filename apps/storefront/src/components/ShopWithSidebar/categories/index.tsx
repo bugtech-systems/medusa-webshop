@@ -6,8 +6,9 @@ import { HttpTypes } from "@medusajs/types"
 import PaginatedProducts from "../templates/paginated-products"
 import Breadcrumb from "@/components/Common/Breadcrumb"
 import SkeletonStoreTemplate from "@modules/skeletons/templates/skeleton-grid"
+import { listCategories } from "@lib/data"
 
-export default function CategoryTemplate({
+export default async function CategoryTemplate({
   category,
   sortBy,
   page,
@@ -34,9 +35,10 @@ export default function CategoryTemplate({
 
   getParents(category)
 
+    let categories = await listCategories();
 
 
-
+console.log(categories, 'CAT CAAT')
 
   return (
   <>
@@ -58,6 +60,7 @@ export default function CategoryTemplate({
             page={pageNumber}
             categoryId={category.id}
             countryCode={countryCode}
+            categories={categories}
           />
         </Suspense>
          </section>

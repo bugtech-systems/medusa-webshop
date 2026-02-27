@@ -48,7 +48,6 @@ const SingleGridItem = ({
 
 
 
-console.log(selectedVariant, 'selected')
 
 
   return (
@@ -103,9 +102,7 @@ console.log(selectedVariant, 'selected')
                     </span>
                   )}
               </span>
-              <Text className="text-neutral-600 text-[0.6rem]">
-                Excl. VAT
-              </Text>
+             
             </div>
 
             {/* Add to cart */}

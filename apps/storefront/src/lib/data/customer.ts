@@ -66,9 +66,7 @@ export const retrieveCustomer =
      if(!authCustomer) return null;  
       
     let customerData = await retrieveCustomerById(authCustomer?.id) 
-      console.log(customerData, 'cust d')
-    customer = {...authCustomer, membership: customerData?.groups[0] ? customerData?.groups[0].name : 'nonmember' }  
-      console.log(customer, 'cuss')
+    customer = {...authCustomer, membership: customerData?.groups ? customerData?.groups[0].name : 'nonmember' }  
     return customer;
       
   }

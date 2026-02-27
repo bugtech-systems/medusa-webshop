@@ -121,9 +121,6 @@ const CartDrawer = ({
       : "/checkout"
    
    
-   
-   console.log(cart, 'dsraawwer')
-
 
 
 

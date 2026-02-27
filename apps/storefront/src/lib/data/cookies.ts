@@ -1,6 +1,13 @@
 import "server-only"
 import { cookies as nextCookies } from "next/headers"
 
+
+// export async function getCookieData() {
+//   const cookieStore = nextCookies()
+//   // Access cookies here
+//   return cookieStore.get('your-cookie-name')
+// }
+
 export const getAuthHeaders = async (): Promise<
   { authorization: string } | {}
 > => {

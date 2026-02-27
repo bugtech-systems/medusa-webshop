@@ -64,7 +64,6 @@ export default async function StorePage(props: Params) {
   
   
   
-  console.log(categories, 'cat main')
   return (
     <ShopWithSidebar
       sortBy={sortBy}

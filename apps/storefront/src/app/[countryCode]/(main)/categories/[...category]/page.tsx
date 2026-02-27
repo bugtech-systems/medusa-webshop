@@ -75,6 +75,13 @@ export default async function CategoryPage(props: Props) {
     notFound()
   }
 
+  
+  
+    let categories = await listCategories();
+
+
+console.log(categories, 'CAT PAGE')
+
   return (
 <>
     <CategoryTemplate

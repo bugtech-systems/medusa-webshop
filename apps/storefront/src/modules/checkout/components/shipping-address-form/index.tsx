@@ -57,7 +57,6 @@ const ShippingAddressForm = ({
         email,
       }))
       
-      console.log('selected', address, email)
   }
 
   useEffect(() => {

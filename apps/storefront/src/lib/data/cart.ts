@@ -346,6 +346,26 @@ export async function initiatePaymentSession(
     .catch(medusaError)
 }
 
+
+export async function authorizePayment(id: any, session: any) {
+  const headers = {
+    ...(await getAuthHeaders()),
+  }
+  const next = {
+    ...(await getCacheOptions("carts")),
+  }
+
+  return await sdk.client.fetch<{
+    shipping_options: HttpTypes.StoreCartShippingOption[]
+  }>(`/store/payment-collections/${id}/authorize`, {
+    method: "POST",
+    body: {session_id: session},
+    next,
+    headers,
+    cache: "force-cache",
+  })
+}
+
 export async function applyPromotions(codes: string[]) {
   const cartId = await getCartId()
 
