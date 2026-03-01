@@ -11,7 +11,7 @@ loadEnv(process.env.NODE_ENV as any, process.cwd());
 
 export default defineConfig({
   projectConfig: {
-    databaseUrl: process.env.DATABASE_URL,
+    databaseUrl: process.env.MEDUSA_DATABASE_URL,
     http: {
       storeCors: process.env.STORE_CORS || "*",
       adminCors: process.env.ADMIN_CORS || "*",
@@ -24,7 +24,7 @@ export default defineConfig({
     [ACTION_ENGINE_MODULE]: { 
     resolve: "./modules/action-engine",
     options: { 
-          connection_url: process.env.DATABASE_URL,
+          connection_url: process.env.MEDUSA_DATABASE_URL,
           max_connections: 20,
           idle_timeout_ms: 30000,
           connection_timeout_ms: 5000,
