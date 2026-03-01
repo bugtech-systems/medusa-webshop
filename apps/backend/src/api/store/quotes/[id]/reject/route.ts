@@ -1,7 +1,7 @@
 import type { MedusaRequest, MedusaResponse } from "@medusajs/framework";
 import { RemoteQueryFunction } from "@medusajs/framework/types";
 import { ContainerRegistrationKeys } from "@medusajs/framework/utils";
-import { customerRejectQuoteWorkflow } from "@/workflows/quote/workflows";
+import { customerRejectQuoteWorkflow } from "../../../../../workflows/quote/workflows";
 import { RejectQuoteType } from "../../validators";
 
 export const POST = async (

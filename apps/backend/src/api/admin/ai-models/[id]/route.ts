@@ -1,6 +1,6 @@
 import { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
-import { AI_MODULE } from "@/modules/ai/index"
-import { UpdateAiModelInput } from "@/modules/ai/types"
+import { AI_MODULE } from "../../../../modules/ai/index"
+import { UpdateAiModelInput } from "../../../../modules/ai/types"
 
 // GET - Get single AI model by ID
 export async function GET(

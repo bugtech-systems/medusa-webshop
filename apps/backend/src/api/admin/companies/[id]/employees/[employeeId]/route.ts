@@ -6,7 +6,7 @@ import { ContainerRegistrationKeys } from "@medusajs/framework/utils";
 import {
   deleteEmployeesWorkflow,
   updateEmployeesWorkflow,
-} from "@/workflows/employee/workflows";
+} from "../../../../../../workflows/employee/workflows";
 import {
   AdminGetEmployeeParamsType,
   AdminUpdateEmployeeType,

@@ -7,7 +7,7 @@ import zod from "zod";
 import {
   CreateDriverInput,
   createUserWorkflow,
-} from "@/workflows/user/workflows/create-user";
+} from "../../../workflows/user/workflows/create-user";
 
 const schema = zod
   .object({

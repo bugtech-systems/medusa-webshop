@@ -1,7 +1,7 @@
 import { MedusaRequest, MedusaResponse } from "@medusajs/framework";
 import { MedusaError } from "@medusajs/utils";
 import { z } from "zod";
-import { updateCompanyProductsWorkflow } from "@/workflows/company/workflows";
+import { updateCompanyProductsWorkflow } from "../../../../../../workflows/company/workflows";
 import { AdminUpdateProduct } from "@medusajs/types";
 
 /* ------------------------------------------------------------------ */

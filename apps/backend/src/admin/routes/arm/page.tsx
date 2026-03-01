@@ -12,7 +12,7 @@ export default function Home() {
   return (
   <SidebarProvider >
     <main className="relative min-h-screen flex flex-col items-center justify-center">
-      <Sidebar/>
+      {/* <Sidebar/> */}
 
       {/* Title */}
       <div className="mb-10 flex items-center gap-2 text-xl font-semibold">

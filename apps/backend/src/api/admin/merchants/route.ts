@@ -1,10 +1,9 @@
 import { MedusaRequest, MedusaResponse } from "@medusajs/framework";
 import { ContainerRegistrationKeys, MedusaError } from "@medusajs/utils";
 import zod from "zod";
-import { CreateCompanyDTO } from "@/modules/company/types/mutations";
-import { createCompanyWorkflow } from "@/workflows/company/workflows/create-company";
+import { CreateCompanyDTO } from "../../../modules/company/types/mutations";
+import { createCompanyWorkflow } from "../../../workflows/company/workflows/create-company";
 import { QueryContext } from "@medusajs/framework/utils";
-import { createCompaniesWorkflow } from "@/workflows/company/workflows";
 
 const schema = zod.object({
   name: zod.string(),

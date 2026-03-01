@@ -3,7 +3,7 @@ import type {
   MedusaResponse,
 } from "@medusajs/framework";
 import { ContainerRegistrationKeys } from "@medusajs/framework/utils";
-import { updateApprovalSettingsWorkflow } from "@/workflows/approval/workflows";
+import { updateApprovalSettingsWorkflow } from "../../../../../workflows/approval/workflows";
 import { adminApprovalSettingsFields } from "../../query-config";
 import { AdminCreateApprovalSettingsType } from "../../validators";
 

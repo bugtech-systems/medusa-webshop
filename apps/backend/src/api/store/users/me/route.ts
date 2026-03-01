@@ -2,7 +2,7 @@ import {
   AuthenticatedMedusaRequest,
   MedusaResponse,
 } from "@medusajs/framework";
-import { COMPANY_MODULE } from "@/modules/company";
+import { COMPANY_MODULE } from "../../../../modules/company";
 // import { DELIVERY_MODULE } from "../../../../modules/delivery";
 
 export const GET = async (

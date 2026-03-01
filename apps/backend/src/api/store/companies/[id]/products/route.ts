@@ -1,7 +1,7 @@
 import { MedusaRequest, MedusaResponse } from "@medusajs/framework";
 import { ContainerRegistrationKeys, MedusaError } from "@medusajs/utils";
 import { deleteProductsWorkflow } from "@medusajs/core-flows";
-import { createCompanyProductsWorkflow } from "@/workflows/company/workflows";
+import { createCompanyProductsWorkflow } from "../../../../../workflows/company/workflows";
 import { AdminCreateProduct } from "@medusajs/types";
 import { z } from "zod";
 

@@ -87,7 +87,7 @@ export default function ChatInput({ conversationId, onSend }: Props) {
         value={content}
         onChange={(e) => setContent(e.target.value)}
         onKeyDown={handleKeyDown}
-        placeholder="Message Alayon"
+        placeholder="Message PSA AI Assistant"
         disabled={isPending}
         className="w-full bg-transparent outline-none text-sm placeholder:text-neutral-400 disabled:opacity-50"
       />
@@ -95,7 +95,7 @@ export default function ChatInput({ conversationId, onSend }: Props) {
       <div className="mt-3 flex items-center justify-between">
         {/* Left actions (quick prompts / model switchers later) */}
         <div className="flex gap-2">
-        {serviceModels.map(a => {
+        {/* {serviceModels.map(a => {
             return (
             <button
             type="button"
@@ -105,7 +105,7 @@ export default function ChatInput({ conversationId, onSend }: Props) {
             {a.name}
           </button>
             )
-        })}
+        })} */}
 
         </div>
 

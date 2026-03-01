@@ -1,10 +1,10 @@
 import { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
-import { AI_MODULE } from "@/modules/ai/index"
+import { AI_MODULE } from "../../../modules/ai/index"
 import { 
   CreateAiModelInput, 
   UpdateAiModelInput, 
   FilterableAiModelProps 
-} from "@/modules/ai/types"
+} from "../../../modules/ai/types"
 
 // POST - Create new AI model
 export async function POST(
