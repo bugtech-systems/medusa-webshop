@@ -16,7 +16,7 @@ import path from "path"
 import { chatCompletion, generateCompletion, generateEmbedding, streamChatCompletion } from "../../utils/ollama"
 import { DbOperationService } from "./services/database-action-service"
 import { ActionConfig, Condition, ExecutionStatus, HealthCheckResult, QueryBuilderResult, QueryConfig, StandardResponse, WhereCondition } from "./types"
-import { parseActionInput, validateActionInput } from "@/utils/validators"
+import { parseActionInput, validateActionInput } from "../../utils/validators"
 import { parseFieldsString, refineObjectByFields, removeEmptyObjects, removeNullKeys } from "../../utils/helpers"
 
 
