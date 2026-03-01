@@ -41,7 +41,7 @@ const ActionsPage = () => {
 
   const { data, isLoading, isError } = useActions({
     fields: "id,name,description,handle,type,status,created_at,updated_at",
-    limit: 50,
+    limit: 1000,
     offset: 0,
   })
 

@@ -1,14 +1,15 @@
+// src/admin/routes/reports/page.tsx
 import { defineRouteConfig } from "@medusajs/admin-sdk"
-import { DashboardContainer } from "../../../components/dashboard/DashboardContainer"
+import { WidgetsList } from "../../../components/widgets/WidgetsList"
 
-const CustomDashboardPage = () => {
-  return <DashboardContainer />
 
+const WidgetsPage = () => {
+  return <WidgetsList />
 }
 
 export const config = defineRouteConfig({
   label: "Widgets",
-  rank: 2
+  rank: 1
 })
 
-export default CustomDashboardPage
+export default WidgetsPage

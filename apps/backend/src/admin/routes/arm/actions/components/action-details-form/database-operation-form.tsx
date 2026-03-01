@@ -122,7 +122,6 @@ export const DatabaseOperationFields = ({
 ]`
   }
   
-  console.log(editMode, initialConfig, operation, 'ddbbb')
 
   return (
     <div className="space-y-4">

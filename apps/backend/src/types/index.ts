@@ -7,3 +7,5 @@ export * from "./ai-model/index";
 export * from "./action/index";
 export * from "./dynamic-query/index";
 export * from "./workflows";
+export * from "./reports";
+export * from "./dashboards";

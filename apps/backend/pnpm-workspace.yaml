@@ -1,8 +1,0 @@
-ignoredBuiltDependencies:
-  - esbuild
-  - msgpackr-extract
-  - protobufjs
-
-onlyBuiltDependencies:
-  - '@medusajs/telemetry'
-  - '@swc/core'

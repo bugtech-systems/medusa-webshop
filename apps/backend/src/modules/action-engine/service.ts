@@ -8,7 +8,7 @@ import {
   DAL,
   Logger
 } from "@medusajs/framework/types"
-import { ActionTemplate, Execution, ActionRelation, ActionConnection } from "./models"
+import { ActionTemplate, Execution, ActionRelation, ActionConnection, ActionView } from "./models"
 import * as expressionEvaluator from "./expressionEvaluator"
 import axios from "axios"
 import { Worker } from "worker_threads"
@@ -26,6 +26,7 @@ type ActionTemplateType = InferTypeOf<typeof ActionTemplate>
 type ExecutionType = InferTypeOf<typeof Execution>
 type ActionExecutionType = InferTypeOf<typeof ActionRelation>
 type ActionConnectionType = InferTypeOf<typeof ActionConnection>
+type ActionViewType = InferTypeOf<typeof ActionView>
 
 
 
@@ -38,6 +39,7 @@ export interface ActionEngineServiceTypes {
   Execution: ExecutionType
   ActionExecution: ActionExecutionType
   ActionConnection: ActionConnectionType
+  ActionView: ActionViewType
   // Method return types
   execute: ReturnType<ActionEngineService['execute']>
   getExecutionStatus: ReturnType<ActionEngineService['getExecutionStatus']>
@@ -68,7 +70,8 @@ export default class ActionEngineService extends MedusaService({
   ActionRelation,
   ActionConnection,
   Execution,
-  ActionTemplate
+  ActionTemplate, 
+  ActionView
 }) {
   // Medusa services
   private readonly logger_: Logger

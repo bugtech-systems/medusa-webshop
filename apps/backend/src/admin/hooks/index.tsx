@@ -1,8 +1,8 @@
 
 
 import { useState, useEffect } from "react";
-import { DeliveryDTO, DriverDTO } from "../../modules/delivery/types/common";
 import { CompanyDTO } from "../../modules/company/types/common";
+import { sdk } from "../lib/client";
 
 
 export * from "./use-data-table";
@@ -12,7 +12,7 @@ export * from "./use-query-params";
 export const useDrivers = (
   query?: Record<string, any>
 ): {
-  data: { drivers: DriverDTO[] } | null;
+  data: { drivers: any[] } | null;
   loading: boolean;
 } => {
   const [data, setData] = useState(null);
@@ -45,7 +45,7 @@ console.log(data, 'DATAAA DRIVERS')
 export const useDeliveries = (
   query?: Record<string, any>
 ): {
-  data: { deliveries: DeliveryDTO[] } | null;
+  data: { deliveries: any } | null;
   loading: boolean;
 } => {
   const [data, setData] = useState(null);
@@ -90,6 +90,40 @@ export const useCompanies = (
         const response = await fetch(
           "/admin/merchants" + (query ? `?${filterQuery}` : "")
         );
+        const result = await response.json();
+        setData(result);
+      } catch (error) {
+        console.error("Error fetching the data", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCompanies();
+  }, []);
+
+  return { data, loading };
+};
+
+export const useDashboard = (
+  query?: Record<string, any>
+): {
+  data: { companies: CompanyDTO[] } | null;
+  loading: boolean;
+} => {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const filterQuery = new URLSearchParams(query).toString();
+
+  useEffect(() => {
+    const fetchCompanies = async () => {
+      try {
+        const response = await sdk.client.fetch<any>(
+       `/store/actions/get-dashboard-tabs/execute`,
+      {
+        method: "GET",
+      }
+    );
         const result = await response.json();
         setData(result);
       } catch (error) {

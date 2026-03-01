@@ -364,7 +364,7 @@ export const useExecuteAction = (
   options?: UseMutationOptions<
     AdminExecuteActionResponse,
     FetchError,
-    AdminExecuteActionParams
+    any
   >
 ) => {
   const queryClient = useQueryClient()
@@ -393,6 +393,43 @@ export const useExecuteAction = (
     ...options,
   })
 }
+
+
+
+// List reports with filtering, pagination, and sorting
+export const useExecution = (
+  actionId?: any,
+  query?: any,
+  options?: any
+) => {
+  const filterQuery = query ? new URLSearchParams(
+    Object.entries(query).reduce((acc, [key, value]) => {
+      if (value !== undefined && value !== null && value !== "") {
+        acc[key] = String(value)
+      }
+      return acc
+    }, {} as Record<string, string>)
+  ).toString() : ""
+
+  const fetchReports = async () =>
+    sdk.client.fetch<AdminExecuteActionResponse>(
+        `/admin/actions/${actionId}/execute`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: query ? query : {},
+        }
+      )
+
+  return useQuery({
+    queryKey: actionsQueryKey.list(actionId),
+    queryFn: fetchReports,
+    ...(options ? options : {}),
+  })
+}
+
 
 export const useActionExecutionHistory = (
   actionId: string,

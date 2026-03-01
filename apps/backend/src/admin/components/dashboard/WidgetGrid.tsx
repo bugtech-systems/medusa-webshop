@@ -1,131 +1,203 @@
-import React from "react"
-import { DashboardTab } from "./DashboardContainer"
-import { StatWidget, ChartWidget, TableWidget, ListWidget } from "./WidgetComponents"
-import { IconButton, Badge } from "@medusajs/ui"
-import { Trash, SquareDashedCursor, CogSixToothSolid } from "@medusajs/icons"
-import { WidgetConfig } from "./DashboardContainer"
+import React, { useMemo } from "react"
+import { Badge, Button } from "@medusajs/ui"
+import { ArrowsPointingOut, SquaresPlus } from "@medusajs/icons"
+import { WidgetCard } from "./WidgetCard"
+import { DashboardTab, Widget, DragState, ResizeState } from "../../../types/dashboards"
+import { getWidgetStyle, getDropIndicatorStyle } from "../../utils/dashboards/gridHelpers"
 
 interface WidgetGridProps {
-  tab: DashboardTab
+  activeTab: DashboardTab
   isEditing: boolean
-  onUpdateWidget: (widgetId: string, updates: Partial<WidgetConfig>) => void
+  pendingChanges: any[]
+  draggingWidget: DragState | null
+  resizingWidget: ResizeState | null
+  gridRef: React.RefObject<HTMLDivElement>
+  onAddWidget: () => void
+  onUpdateWidget: (widgetId: string, updates: Partial<Widget>) => void
   onDeleteWidget: (widgetId: string) => void
+  onEditWidget: (widget: Widget) => void
+  onDuplicateWidget: (widgetId: string) => void
+  onDragStart: (e: React.MouseEvent, widget: Widget) => void
+  onResizeStart: (e: React.MouseEvent, widget: Widget, direction: string, axis?: 'x' | 'y') => void
 }
 
-export const WidgetGrid = ({
-  tab,
+export const WidgetGrid: React.FC<WidgetGridProps> = ({
+  activeTab,
   isEditing,
+  pendingChanges,
+  draggingWidget,
+  resizingWidget,
+  gridRef,
+  onAddWidget,
   onUpdateWidget,
   onDeleteWidget,
-}: WidgetGridProps) => {
-  const { layout, widgets } = tab
+  onEditWidget,
+  onDuplicateWidget,
+  onDragStart,
+  onResizeStart,
+}) => {
+  const gridColumns = activeTab.layout.columns
+  const rowHeight = activeTab.layout.rowHeight
+  const gap = activeTab.layout.gap
 
-  const renderWidget = (widget: WidgetConfig) => {
-    const commonProps = {
-      ...widget.config,
-      title: widget.title,
-      isEditing,
-      onUpdate: (updates: any) => onUpdateWidget(widget.id, { config: updates }),
-      onDelete: () => onDeleteWidget(widget.id),
-    }
+  // Calculate grid metrics
+  const gridMetrics = useMemo(() => {
+    if (!gridRef.current) return { colWidth: 0, rowHeight, gap }
+    const containerWidth = gridRef.current.clientWidth
+    const totalGapWidth = gap * (gridColumns - 1)
+    const colWidth = (containerWidth - totalGapWidth) / gridColumns
+    return { colWidth, rowHeight, gap }
+  }, [gridColumns, rowHeight, gap, gridRef.current?.clientWidth])
 
-    switch (widget.type) {
-      case "stat":
-        return <StatWidget {...commonProps} />
-      case "chart":
-        return <ChartWidget {...commonProps} />
-      case "table":
-        return <TableWidget {...commonProps} />
-      case "list":
-        return <ListWidget {...commonProps} />
-      default:
-        return null
-    }
-  }
-
-  // Calculate grid positions
-  const gridStyle = {
-    display: "grid",
-    gridTemplateColumns: `repeat(${layout.columns}, minmax(0, 1fr))`,
-    gap: `${layout.gap}px`,
-    gridAutoRows: `${layout.rowHeight}px`,
-  }
+  // Calculate total grid height
+  const gridHeight = useMemo(() => {
+    const maxRow = Math.max(...activeTab.widgets.map(w => w.position.y + w.position.h), 1)
+    return maxRow * (rowHeight + gap)
+  }, [activeTab.widgets, rowHeight, gap])
 
   return (
-    <div style={gridStyle} className="relative min-h-[500px]">
-      {widgets.map((widget) => (
-        <div
-          key={widget.id}
-          className="relative group"
-          style={{
-            gridColumn: `span ${widget.position.w}`,
-            gridRow: `span ${widget.position.h}`,
-          }}
-        >
-          {/* Widget Container */}
-          <div className="h-full border rounded-lg bg-white shadow-sm hover:shadow-md transition-shadow">
-            {/* Widget Header */}
-            <div className="flex items-center justify-between p-3 border-b bg-gray-50 rounded-t-lg">
-              <div className="flex items-center gap-2">
-                {isEditing && (
-                  <IconButton
-                    size="small"
-                    variant="transparent"
-                    className="cursor-move"
-                  >
-                    <SquareDashedCursor />
-                  </IconButton>
-                )}
-                <h3 className="font-medium text-sm">{widget.title}</h3>
-                <Badge size="small" variant="grey">
-                  {widget.type}
-                </Badge>
-              </div>
-              
-              {isEditing && (
-                <div className="flex items-center gap-1">
-                  <IconButton
-                    size="small"
-                    variant="transparent"
-                    onClick={() => {
-                      // Open widget configuration modal
-                      console.log("Configure widget", widget.id)
-                    }}
-                  >
-                    <CogSixToothSolid />
-                  </IconButton>
-                  <IconButton
-                    size="small"
-                    variant="transparent"
-                    onClick={() => onDeleteWidget(widget.id)}
-                  >
-                    <Trash />
-                  </IconButton>
-                </div>
-              )}
-            </div>
-
-            {/* Widget Content */}
-            <div className="p-4 h-[calc(100%-53px)] overflow-auto">
-              {renderWidget(widget)}
-            </div>
+    <div className="max-w-7xl mx-auto px-6 py-6">
+      {/* Edit Mode Controls Bar */}
+      {isEditing && (
+        <div className="mb-4 flex justify-between items-center">
+          <div className="flex items-center gap-2">
+            <Badge color="blue" size="small">Edit Mode</Badge>
+            <span className="text-small text-ui-fg-subtle">
+              {pendingChanges.length} pending change{pendingChanges.length !== 1 ? 's' : ''}
+            </span>
           </div>
-        </div>
-      ))}
-
-      {/* Empty State */}
-      {widgets.length === 0 && (
-        <div className="col-span-full flex items-center justify-center h-64 border-2 border-dashed rounded-lg bg-gray-50">
-          <div className="text-center">
-            <p className="text-gray-500 mb-4">No widgets added yet</p>
-            {isEditing && (
-              <p className="text-sm text-gray-400">
-                Click the "Add Widget" button to start building your dashboard
-              </p>
-            )}
-          </div>
+          <Button 
+            variant="secondary" 
+            size="small"
+            onClick={onAddWidget}
+          >
+            <SquaresPlus className="w-4 h-4" /> Add Widget
+          </Button>
         </div>
       )}
+
+      {/* Grid Container */}
+      <div 
+        ref={gridRef}
+        className={`relative rounded-lg transition-colors duration-300 ${
+          isEditing ? 'bg-ui-bg-subtle' : ''
+        }`}
+        style={{ height: `${gridHeight}px` }}
+      >
+        {/* Grid Background */}
+        {isEditing && gridMetrics.colWidth > 0 && (
+          <div className="absolute inset-0 pointer-events-none">
+            <div 
+              className="h-full w-full opacity-30"
+              style={{
+                backgroundImage: `linear-gradient(to right, #9CA3AF 1px, transparent 1px), linear-gradient(to bottom, #9CA3AF 1px, transparent 1px)`,
+                backgroundSize: `${gridMetrics.colWidth + gap}px ${rowHeight + gap}px`,
+              }}
+            />
+          </div>
+        )}
+
+        {/* Drop Zone Indicator */}
+        {draggingWidget && isEditing && draggingWidget.affectedWidgets.length > 0 && (
+          <div
+            className={`absolute ${getDropIndicatorStyle(draggingWidget.isValidDrop)} rounded-lg transition-all duration-200`}
+            style={getWidgetStyle(
+              { ...draggingWidget.affectedWidgets[0], position: draggingWidget.ghostPosition },
+              gridMetrics,
+              true
+            )}
+          >
+            <div className="absolute inset-0 flex items-center justify-center">
+              <ArrowsPointingOut className="w-6 h-6 text-ui-fg-interactive" />
+            </div>
+          </div>
+        )}
+
+        {/* Ghost Widget */}
+        {draggingWidget && isEditing && (
+          <div
+            className={`absolute ${
+              draggingWidget.isValidDrop 
+                ? 'bg-ui-bg-base/50 border-2 border-dashed border-ui-border-interactive' 
+                : 'bg-ui-tag-red-bg/30 border-2 border-dashed border-ui-border-error'
+            } rounded-lg pointer-events-none backdrop-blur-sm transition-all duration-100`}
+            style={getWidgetStyle(
+              { ...draggingWidget.widget, position: draggingWidget.ghostPosition },
+              gridMetrics,
+              true
+            )}
+          >
+            <div className="absolute inset-0 flex items-center justify-center opacity-50">
+              <div className="text-xs bg-ui-bg-base px-2 py-1 rounded shadow-md">
+                {draggingWidget.widget.position.w}×{draggingWidget.widget.position.h}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Resize Ghost */}
+        {resizingWidget && isEditing && (
+          <div
+            className={`absolute ${
+              resizingWidget.isValidDrop
+                ? 'bg-ui-bg-base/50 border-2 border-dashed border-ui-border-interactive'
+                : 'bg-ui-tag-red-bg/30 border-2 border-dashed border-ui-border-error'
+            } rounded-lg pointer-events-none backdrop-blur-sm`}
+            style={getWidgetStyle(
+              { ...resizingWidget.widget, position: resizingWidget.ghostPosition },
+              gridMetrics,
+              true
+            )}
+          />
+        )}
+
+        {/* Widgets */}
+        {activeTab.widgets.map(widget => {
+          const hasPendingChange = pendingChanges.some(c => c.widgetId === widget.id)
+          const isAffected = draggingWidget?.affectedWidgets.some(w => w.id === widget.id)
+          const swapPosition = draggingWidget?.swapPreview.get(widget.id)
+
+          const displayPosition = swapPosition 
+            ? { 
+                x: swapPosition.x, 
+                y: swapPosition.y,
+                w: widget.position.w,
+                h: widget.position.h
+              }
+            : widget.position
+
+          // Skip rendering the dragged widget itself (it's shown as ghost)
+          if (draggingWidget?.widget.id === widget.id) {
+            return null
+          }
+
+          return (
+            <div
+              key={widget.id}
+              style={getWidgetStyle(
+                { ...widget, position: displayPosition },
+                gridMetrics
+              )}
+              className={`absolute ${
+                isAffected ? 'ring-2 ring-ui-border-interactive ring-offset-2' : ''
+              }`}
+            >
+              <WidgetCard
+                widget={widget}
+                isEditing={isEditing}
+                hasPendingChange={hasPendingChange}
+                onUpdate={onUpdateWidget}
+                onDelete={onDeleteWidget}
+                onEdit={onEditWidget}
+                onDuplicate={onDuplicateWidget}
+                onDragStart={onDragStart}
+                onResizeStart={onResizeStart}
+                gridMetrics={gridMetrics}
+              />
+            </div>
+          )
+        })}
+      </div>
     </div>
   )
 }

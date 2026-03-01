@@ -253,7 +253,7 @@ export const StatWidget = ({
     : EllipsisHorizontal
 
   return (
-    <Container className="p-4">
+    <div className="p-4 h-full">
       <div className="flex items-start justify-between">
         <div className="flex-1">
           <div className="flex items-center gap-2 mb-2">
@@ -317,7 +317,7 @@ export const StatWidget = ({
           </div>
         )}
       </div>
-    </Container>
+    </div>
   )
 }
 
