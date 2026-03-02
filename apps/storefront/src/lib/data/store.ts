@@ -27,7 +27,7 @@ export const retrieveStore = async () => {
     .fetch<{ store: any }>(`/store/custom`, {
       method: "GET",
       next,
-      headers,
+      // headers,
       cache: "force-cache",
     })
     .then((data) => data)

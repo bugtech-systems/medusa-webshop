@@ -12,7 +12,7 @@ const ContactPage = () => {
   return (
     <main>
       <Contact />
-      <ChatBubble/>
+      {/* <ChatBubble/> */}
     </main>
   );
 };

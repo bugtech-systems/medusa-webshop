@@ -13,8 +13,8 @@ type ChatMessage = {
 };
 
 export default function ChatBubble() {
-  const { selectedOrg } = retrieveStore() as any;
   const router = useRouter();
+  const { selectedOrg } = retrieveStore() as any;
 
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -84,7 +84,7 @@ export default function ChatBubble() {
   };
 
   // if (!selectedOrg?.chatEnabled) return null;
-
+console.log(selectedOrg, 'SELECTED ORG')
   return (
     <div className="fixed bottom-5 right-5 z-50">
       {open ? (

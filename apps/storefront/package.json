@@ -1,5 +1,5 @@
 {
-  "name": "@psa-webshop/storefront",
+  "name": "psa-webshop",
   "version": "1.0.3",
   "private": true,
   "description": "Next.js Storefront for Medusa v2",
