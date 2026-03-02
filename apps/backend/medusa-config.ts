@@ -7,24 +7,28 @@ import { DYNAMIC_QUERY_MODULE } from "./src/modules/dynamic-query";
 import { SALESFORCE_AUTH } from "./src/modules/salesforce";
 import { APPROVAL_MODULE } from './src/modules/approval';
 
-loadEnv(process.env.NODE_ENV as any, process.cwd());
+loadEnv(process.env.NODE_ENV || "development", process.cwd())
 
 export default defineConfig({
   projectConfig: {
-    databaseUrl: process.env.MEDUSA_DATABASE_URL,
+    databaseUrl: process.env.SUPABASE_DATABASE_URL,
     http: {
       storeCors: process.env.STORE_CORS || "*",
       adminCors: process.env.ADMIN_CORS || "*",
       authCors: process.env.AUTH_CORS || "*",
-      jwtSecret: process.env.JWT_SECRET || "supersecret",
-      cookieSecret: process.env.COOKIE_SECRET || "supersecret",
+      jwtSecret: process.env.JWT_SECRET || "psawebshop",
+      cookieSecret: process.env.COOKIE_SECRET || "psawebshop",
+    },
+    cookieOptions: {
+      secure: process.env.NODE_ENV === "production",
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
     },
   },
   modules: {
     [ACTION_ENGINE_MODULE]: { 
     resolve: "./modules/action-engine",
     options: { 
-          connection_url: process.env.MEDUSA_DATABASE_URL,
+          connection_url: process.env.SUPABASE_DATABASE_URL,
           max_connections: 20,
           idle_timeout_ms: 30000,
           connection_timeout_ms: 5000,
