@@ -1,5 +1,4 @@
 export default function medusaError(error: any, type?: any): never {
-console.log(error, 'ERRORRRRR', type)
   if (error.response) {
     // The request was made and the server responded with a status code
     // that falls out of the range of 2xx
