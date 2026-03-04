@@ -127,12 +127,14 @@ export const BasicInfoStep: React.FC<BasicInfoStepProps> = ({
     { 
       value: "table", 
       label: "Table Report", 
-      description: "Display data in a sortable, filterable table format"
+      description: "Display data in a sortable, filterable table format",
+      disabled: false
     },
     { 
       value: "list", 
       label: "List Report", 
-      description: "Show data as a formatted list with icons"
+      description: "Show data as a formatted list with icons",
+      disabled: true
     },
   ]
 
@@ -257,6 +259,7 @@ export const BasicInfoStep: React.FC<BasicInfoStepProps> = ({
               <button
                 key={type.value}
                 type="button"
+                disabled={type.disabled}
                 onClick={() => onChange({ ...data, type: type.value })}
                 className={`p-4 border rounded-lg text-left hover:border-ui-border-interactive transition-colors ${
                   isSelected 

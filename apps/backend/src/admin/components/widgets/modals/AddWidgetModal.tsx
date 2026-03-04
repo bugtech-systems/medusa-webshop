@@ -10,6 +10,7 @@ import {
   Badge,
   Switch,
   Container,
+  Textarea,
 } from "@medusajs/ui"
 import {
   ArrowLeft,
@@ -19,6 +20,7 @@ import {
 } from "@medusajs/icons"
 import { ArrowRight } from "lucide-react"
 import JsonEditor from "../../../components/jsonEditor" // Adjust path
+import { useExecution } from "../../../hooks/api/actions"
 
 // ---------- Types ----------
 interface ConfigField {
@@ -212,6 +214,89 @@ interface ConfigSelectProps {
   onChange: (value: string) => void
 }
 
+
+// Custom Select Component
+const CustomSelect = ({
+  value,
+  onValueChange,
+  options,
+  placeholder = "Select...",
+  error,
+}: {
+  value: string
+  onValueChange: (value: string) => void
+  options: Array<{ value: string; label: string; description?: string }>
+  placeholder?: string
+  error?: string
+}) => {
+  const [isOpen, setIsOpen] = useState(false)
+  const selectedOption = options.find(opt => opt.value === value)
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className={`w-full flex items-center justify-between px-3 py-2 text-sm bg-ui-bg-base border rounded-lg hover:bg-ui-bg-base-hover focus:outline-none focus:ring-2 focus:ring-ui-border-interactive ${
+          error ? 'border-ui-tag-red-border' : 'border-ui-border-base'
+        }`}
+      >
+        <span className={selectedOption ? "text-ui-fg-base" : "text-ui-fg-muted"}>
+          {selectedOption ? selectedOption.label : placeholder}
+        </span>
+        <svg 
+          className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} 
+          fill="none" 
+          stroke="currentColor" 
+          viewBox="0 0 24 24"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+
+      {isOpen && (
+        <>
+          <div 
+            className="fixed inset-0 z-40"
+            onClick={() => setIsOpen(false)}
+          />
+          <div className="absolute z-50 w-full mt-1 bg-ui-bg-base border border-ui-border-base rounded-lg shadow-lg overflow-hidden">
+            <div className="max-h-60 overflow-y-auto">
+              {options.map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={() => {
+                    onValueChange(option.value)
+                    setIsOpen(false)
+                  }}
+                  className={`w-full flex items-center justify-between px-3 py-2 text-left hover:bg-ui-bg-base-hover transition-colors ${
+                    value === option.value ? 'bg-ui-bg-base-hover' : ''
+                  }`}
+                >
+                  <div>
+                    <Text size="small" weight="plus">{option.label}</Text>
+                    {option.description && (
+                      <Text size="xsmall" className="text-ui-fg-subtle">
+                        {option.description}
+                      </Text>
+                    )}
+                  </div>
+                  {value === option.value && (
+                    <svg className="w-4 h-4 text-ui-fg-interactive" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
 const ConfigSelect: React.FC<ConfigSelectProps> = ({ field, value, onChange }) => {
   return (
     <div className="mb-4">
@@ -241,6 +326,9 @@ export const AddWidgetModal: React.FC<AddWidgetModalProps> = ({
   onOpenChange,
   onAddWidget,
 }) => {
+    const { data: actionsData } = useExecution("get-active-actions") as any;
+  
+  const [formData, setFormData] = useState<any>({});
   const [currentStep, setCurrentStep] = useState(0)
   const [selectedType, setSelectedType] = useState("stat")
   const [configValues, setConfigValues] = useState<Record<string, any>>({})
@@ -256,16 +344,21 @@ export const AddWidgetModal: React.FC<AddWidgetModalProps> = ({
   ]
 
   const selectedWidgetType = widgetTypes.find((w) => w.value === selectedType)
-
+  const actionOptions = actionsData?.data ? actionsData.data.map((action: any) => ({
+    value: action.id,
+    label: action.name,
+    description: `Handle: ${action.handle}`
+  })) : []
   // Reset state when modal closes
   useEffect(() => {
     if (!open) {
       setCurrentStep(0)
       setSelectedType("stat")
       setConfigValues({})
+      setFormData({});
       setSelectedAction("")
       setIsJsonMode(false)
-      setJsonConfig(JSON.stringify(defaultJsonConfig, null, 2))
+      setJsonConfig(defaultJsonConfig)
     }
   }, [open])
 
@@ -278,6 +371,10 @@ export const AddWidgetModal: React.FC<AddWidgetModalProps> = ({
       return () => clearTimeout(timer)
     }
   }, [currentStep])
+
+  const handleFormChanges = (prop:any) => (e: any) => {
+     setFormData({...formData, [prop]: e.target.value})
+  }
 
   const handleNext = () => {
     if (currentStep < steps.length - 1) setCurrentStep(currentStep + 1)
@@ -292,13 +389,7 @@ export const AddWidgetModal: React.FC<AddWidgetModalProps> = ({
     if (isJsonMode) {
       try {
         const parsedConfig = JSON.parse(jsonConfig)
-        widgetData = {
-          type: "custom",
-          config: parsedConfig,
-          actionId: selectedAction,
-          createdAt: new Date().toISOString(),
-          isCustom: true,
-        }
+        widgetData = parsedConfig;
       } catch (e) {
         console.error("Invalid JSON config", e)
         widgetData = {
@@ -311,10 +402,10 @@ export const AddWidgetModal: React.FC<AddWidgetModalProps> = ({
       }
     } else {
       widgetData = {
+        ...formData,
         type: selectedType,
         config: configValues,
-        actionId: selectedAction,
-        createdAt: new Date().toISOString(),
+        action_id: selectedAction,
       }
     }
     onAddWidget(widgetData)
@@ -433,27 +524,15 @@ export const AddWidgetModal: React.FC<AddWidgetModalProps> = ({
     return (
       <div className="mb-4">
         <Label htmlFor="action-select" className="mb-2 block">
-          Action <span className="text-ui-fg-error ml-1">*</span>
+         Data Action <span className="text-ui-fg-error ml-1">*</span>
         </Label>
-        <Select value={selectedAction} onValueChange={setSelectedAction}>
-          <Select.Trigger id="action-select" className="w-full">
-            <Select.Value placeholder="Select an action" />
-          </Select.Trigger>
-          <Select.Content className="z-50">
-            {isLoadingActions ? (
-              <div className="p-2 text-ui-fg-muted">Loading actions...</div>
-            ) : (
-              availableActions.map((action) => (
-                <Select.Item key={action.value} value={action.value}>
-                  <div className="flex flex-col py-1">
-                    <span className="font-medium">{action.label}</span>
-                    <span className="text-xs text-ui-fg-subtle">{action.description}</span>
-                  </div>
-                </Select.Item>
-              ))
-            )}
-          </Select.Content>
-        </Select>
+        <CustomSelect
+            value={selectedAction || ""}
+            onValueChange={(val) => setSelectedAction(val)}
+            options={actionOptions}
+            placeholder="Select data action..."
+          />
+
       </div>
     )
   }
@@ -584,6 +663,33 @@ export const AddWidgetModal: React.FC<AddWidgetModalProps> = ({
                    {/* Step 1: Widget Type Selection */}
                     {currentStep === 0 && (
                       <div>
+                                    {/* Basic Information */}
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="title" className="mb-2 block">
+                  Widget Title <span className="text-ui-fg-error ml-1">*</span>
+                </Label>
+                <Input
+                  id="title"
+                  value={formData.title}
+                  onChange={handleFormChanges('title')}
+                  placeholder="Enter widget title"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="description" className="mb-2 block">
+                  Description
+                </Label>
+                <Textarea
+                  id="description"
+                  value={formData.description}
+                  onChange={handleFormChanges('description')}
+                  rows={3}
+                  placeholder="Optional description"
+                />
+              </div>
+            </div>
                         <Heading level="h2" className="mb-4">Choose Widget Type</Heading>
                         <div className="grid grid-cols-2 gap-4">
                           {widgetTypes.map(type => (

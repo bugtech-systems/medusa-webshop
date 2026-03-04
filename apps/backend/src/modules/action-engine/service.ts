@@ -247,7 +247,6 @@ let context_template = template.context_template;
     // Check conditions
     
     
-    console.log(template.config, 'TEMPING')
     
     
     
@@ -259,7 +258,6 @@ let context_template = template.context_template;
         context
       )
       
-console.log(context, resolvedConditions, 'EXEC CONDD')
 
       if (!this.evaluateConditions(resolvedConditions, context)) {
         return { skip: resolvedConditions.exit, status: "skipped", reason: "conditions_not_met" }
@@ -273,9 +271,9 @@ console.log(context, resolvedConditions, 'EXEC CONDD')
     )
 
     
+    console.log(template.config, config, context, "CONTXT")
     // let cleanConfig = removeNullKeys(config);
 
-console.log(context, config, template.config, 'EXEC CONF')
     // Execute based on type
     switch (template.type) {
       case 'DB_OPERATION':
@@ -324,7 +322,6 @@ let queryConfig = {debug: true, limit: 10, ...config}
     //   case 'read':
     //     queryResult = this.buildSelectQuery(queryConfig)
         
-    //     console.log(queryResult, 'READ QUERY')
     //     const selectResult = await client.query(queryResult.sql, queryResult.params)
     //     return selectResult.rows
         
@@ -384,10 +381,9 @@ let queryConfig = {debug: true, limit: 10, ...config}
    */
   private async callAPI(config: ActionConfig, context: any): Promise<any> {
     const { method, url, headers: configHeaders, body } = config;
-    const { headers, timeout = 30000} = context
+    const { headers, timeout = 300000} = context
     
 
-    console.log(config, context, 'API CONF')
     try {
       const response = await axios({
         method: method || "GET",
@@ -408,7 +404,7 @@ let queryConfig = {debug: true, limit: 10, ...config}
    * AI call handler
    */
   private async callAI(config: ActionConfig, context: any): Promise<any> {
-    this.logger_.info(`Executing AI action ${config.model}`)
+    this.logger_.info(`Executing API action ${config.model}`)
     
     try {
     
@@ -477,11 +473,27 @@ private async executeScript(config: any, context: any): Promise<any> {
     const workflowResults: Record<string, any> = {};
     
     for (const actionConfig of actions) {
-      const action = await this.getActionTemplate(actionConfig.action_id);
+     let conf = (await expressionEvaluator.resolvePlaceholders(
+          actionConfig.action_id || {}, 
+          {context: variables, outputs: workflowResults }
+        ))
+
+        console.log(conf, actionConfig, 'ACTION ID')
+
+      const action = await this.getActionTemplate(conf);
       if (!action) continue;
-      
+      console.log(action, conf, 'ACTION DATA')
       let params = actionConfig.parameters;
-      
+            // Merge parameters
+      const mergedParams = {
+        ...oldParams,
+        ...(await expressionEvaluator.resolvePlaceholders(
+          params || {}, 
+          {...context, ...oldParams, context: variables, outputs: workflowResults }
+        ))
+      };
+
+
       // if(action.parameters){
       // action.parameters.map(param => {
       //     let value = null as any
@@ -513,14 +525,7 @@ private async executeScript(config: any, context: any): Promise<any> {
 
       
       
-      // Merge parameters
-      const mergedParams = {
-        ...oldParams,
-        ...(await expressionEvaluator.resolvePlaceholders(
-          params || {}, 
-          {...context, ...oldParams, context: variables, outputs: workflowResults }
-        ))
-      };
+
       
 
           if(action.parameters){
@@ -669,7 +674,6 @@ private async executeScript(config: any, context: any): Promise<any> {
       const fieldValue = expressionEvaluator.getNestedValue(context, conditions.field)
       const compareValue = conditions.value
 
-      console.log(fieldValue, 'field',compareValue, 'vall', fieldValue === undefined || fieldValue === null)
 
       switch (conditions.operator) {
         case "eq": return fieldValue == compareValue
@@ -740,7 +744,7 @@ private async executeScript(config: any, context: any): Promise<any> {
   }
   
   async getActionTemplate(actionId: string): Promise<any> {
-    
+        if(!actionId) return null
         let template = await this.listActionTemplates({  $or: [
         {
           id: {

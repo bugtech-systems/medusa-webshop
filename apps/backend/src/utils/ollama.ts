@@ -87,11 +87,7 @@ export async function generateCompletion({
   format = 'json'
 }: any) {
 
-  console.log({
-  prompt,
-  model,
-  format
-}, 'conff')
+
 
   const response = await fetch(`${OLLAMA_BASE_URL}/api/generate`, {
     method: "POST",
@@ -116,13 +112,5 @@ export async function generateCompletion({
     // Optionally, you could fall back xto the raw string or throw an error
   }
 
-
- console.log({
-  prompt,
-  model,
-  format,
-  ollamaResponse,
-  response
-}, 'ai result')
   return ollamaResponse;
 }

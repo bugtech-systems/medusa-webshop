@@ -47,8 +47,6 @@ import {
 import { useExecuteAction, useExecution } from "../../hooks/api/actions"
 import { CreateTabModal } from "./modals/CreateTabModal"
 import { EditTabModal } from "./modals/EditTabModal"
-import { AddWidgetModal } from "./modals/AddWidgetModal"
-import { EditWidgetModal } from "./modals/EditWidgetModal"
 
 // Storage key for localStorage
 const DASHBOARD_STORAGE_KEY = "dashboard-config"
@@ -87,13 +85,15 @@ const throttle = <T extends (...args: any[]) => any>(
 
 export const Dashboard: React.FC<DashboardProps> = ({}) => {
    const {data: dashboardData, refetch: getDashboardTabs, isPending: isDashboardLoading} = useExecution('get-dashboard-tabs'); 
-   const { isPending: isCreateLoading, mutateAsync: createTab } = useExecuteAction('create-action-view');  
+   const { isPending: isCreateLoading, mutateAsync: createTab } = useExecuteAction('create-dashboard-tab');  
+   const { isPending: isDeleting, mutateAsync: deleteTab } = useExecuteAction('delete-tab');  
    const { mutateAsync: bulkUpdateDashboard } = useUpdateDashboardLayout();
 
-  // Load from localStorage first, then fallback to initialTabs
-  const loadInitialTabs = useCallback((): DashboardTab[] => {
-    try {
-      const saved = localStorage.getItem(DASHBOARD_STORAGE_KEY)
+
+
+    // Safely access the data - handle different response structures
+    const initialTabs = React.useMemo(() => {
+       const saved = localStorage.getItem(DASHBOARD_STORAGE_KEY)
       
       if(dashboardData?.data){
        let newTabs = dashboardData?.data ? dashboardData?.data.map(tab => ({...tab, ...tab.configuration, title: tab.label, description: tab.description})) : []
@@ -103,46 +103,23 @@ export const Dashboard: React.FC<DashboardProps> = ({}) => {
       } else if (saved) {
         return JSON.parse(saved)
       }
-    } catch (error) {
-      console.error("Failed to load dashboard from localStorage:", error)
-    }
-     
-    
-
-
     return []
-  }, [dashboardData])
-
-  // Load pending changes from localStorage
-  const loadPendingChanges = useCallback((): any => {
-    try {
-      const saved = localStorage.getItem(PENDING_CHANGES_KEY)
-      if (saved) {
-        return JSON.parse(saved)
-      }
-    } catch (error) {
-      console.error("Failed to load pending changes:", error)
-    }
-    return []
-  }, [])
-
-  // React Query hooks
-  // const { data: dashboardData, isLoading: isDashboardLoading } = useDashboard({
-  //   initialData: { tabs: loadInitialTabs() },
-  // })
+    }, [dashboardData])
 
 
+
+    console.log(dashboardData, initialTabs, 'INITIALS')
   // State for tracking changes
-  const [tabs, setTabs] = useState<DashboardTab[]>(loadInitialTabs())
-  const [savedTabs, setSavedTabs] = useState<DashboardTab[]>(loadInitialTabs())
-  const [pendingChanges, setPendingChanges] = useState<PendingChange[]>(loadPendingChanges())
+  const [tabs, setTabs] = useState<DashboardTab[]>(initialTabs)
+  const [savedTabs, setSavedTabs] = useState<DashboardTab[]>(initialTabs)
+  const [pendingChanges, setPendingChanges] = useState<any>([])
   const [isEditing, setIsEditing] = useState(false)
+  const [gridWidth, setGridWidth] = useState<number>(0)
   const [activeTabId, setActiveTabId] = useState<string>(
-    (dashboardData?.data) ? (dashboardData?.data[0]?.id) : loadInitialTabs()[0]?.id || ""
+    (initialTabs) ? (initialTabs[0]?.id) :  ""
   )
 
 
-  const [isInitialRender, setIsInitialRender] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   
   // Drag state
@@ -167,9 +144,15 @@ export const Dashboard: React.FC<DashboardProps> = ({}) => {
     ghostPosition: WidgetPosition
   } | null>(null)
 
-  // Grid container ref
+  // ============================================================================
+  // REFS
+  // ============================================================================
   const gridRef = useRef<HTMLDivElement>(null)
   const rafRef = useRef<number>()
+  const resizeObserverRef = useRef<ResizeObserver>()
+  const isMountedRef = useRef(true)
+  const metricsRecalculationTimeoutRef = useRef<NodeJS.Timeout>()
+
 
   // Modal states
   const createTabModal = useToggleState()
@@ -180,43 +163,190 @@ export const Dashboard: React.FC<DashboardProps> = ({}) => {
   const [editingTab, setEditingTab] = useState<DashboardTab | null>(null)
   const [newTabTitle, setNewTabTitle] = useState("")
   const [newTabDescription, setNewTabDescription] = useState("")
-  const [selectedWidgetType, setSelectedWidgetType] = useState<string>("stat")
-
-  const activeTab = tabs.find(t => t.id === activeTabId)
-  console.log(activeTab, 'ACTIVE TAB')
-
-  // Grid settings
-  const gridColumns = activeTab?.layout.columns || 12
-  const rowHeight = activeTab?.layout.rowHeight || 100
-  const gap = activeTab?.layout.gap || 16
+  const [isInitialized, setIsInitialized] = useState(false)
+  const [isMetricsReady, setIsMetricsReady] = useState(false)
 
 
-  console.log(tabs, 'TAABBS')
+
+  // ============================================================================
+  // ACTIVE TAB
+  // ============================================================================
+  const activeTab = useMemo(() => {
+    return tabs.find(t => t.id === activeTabId)
+  }, [tabs, activeTabId])
+
+  // ============================================================================
+  // GRID SETTINGS
+  // ============================================================================
+  const gridColumns = activeTab?.layout?.columns || 12
+  const rowHeight = activeTab?.layout?.rowHeight || 100
+  const gap = activeTab?.layout?.gap || 16
+
+ // ============================================================================
+  // DATA TRANSFORMATION
+  // ============================================================================
+  const transformApiData = useCallback((data: any): DashboardTab[] => {
+    if (!data?.data) return []
+    
+    return data.data.map((tab: any) => ({
+      id: tab.id,
+      title: tab.label,
+      label: tab.label,
+      description: tab.description,
+      layout: tab.configuration?.layout || { columns: 12, rowHeight: 100, gap: 16 },
+      widgets: (tab.configuration?.widgets || []).map((widget: any) => ({
+        ...widget,
+        position: widget.position || { x: 0, y: 0, w: 4, h: 2 }
+      }))
+    }))
+  }, [])
 
 
-  // Save to localStorage whenever tabs or pending changes change
-  useEffect(() => {
+   // ============================================================================
+  // LOAD FROM STORAGE
+  // ============================================================================
+  const loadFromStorage = useCallback(() => {
     try {
-      localStorage.setItem(DASHBOARD_STORAGE_KEY, JSON.stringify(tabs))
+      const saved = localStorage.getItem(DASHBOARD_STORAGE_KEY)
+      if (saved) {
+        return JSON.parse(saved)
+      }
     } catch (error) {
-      console.error("Failed to save dashboard to localStorage:", error)
+      console.error("Failed to load from localStorage:", error)
+    }
+    return []
+  }, [])
+
+  const loadPendingChanges = useCallback((): any[] => {
+    try {
+      const saved = localStorage.getItem(PENDING_CHANGES_KEY)
+      if (saved) {
+        return JSON.parse(saved)
+      }
+    } catch (error) {
+      console.error("Failed to load pending changes:", error)
+    }
+    return []
+  }, [])
+
+  // ============================================================================
+  // INITIALIZE DATA
+  // ============================================================================
+  useEffect(() => {
+    isMountedRef.current = true
+    
+    // Load from localStorage first for immediate render
+    const storedTabs = loadFromStorage()
+    if (storedTabs.length > 0) {
+      setTabs(storedTabs)
+      setSavedTabs(storedTabs)
+      if (!activeTabId) {
+        setActiveTabId(storedTabs[0]?.id || "")
+      }
+    }
+
+    // Load pending changes
+    setPendingChanges(loadPendingChanges())
+
+    return () => {
+      isMountedRef.current = false
+      if (metricsRecalculationTimeoutRef.current) {
+        clearTimeout(metricsRecalculationTimeoutRef.current)
+      }
+    }
+  }, [loadFromStorage, loadPendingChanges])
+
+  // ============================================================================
+  // FETCH DATA ON MOUNT AND VISIBILITY CHANGE
+  // ============================================================================
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const result = await getDashboardTabs();
+        if (result?.data && isMountedRef.current) {
+          console.log(result?.data, 'RESULTT')
+          const transformedTabs = transformApiData(result.data)
+          
+          setTabs(transformedTabs)
+          setSavedTabs(transformedTabs)
+          
+          if (transformedTabs.length > 0) {
+            setActiveTabId(prev => 
+              prev && transformedTabs.some(t => t.id === prev) 
+                ? prev 
+                : transformedTabs[0].id
+            )
+          }
+          
+          // Save to localStorage
+          localStorage.setItem(DASHBOARD_STORAGE_KEY, JSON.stringify(transformedTabs))
+          setIsInitialized(true)
+        }
+      } catch (error) {
+        console.error("Failed to fetch dashboard data:", error)
+      }
+    }
+
+    fetchData()
+
+    // Refetch when page becomes visible
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        fetchData()
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
+  }, [getDashboardTabs, transformApiData])
+
+
+  // ============================================================================
+  // FORCE METRICS RECALCULATION WHEN TAB OR WIDGETS CHANGE
+  // ============================================================================
+  useEffect(() => {
+    if (!activeTab || !gridRef.current) return
+
+    const recalcMetrics = () => {
+      if (gridRef.current) {
+        const newWidth = gridRef.current.clientWidth
+        setGridWidth(newWidth)
+        if (newWidth > 0) {
+          setIsMetricsReady(true)
+        }
+      }
+    }
+
+    // Immediate recalculation
+    recalcMetrics()
+
+    // Recalculate after DOM updates with multiple timeouts
+    const timeouts = [50, 150, 300].map(delay => 
+      setTimeout(recalcMetrics, delay)
+    )
+
+    return () => {
+      timeouts.forEach(clearTimeout)
+    }
+  }, [activeTab?.id, activeTab?.widgets?.length])
+
+  // ============================================================================
+  // SAVE TO LOCALSTORAGE
+  // ============================================================================
+  useEffect(() => {
+    if (tabs.length > 0) {
+      localStorage.setItem(DASHBOARD_STORAGE_KEY, JSON.stringify(tabs))
     }
   }, [tabs])
 
   useEffect(() => {
-    try {
-      localStorage.setItem(PENDING_CHANGES_KEY, JSON.stringify(pendingChanges))
-    } catch (error) {
-      console.error("Failed to save pending changes to localStorage:", error)
-    }
+    localStorage.setItem(PENDING_CHANGES_KEY, JSON.stringify(pendingChanges))
   }, [pendingChanges])
 
 
-  // Mark initial render as complete after first render
-  useEffect(() => {
-    setIsInitialRender(false)
-    hanldeInitialTabs()
-  }, [])
 
 
 
@@ -286,16 +416,7 @@ export const Dashboard: React.FC<DashboardProps> = ({}) => {
   }
 
 
-  const hanldeInitialTabs = async () => {
-    let {data: res} = await getDashboardTabs();
 
-    console.log(res, 'RRs')
-    if(res.data){
-    let newTabs = res?.data ? res?.data.map(tab => ({...tab, ...tab.configuration, title: tab.label, description: tab.description})) : []
-    setTabs(newTabs)
-    setActiveTabId(res?.data[0]?.id)
-    }
-  }
 
   // Save to localStorage
   useEffect(() => {
@@ -334,60 +455,86 @@ export const Dashboard: React.FC<DashboardProps> = ({}) => {
     setPendingChanges(prev => [...prev, newChange])
   }, [])
 
-  // Calculate grid metrics with high precision
+  // ============================================================================
+  // GRID METRICS - FIXED VERSION
+  // ============================================================================
   const getGridMetrics = useCallback(() => {
-    if (!gridRef.current) return { colWidth: 0, totalWidth: 0, colWidthPx: 0 }
+    // If no grid ref, return default values
+    if (!gridRef.current) {
+      return { colWidth: 0, totalWidth: 0, gap }
+    }
     
-    const containerWidth = gridRef.current.clientWidth
+    // Get the actual container width or use gridWidth state
+    const containerWidth = gridWidth > 0 ? gridWidth : gridRef.current.clientWidth
+    
+    // If still no width, try to estimate from parent
+    if (containerWidth === 0) {
+      const parentWidth = gridRef.current.parentElement?.clientWidth || 1200
+      const estimatedWidth = Math.min(parentWidth, 1200)
+      const totalGapWidth = gap * (gridColumns - 1)
+      const colWidth = (estimatedWidth - totalGapWidth) / gridColumns
+      return { colWidth, totalWidth: estimatedWidth, gap }
+    }
+    
     const totalGapWidth = gap * (gridColumns - 1)
     const colWidth = (containerWidth - totalGapWidth) / gridColumns
     
-    return { 
-      colWidth, 
-      totalWidth: containerWidth,
-      colWidthPx: colWidth 
-    }
-  }, [gridColumns, gap])
+    return { colWidth, totalWidth: containerWidth, gap }
+  }, [gridWidth, gridColumns, gap])
 
-  const gridMetrics = useMemo(() => getGridMetrics(), [getGridMetrics, activeTab?.widgets])
+  const gridMetrics = useMemo(() => {
+    const metrics = getGridMetrics()
+    console.log('Grid metrics recalculated:', metrics, 'for tab:', activeTab?.id)
+    return metrics
+  }, [getGridMetrics, activeTab?.id, activeTab?.widgets])
 
-  // Convert pixel to grid with sub-pixel precision
+
+
+  // ============================================================================
+  // UTILITY FUNCTIONS
+  // ============================================================================
   const pixelsToGrid = useCallback((x: number, y: number) => {
     const { colWidth } = gridMetrics
+    if (colWidth <= 0) return { gridX: 0, gridY: 0 }
+    
     const gridX = Math.round(x / (colWidth + gap))
     const gridY = Math.round(y / (rowHeight + gap))
     return { gridX, gridY }
   }, [gridMetrics, rowHeight, gap])
 
-  // Calculate widget style with smooth transitions
   const getWidgetStyle = useCallback((
-    widget: Widget, 
+    widget: Widget,
     isGhost: boolean = false,
     customPosition?: WidgetPosition
-  ) => {
+  ): React.CSSProperties => {
     const { colWidth } = gridMetrics
+    
+    // If colWidth is invalid, return a placeholder style
+    if (colWidth <= 0) {
+      return {
+        position: 'absolute',
+        left: (customPosition || widget.position).x * 100,
+        top: (customPosition || widget.position).y * 100,
+        width: (customPosition || widget.position).w * 100,
+        height: (customPosition || widget.position).h * 100,
+        opacity: 0.5,
+        pointerEvents: 'none',
+        backgroundColor: '#f0f0f0',
+        borderRadius: '8px',
+      }
+    }
+    
     const pos = customPosition || widget.position
     
-    const style = {
-      position: "absolute" as const,
+    return {
+      position: 'absolute',
       left: pos.x * (colWidth + gap),
       top: pos.y * (rowHeight + gap),
       width: pos.w * colWidth + (pos.w - 1) * gap,
       height: pos.h * rowHeight + (pos.h - 1) * gap,
-    }
-
-    if (isGhost) {
-      return {
-        ...style,
-        transition: 'all 0.1s ease-out',
-        pointerEvents: 'none' as const,
-        zIndex: 100,
-      }
-    }
-
-    return {
-      ...style,
-      transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+      transition: isGhost ? 'all 0.1s ease-out' : 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+      pointerEvents: isGhost ? 'none' : undefined,
+      zIndex: isGhost ? 100 : undefined,
     }
   }, [gridMetrics, rowHeight, gap])
 
@@ -612,19 +759,19 @@ const handleDragEnd = useCallback(() => {
 }, [draggingWidget, activeTab, isEditing, activeTabId, addPendingChange])
 
   // Event listeners
-  useEffect(() => {
-    if (draggingWidget && isEditing) {
-      window.addEventListener("mousemove", handleDragMove)
-      window.addEventListener("mouseup", handleDragEnd)
-      return () => {
-        window.removeEventListener("mousemove", handleDragMove)
-        window.removeEventListener("mouseup", handleDragEnd)
-        if (rafRef.current) {
-          cancelAnimationFrame(rafRef.current)
-        }
-      }
-    }
-  }, [draggingWidget, isEditing, handleDragMove, handleDragEnd])
+  // useEffect(() => {
+  //   if (draggingWidget && isEditing) {
+  //     window.addEventListener("mousemove", handleDragMove)
+  //     window.addEventListener("mouseup", handleDragEnd)
+  //     return () => {
+  //       window.removeEventListener("mousemove", handleDragMove)
+  //       window.removeEventListener("mouseup", handleDragEnd)
+  //       if (rafRef.current) {
+  //         cancelAnimationFrame(rafRef.current)
+  //       }
+  //     }
+  //   }
+  // }, [draggingWidget, isEditing, handleDragMove, handleDragEnd])
 
   // Resize handlers with similar enhancements
   const handleResizeStart = (e: React.MouseEvent, widget: Widget, direction: string, axis: 'x' | 'y' | 'both' = 'both') => {
@@ -751,9 +898,22 @@ const handleDragEnd = useCallback(() => {
 
 
 
-  // Render grid with enhanced visual feedback
+ // ============================================================================
+  // RENDER GRID - WITH METRICS READY CHECK
+  // ============================================================================
   const renderGrid = () => {
+    console.log(activeTab, 'render grid')
     if (!activeTab) return null
+
+    const gridHeight = Math.max(
+      ...activeTab.widgets.map(w => w.position.y + w.position.h),
+      1
+    ) * (rowHeight + gap)
+
+    const { colWidth } = gridMetrics
+    const metricsValid = colWidth > 0
+
+    console.log('Grid render - metrics valid:', metricsValid, 'colWidth:', colWidth)
 
     return (
       <div 
@@ -761,14 +921,22 @@ const handleDragEnd = useCallback(() => {
         className={`relative min-h-[600px] rounded-lg transition-colors duration-300 ${
           isEditing ? 'bg-ui-bg-subtle' : ''
         }`}
-        style={{
-          height: `${
-            Math.max(...activeTab.widgets.map(w => w.position.y + w.position.h), 1) * (rowHeight + gap)
-          }px`,
-        }}
+        style={{ height: gridHeight }}
       >
+        {/* Loading Overlay - show when metrics aren't ready */}
+        {!metricsValid && (
+          <div className="absolute inset-0 flex items-center justify-center bg-ui-bg-base/50 z-20 rounded-lg">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-ui-fg-base mx-auto mb-2"></div>
+              <UiText size="small" className="text-ui-fg-subtle">
+                Loading dashboard layout...
+              </UiText>
+            </div>
+          </div>
+        )}
+
         {/* Grid Background */}
-        {isEditing && (
+        {isEditing && metricsValid && (
           <div className="absolute inset-0 pointer-events-none">
             <div 
               className="h-full w-full opacity-30"
@@ -781,9 +949,13 @@ const handleDragEnd = useCallback(() => {
         )}
 
         {/* Drop Zone Indicator */}
-        {draggingWidget && isEditing && draggingWidget.affectedWidgets.length > 0 && (
+        {draggingWidget && isEditing && draggingWidget.affectedWidgets && draggingWidget.affectedWidgets.length > 0 && metricsValid && (
           <div
-            className={`absolute ${getDropIndicatorStyle(draggingWidget.isValidDrop)} rounded-lg transition-all duration-200`}
+            className={`absolute ${
+              draggingWidget.isValidDrop 
+                ? 'bg-ui-bg-base/50 border-2 border-dashed border-ui-border-interactive' 
+                : 'bg-ui-tag-red-bg/30 border-2 border-dashed border-ui-border-error'
+            } rounded-lg transition-all duration-200`}
             style={getWidgetStyle(draggingWidget.affectedWidgets[0], true)}
           >
             <div className="absolute inset-0 flex items-center justify-center">
@@ -792,29 +964,29 @@ const handleDragEnd = useCallback(() => {
           </div>
         )}
 
-      {/* Ghost Widget */}
-      {draggingWidget && isEditing && (
-        <div
-          className={`absolute ${
-            draggingWidget.isValidDrop 
-              ? 'bg-ui-bg-base/50 border-2 border-dashed border-ui-border-interactive' 
-              : 'bg-ui-tag-red-bg/30 border-2 border-dashed border-ui-border-error'
-          } rounded-lg pointer-events-none backdrop-blur-sm transition-all duration-100`}
-          style={getWidgetStyle({ 
-            ...draggingWidget.widget, 
-            position: draggingWidget.ghostPosition 
-          }, true)}
-        >
-          <div className="absolute inset-0 flex items-center justify-center opacity-50">
-            <div className="text-xs bg-ui-bg-base px-2 py-1 rounded shadow-md">
-              {draggingWidget.widget.position.w}×{draggingWidget.widget.position.h}
+        {/* Ghost Widget */}
+        {draggingWidget && isEditing && metricsValid && (
+          <div
+            className={`absolute ${
+              draggingWidget.isValidDrop 
+                ? 'bg-ui-bg-base/50 border-2 border-dashed border-ui-border-interactive' 
+                : 'bg-ui-tag-red-bg/30 border-2 border-dashed border-ui-border-error'
+            } rounded-lg pointer-events-none backdrop-blur-sm transition-all duration-100`}
+            style={getWidgetStyle({ 
+              ...draggingWidget.widget, 
+              position: draggingWidget.ghostPosition 
+            }, true)}
+          >
+            <div className="absolute inset-0 flex items-center justify-center opacity-50">
+              <div className="text-xs bg-ui-bg-base px-2 py-1 rounded shadow-md">
+                {draggingWidget.widget.position.w}×{draggingWidget.widget.position.h}
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
         {/* Resize Ghost */}
-        {resizingWidget && isEditing && (
+        {resizingWidget && isEditing && metricsValid && (
           <div
             className={`absolute ${
               resizingWidget.isValidDrop
@@ -826,56 +998,73 @@ const handleDragEnd = useCallback(() => {
         )}
 
         {/* Widgets */}
-{activeTab.widgets.map(widget => {
-  const hasPendingChange = pendingChanges.some(c => c.widgetId === widget.id)
-  const isAffected = draggingWidget?.affectedWidgets.some(w => w.id === widget.id)
-  const swapPosition = draggingWidget?.swapPreview.get(widget.id)
+        {activeTab.widgets.map(widget => {
+          const isAffected = draggingWidget?.affectedWidgets?.some(w => w.id === widget.id)
+          const swapPosition = draggingWidget?.swapPreview?.get(widget.id)
 
-  // Use swap position if available, otherwise use widget's own position
-  const displayPosition = swapPosition 
-    ? { 
-        x: swapPosition.x, 
-        y: swapPosition.y,
-        w: widget.position.w, // Always use widget's own dimensions
-        h: widget.position.h
-      }
-    : widget.position
+          const displayPosition = swapPosition
+            ? {
+                x: swapPosition.x,
+                y: swapPosition.y,
+                w: widget.position.w,
+                h: widget.position.h,
+              }
+            : widget.position
 
-  return (
-    <div
-      key={widget.id}
-      style={getWidgetStyle({ ...widget, position: displayPosition })}
-      className={`absolute ${
-        draggingWidget?.widget.id === widget.id ? 'opacity-0' : 'h-full'
-      } ${isAffected ? 'ring-2 ring-ui-border-interactive ring-offset-2' : ''}`}
-    >
+          // Show skeleton if metrics aren't ready
+          if (!metricsValid) {
+            return (
+              <div
+                key={widget.id}
+                className="absolute animate-pulse bg-ui-bg-base-hover rounded-lg"
+                style={{
+                  left: displayPosition.x * 100,
+                  top: displayPosition.y * 100,
+                  width: displayPosition.w * 100,
+                  height: displayPosition.h * 100,
+                }}
+              >
+                <div className="p-4">
+                  <div className="h-4 bg-ui-bg-base rounded w-3/4 mb-2"></div>
+                  <div className="h-3 bg-ui-bg-base rounded w-1/2"></div>
+                </div>
+              </div>
+            )
+          }
 
-      <DraggableWidget
-        widget={widget}
-        onUpdate={handleUpdateWidget}
-        onDelete={handleDeleteWidget}
-        onEdit={(widget) => {
-          setEditingWidget(widget)
-          editWidgetModal.open()
-        }}
-        onDuplicate={handleDuplicateWidget}
-        onDragStart={handleDragStart}
-        onResizeStart={handleResizeStart}
-        isDragging={draggingWidget?.widget.id === widget.id}
-        isResizing={resizingWidget?.widget.id === widget.id}
-        dragOffset={draggingWidget?.widget.id === widget.id ? {
-          x: draggingWidget.offsetX,
-          y: draggingWidget.offsetY
-        } : undefined}
-        gridMetrics={gridMetrics}
-        isEditing={isEditing}
-      />
-    </div>
-  )
-})}
+          return (
+            <div
+              key={widget.id}
+              style={getWidgetStyle({ ...widget, position: displayPosition })}
+              className={`absolute ${
+                draggingWidget?.widget.id === widget.id ? 'opacity-0' : ''
+              } ${isAffected ? 'ring-2 ring-ui-border-interactive ring-offset-2' : ''}`}
+            >
+              <DraggableWidget
+                widget={widget}
+                onDelete={handleDeleteWidget}
+                onEdit={() => {
+                  setEditingWidget(widget)
+                  // editWidgetModal.open()
+                }}
+                onDragStart={handleDragStart}
+                onResizeStart={handleResizeStart}
+                isDragging={draggingWidget?.widget.id === widget.id}
+                isResizing={resizingWidget?.widget.id === widget.id}
+                dragOffset={draggingWidget?.widget.id === widget.id
+                  ? { x: draggingWidget.offsetX, y: draggingWidget.offsetY }
+                  : undefined
+                }
+                gridMetrics={gridMetrics}
+                isEditing={isEditing}
+              />
+            </div>
+          )
+        })}
       </div>
     )
   }
+
 
   // Create new tab
   const handleCreateTab = async (tab: any) => {
@@ -888,32 +1077,54 @@ console.log(tab, 'TABB CREATE')
 
    
 
-    const newTab: any = {
-      id: `tab-${Date.now()}`,
-      title: tab.title,
-      label: tab.title,
-      description: tab.description,
-      widgets: [],
-      layout: {
+
+
+       let newWidgets = [] as any;
+
+ 
+
+    for(let widget of tab.widgets){
+
+    const position = findFirstAvailablePosition(
+      newWidgets,
+      gridColumns,
+      4,
+      2
+    )
+
+    const newWidget: Widget = {
+      ...widget,
+      id: widget.id,
+      type: widget.type,
+      title: widget.title,
+      size: "medium",
+      position,
+      config: widget.config,
+    }
+        newWidgets.push(newWidget);
+      console.log(widget, 'WIDG')
+
+
+    }
+
+
+
+       await createTab({parameters: {
+         label: tab.title, 
+         description: tab.description,
+         configuration: {
+           layout: {
         columns: 12,
         rowHeight: 100,
         gap: 16,
-      },
-    }
+          },
+          widgets: newWidgets
+         }
+    }}) as any
 
-    //  let tabData = await createTab({parameters: {
-    //      label: tab.title, 
-    //      type: "tab",
-    //      description: tab.description,
-    //      configuration: {
-    //        layout: {
-    //     columns: 12,
-    //     rowHeight: 100,
-    //     gap: 16,
-    //       },
-    //       widgets: []
-    //      }
-    // }}) as any
+
+    
+
     // if(tabData.success){
 
 
@@ -921,79 +1132,19 @@ console.log(tab, 'TABB CREATE')
 
 
     // Update local state
-    setTabs(prev => [...prev, newTab])
+    // setTabs(prev => [...prev, newTab])
     
     // Add pending change
-    addPendingChange('create', newTab.id, newTab)
-    
+    // addPendingChange('create', newTab.id, newTab)
+    await getDashboardTabs();
     setNewTabTitle("")
     setNewTabDescription("")
     createTabModal.close()
-    setActiveTabId(newTab.id)
+    // setActiveTabId(newTab.id)
     toast.success("Tab created")
   }
 
-  // Add new widget
-  const addNewWidget = (type: any) => {
-    if (!activeTab) return
-     
 
-
-
-    const position = findFirstAvailablePosition(
-      activeTab.widgets,
-      gridColumns,
-      4,
-      2
-    )
-
-    const newWidget: Widget = {
-      id: `widget-${Date.now()}`,
-      type: type,
-      title: `New ${type} widget`,
-      size: "medium",
-      position,
-      config: getDefaultConfig(type),
-    }
- 
-    
-
-
-    // Update local state
-    setTabs(prev => prev.map(tab => {
-      if (tab.id !== activeTabId) return tab
-      return {
-        ...tab,
-        widgets: [...tab.widgets, newWidget]
-      }
-    }))
-    
-    addWidgetModal.close()
-
-    // Add pending change
-    addPendingChange('create', activeTabId, newWidget, newWidget.id)
-
-    toast.success("Widget added")
-  }
-
-  // Update widget
-  const handleUpdateWidget = (widgetId: string, updates: Partial<Widget>) => {
-    if (!activeTab) return
-
-    // Update local state
-    setTabs(prev => prev.map(tab => {
-      if (tab.id !== activeTabId) return tab
-      return {
-        ...tab,
-        widgets: tab.widgets.map(w => 
-          w.id === widgetId ? { ...w, ...updates } : w
-        )
-      }
-    }))
-
-    // Add pending change
-    addPendingChange('update', activeTabId, updates, widgetId)
-  }
 
   // Delete widget
   const handleDeleteWidget = (widgetId: string) => {
@@ -1023,24 +1174,58 @@ console.log(tab, 'TABB CREATE')
   }
 
   // Update tab
-  const handleUpdateTab = () => {
+  const handleUpdateTab = (updateData: any) => {
+    console.log(updateData, newTabTitle, 'UPDATE DATA')
     if (!editingTab) return
     if (!newTabTitle.trim()) {
       toast.error("Please enter a tab title")
       return
     }
 
-    const updates = {
-      title: newTabTitle,
-      description: newTabDescription,
+    let newWidgets = [] as any;
+
+ 
+
+    for(let widget of updateData.widgets){
+
+    const position = findFirstAvailablePosition(
+      newWidgets,
+      gridColumns,
+      4,
+      2
+    )
+
+    const newWidget: Widget = {
+      ...widget,
+      id: widget.id,
+      type: widget.type,
+      title: widget.title,
+      size: "medium",
+      position,
+      config: widget.config,
     }
+        newWidgets.push(newWidget);
+      console.log(widget, 'WIDG')
+    addPendingChange('update', activeTabId, newWidget, widget.id)
+
+
+    }
+
+
+       const updates = {
+      title: newTabTitle,
+      description: newTabDescription
+    }
+      console.log(newWidgets, 'NEW WIDGSS')
+
 
     // Update local state
     setTabs(prev => prev.map(tab => {
       if (tab.id !== editingTab.id) return tab
       return {
         ...tab,
-        ...updates
+        ...updates,
+        widgets: newWidgets
       }
     }))
 
@@ -1052,8 +1237,12 @@ console.log(tab, 'TABB CREATE')
   }
 
   // Delete tab
-  const handleDeleteTab = (tabId: string) => {
+  const handleDeleteTab =  async (tabId: string) => {
     // Update local state
+
+    await deleteTab({parameters: {id: tabId}})
+    await getDashboardTabs();
+
     const newTabs = tabs.filter(t => t.id !== tabId)
     setTabs(newTabs)
     
@@ -1064,61 +1253,11 @@ console.log(tab, 'TABB CREATE')
       setActiveTabId(newTabs[0].id)
     }
     
+
     toast.success("Tab deleted")
   }
 
-  // Duplicate widget
-  const handleDuplicateWidget = (widgetId: string) => {
-    if (!activeTab) return
 
-    const widgetToDuplicate = activeTab.widgets.find(w => w.id === widgetId)
-    if (!widgetToDuplicate) return
-
-    const position = findFirstAvailablePosition(
-      activeTab.widgets,
-      gridColumns,
-      widgetToDuplicate.position.w,
-      widgetToDuplicate.position.h
-    )
-
-    const newWidget: Widget = {
-      ...widgetToDuplicate,
-      id: `widget-${Date.now()}`,
-      title: `${widgetToDuplicate.title} (Copy)`,
-      position,
-    }
-
-    // Update local state
-    setTabs(prev => prev.map(tab => {
-      if (tab.id !== activeTabId) return tab
-      return {
-        ...tab,
-        widgets: [...tab.widgets, newWidget]
-      }
-    }))
-
-    // Add pending change
-    addPendingChange('create', activeTabId, newWidget, newWidget.id)
-    
-    toast.success("Widget duplicated")
-  }
-
-  const getDefaultConfig = (type: string) => {
-    switch (type) {
-      case "stat":
-        return { value: "0", description: "No data", trend: null, icon: null }
-      case "chart":
-        return { type: "line", data: [], options: { showLegend: true } }
-      case "table":
-        return { columns: [], data: [], pageSize: 5 }
-      case "list":
-        return { items: [], showIcons: true }
-      case "progress":
-        return { items: [] }
-      default:
-        return {}
-    }
-  }
 
   // Loading state
   if (isDashboardLoading) {
@@ -1148,13 +1287,7 @@ console.log(tab, 'TABB CREATE')
           </Button>
         </div>
 
-        {/* Create Tab Modal */}
-      {/* <CreateTabModal
-        open={createTabModal.state}
-        onOpenChange={createTabModal.toggle}
-        onCreateTab={handleCreateTab}
-      /> */}
-
+   
       </Container>
     )
   }
@@ -1168,15 +1301,18 @@ console.log(tab, 'TABB CREATE')
       <div className="border-b border-ui-border-base bg-ui-bg-base sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-6">
           <div className="flex items-center justify-between">
-            <Tabs value={activeTabId} onValueChange={setActiveTabId}>
-              <Tabs.List className="border-0">
-                {tabs.map(tab => (
-                  <Tabs.Trigger key={tab.id} value={tab.id} className="text-sm relative">
-                    {tab.label}
-                  </Tabs.Trigger>
-                ))}
-              </Tabs.List>
-            </Tabs>
+
+        <div className="flex gap-4">
+          {tabs.map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTabId(tab.id)}
+              className="pb-2 px-1 text-sm font-medium border-b-2 border-transparent hover:border-ui-border-base focus:border-ui-fg-base"
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
             
             {/* Edit/Save Controls */}
             <div className="flex gap-2">
@@ -1186,7 +1322,8 @@ console.log(tab, 'TABB CREATE')
                   onClick={() => setIsEditing(true)}
                   className="flex items-center gap-1"
                 >
-                  <PencilSquare className="w-4 h-4" /> Edit Dashboard
+                  <PencilSquare className="w-4 h-4" />
+                   {/* Edit Dashboard */}
                 </Button>
               ) : (
                 <>
@@ -1208,11 +1345,12 @@ console.log(tab, 'TABB CREATE')
                     <CloudArrowUp className="w-4 h-4" /> 
                     Save {pendingChanges.length > 0 ? `(${pendingChanges.length})` : ''}
                   </Button>
-                </>
-              )}
-              <Button variant="secondary" onClick={createTabModal.open} size="small">
+                  <Button variant="secondary" onClick={createTabModal.open} size="small">
                 <Plus className="w-4 h-4" />
               </Button>
+                </>
+              )}
+              
             </div>
           </div>
         </div>
@@ -1278,13 +1416,7 @@ console.log(tab, 'TABB CREATE')
                 {pendingChanges.length} pending change{pendingChanges.length !== 1 ? 's' : ''}
               </UiText>
             </div>
-            <Button 
-              variant="secondary" 
-              size="small"
-              onClick={addWidgetModal.open}
-            >
-              <SquaresPlus className="w-4 h-4" /> Add Widget
-            </Button>
+         
           </div>
         )}
 
@@ -1305,104 +1437,8 @@ console.log(tab, 'TABB CREATE')
         onSave={handleUpdateTab}
       />
 
-      <AddWidgetModal
-        open={addWidgetModal.state}
-        onOpenChange={addWidgetModal.toggle}
-        onAddWidget={addNewWidget}
-      />
+     
 
-        <EditWidgetModal
-        open={editWidgetModal.state}
-        onOpenChange={editWidgetModal.toggle}
-        widget={editingWidget}
-        onSave={(updatedWidget) => {
-          handleUpdateWidget(updatedWidget.id, {
-            title: updatedWidget.title,
-            config: updatedWidget.config,
-          })
-        }}
-      /> 
-
- {/* Create Tab Modal */}
-        {/* <FocusModal open={createTabModal.state} onOpenChange={createTabModal.toggle}>
-          <FocusModal.Content className="z-20">
-            <FocusModal.Header>
-              <Button variant="primary" onClick={handleCreateTab}>
-                Create Tab
-              </Button>
-            </FocusModal.Header>
-            <FocusModal.Body className="flex flex-col items-center">
-              <div className="max-w-lg w-full p-8">
-                <Heading level="h1" className="mb-2">Create New Tab</Heading>
-                <UiText className="text-ui-fg-subtle mb-6">
-                  Add a new tab to organize your dashboard widgets
-                </UiText>
-                <div className="space-y-4">
-                  <div>
-                    <Label>Tab Title</Label>
-                    <Input
-                      placeholder="Enter tab title"
-                      value={newTabTitle}
-                      onChange={(e) => setNewTabTitle(e.target.value)}
-                    />
-                  </div>
-                  <div>
-                    <Label>Description (optional)</Label>
-                    <Textarea
-                      placeholder="Enter tab description"
-                      value={newTabDescription}
-                      onChange={(e) => setNewTabDescription(e.target.value)}
-                      rows={3}
-                    />
-                  </div>
-                </div>
-              </div>
-            </FocusModal.Body>
-          </FocusModal.Content>
-        </FocusModal> */}
-      {/* Edit Tab Modal */}
-      {/* <FocusModal open={editTabModal.state} onOpenChange={editTabModal.toggle}>
-        <FocusModal.Content className="z-20">
-          <FocusModal.Header>
-            <Button variant="primary" onClick={handleUpdateTab}>
-              Update Tab
-            </Button>
-          </FocusModal.Header>
-          <FocusModal.Body className="flex flex-col items-center">
-            <div className="max-w-lg w-full p-8">
-              <Heading level="h1" className="mb-2">Edit Tab</Heading>
-              <UiText className="text-ui-fg-subtle mb-6">
-                Update tab title and description
-              </UiText>
-              <div className="space-y-4">
-                <div>
-                  <Label>Tab Title</Label>
-                  <Input
-                    placeholder="Enter tab title"
-                    value={newTabTitle}
-                    onChange={(e) => setNewTabTitle(e.target.value)}
-                  />
-                </div>
-                <div>
-                  <Label>Description (optional)</Label>
-                  <Textarea
-                    placeholder="Enter tab description"
-                    value={newTabDescription}
-                    onChange={(e) => setNewTabDescription(e.target.value)}
-                    rows={3}
-                  />
-                </div>
-              </div>
-            </div>
-          </FocusModal.Body>
-        </FocusModal.Content>
-      </FocusModal> */}
-
-      {/* Add Widget Modal */}
-
-
-      {/* Edit Widget Modal */}
-  
     </div>
   )
 }

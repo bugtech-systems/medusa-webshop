@@ -112,7 +112,6 @@ export const WidgetsList = ({  onWidgetUpdate }: WidgetsListProps) => {
   }
 
 
-console.log(widgetsData, 'WIDDGE')
 
   const handleAddWidget = async (widgetData: Partial<Widget>) => {
     try {
@@ -123,7 +122,7 @@ console.log(widgetsData, 'WIDDGE')
         label: widgetData.title,
         metadata: {type: widgetData.type, description: widgetData.description},
         configuration: widgetData.config,
-        action_id: widgetData.config?.action_id
+        action_id: widgetData.config?.action_id ?? widgetData.action_id
       }
       
       await createWidget({ parameters: newWidget })
@@ -137,9 +136,11 @@ console.log(widgetsData, 'WIDDGE')
 
   const handleUpdateWidget = async (widgetId: string, updates: Partial<Widget>) => {
     try {
+
+
+      console.log(widgetId, updates, 'WIDGET UPDATE')
       await updateWidget({ 
-        id: widgetId,
-        parameters: updates 
+        parameters: {id: widgetId, ...updates} 
       })
       await loadWidgets()
       onWidgetUpdate?.(widgets)
@@ -165,27 +166,8 @@ console.log(widgetsData, 'WIDDGE')
     }
   }
 
-  const handleDuplicateWidget = async (widgetId: string) => {
-    try {
-      await duplicateWidget({ id: widgetId })
-      await loadWidgets()
-      onWidgetUpdate?.(widgets)
-      toast.success("Widget duplicated successfully")
-    } catch (error) {
-      console.error("Failed to duplicate widget:", error)
-      toast.error("Failed to duplicate widget")
-    }
-  }
-
-  const findFirstAvailablePosition = (
-    widgets: Widget[],
-    gridColumns: number,
-    width: number,
-    height: number
-  ) => {
-    // Simple positioning logic - can be enhanced
-    const maxY = Math.max(...widgets.map(w => w.position.y + w.position.h), 0)
-    return { x: 0, y: maxY, w: width, h: height }
+    const handleView = (widgetId: string) => {
+    window.location.href = `/app/dashboards/widgets/${widgetId}`
   }
 
   const getWidgetTypeBadge = (type: string) => {
@@ -314,6 +296,13 @@ console.log(widgetsData, 'WIDDGE')
                           </IconButton>
                         </DropdownMenu.Trigger>
                         <DropdownMenu.Content>
+                                             <DropdownMenu.Item 
+                                                    className="gap-2"
+                                                    onClick={() => handleView(widget.id)}
+                                                  >
+                                                    <Eye className="w-4 h-4" />
+                                                    View
+                                                  </DropdownMenu.Item>
                           <DropdownMenu.Item 
                             className="gap-2"
                             onClick={() => {
@@ -324,13 +313,13 @@ console.log(widgetsData, 'WIDDGE')
                             <PencilSquare className="w-4 h-4" />
                             Edit
                           </DropdownMenu.Item>
-                          <DropdownMenu.Item 
+                          {/* <DropdownMenu.Item 
                             className="gap-2"
                             onClick={() => handleDuplicateWidget(widget.id)}
                           >
                             <Copy className="w-4 h-4" />
                             Duplicate
-                          </DropdownMenu.Item>
+                          </DropdownMenu.Item> */}
                           <DropdownMenu.Separator />
                           <DropdownMenu.Item 
                             className="gap-2 text-ui-tag-red-text"
@@ -357,7 +346,7 @@ console.log(widgetsData, 'WIDDGE')
       <AddWidgetModal
         open={addModalOpen}
         onOpenChange={setAddModalOpen}
-        onAdd={handleAddWidget}
+        onAddWidget={handleAddWidget}
       />
 
       {/* Edit Widget Drawer */}
@@ -374,7 +363,7 @@ console.log(widgetsData, 'WIDDGE')
           <Prompt.Header>
             <Prompt.Title>Delete Widget</Prompt.Title>
             <Prompt.Description>
-              Are you sure you want to delete "{selectedWidget?.title}"? 
+              Are you sure you want to delete "{selectedWidget?.label}"? 
               This action cannot be undone.
             </Prompt.Description>
           </Prompt.Header>

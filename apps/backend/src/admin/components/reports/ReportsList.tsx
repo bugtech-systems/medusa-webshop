@@ -99,13 +99,21 @@ export const ReportsList = ({ config }: ReportsListProps) => {
     if (!selectedRecord?.id) return
 
 
-    await updateReport({ id: selectedRecord.id, parameters: data })
+    await updateReport({ parameters: {
+       id: selectedRecord.id, 
+       ...data,
+        label: data?.title,
+        action_id: data.action_id,
+        description: data.description,
+        type: data.type,
+        config: data
+    } })
     await refetch({})
   }
 
   const handleDelete = async () => {
     if (!selectedRecord?.id) return
-    await deleteReport({ id: selectedRecord.id })
+    await deleteReport({ parameters: {id: selectedRecord.id }})
     await refetch({})
   }
 
@@ -121,7 +129,7 @@ export const ReportsList = ({ config }: ReportsListProps) => {
   // Calculate page count
   const pageCount = reports?.count ? Math.ceil(reports.count / pageSize) : 0
 
-console.log(reports, 'REPP')
+console.log(reports, selectedRecord, 'REPP')
   
   let reportsData = reports?.data ? reports.data.map(a => ({...a, type: a.configuration?.type})) : [];
 
@@ -245,13 +253,13 @@ console.log(reports, 'REPP')
                           <PencilSquare className="w-4 h-4" />
                           Edit
                         </DropdownMenu.Item>
-                        <DropdownMenu.Item 
+                        {/* <DropdownMenu.Item 
                           className="gap-2"
                           onClick={() => handleDuplicate(report.id)}
                         >
                           <Copy className="w-4 h-4" />
                           Duplicate
-                        </DropdownMenu.Item>
+                        </DropdownMenu.Item> */}
                         <DropdownMenu.Separator />
                         <DropdownMenu.Item 
                           className="gap-2 text-ui-tag-red-text"

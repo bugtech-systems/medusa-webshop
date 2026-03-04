@@ -19,8 +19,10 @@ export const DeleteReportPrompt: React.FC<DeleteReportPromptProps> = ({
 
   const handleConfirm = async () => {
     await onConfirm()
-    onOpenChange(false)
+    // onOpenChange(false)
   }
+
+  console.log(record, 'DELETE RECORD')
 
   return (
     <Prompt open={open} onOpenChange={onOpenChange}>
@@ -28,7 +30,7 @@ export const DeleteReportPrompt: React.FC<DeleteReportPromptProps> = ({
         <Prompt.Header>
           <Prompt.Title>Delete Report</Prompt.Title>
           <Prompt.Description>
-            Are you sure you want to delete "{record.name}"?
+            Are you sure you want to delete "{record.label}"?
           </Prompt.Description>
         </Prompt.Header>
         <div className="p-4 bg-ui-bg-subtle border-y border-ui-border-base">

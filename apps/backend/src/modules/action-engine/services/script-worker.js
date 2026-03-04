@@ -6,6 +6,71 @@ const params = Object.freeze(workerData.params || {});
 const callStack = workerData.callStack || [];
 const memo = {};
 
+
+function parseAndPolishJSStringAdvanced(codeString) {
+  // Remove carriage returns and split into lines
+  const lines = codeString.replace(/\r/g, '').split('\n');
+  
+  const result = [];
+  let i = 0;
+  
+  while (i < lines.length) {
+    const currentLine = lines[i].trim();
+    
+    // Skip empty lines unless they're part of the structure
+    if (currentLine === '' && !lines[i + 1]?.includes('return')) {
+      i++;
+      continue;
+    }
+    
+    // Check for incomplete declarations
+    if (currentLine.match(/^(let|const|var)\s+[a-zA-Z_$][a-zA-Z0-9_$]*\s*=\s*$/)) {
+      const varName = currentLine.match(/[a-zA-Z_$][a-zA-Z0-9_$]*/)[0];
+      
+      // Look ahead for the value
+      let valueLine = '';
+      let j = i + 1;
+      
+      while (j < lines.length) {
+        const nextLine = lines[j].trim();
+        if (nextLine && !nextLine.match(/^(let|const|var|return)/)) {
+          valueLine = nextLine;
+          break;
+        }
+        j++;
+      }
+      
+      if (valueLine) {
+        // Complete the declaration
+        result.push(`${currentLine} ${valueLine};`);
+        i = j + 1;
+      } else {
+        // Default to null if no value found
+        result.push(`${currentLine} null;`);
+        i++;
+      }
+    } 
+    // Handle return statement
+    else if (currentLine.includes('return') || 
+             (currentLine.includes('{widget, data}') && !currentLine.includes('return'))) {
+      if (currentLine.includes('{widget, data}') && !currentLine.includes('return')) {
+        result.push(`return ${currentLine};`);
+      } else {
+        result.push(currentLine.endsWith(';') ? currentLine : currentLine + ';');
+      }
+      i++;
+    }
+    // Regular line
+    else {
+      result.push(currentLine);
+      i++;
+    }
+  }
+  
+  // Join and ensure proper formatting
+  return result.join('\n');
+}
+
 async function requestSubAction(type, identifier, params = {}) {
   const memoKey = JSON.stringify({ type, identifier, params });
   if (memo[memoKey]) return memo[memoKey];
@@ -102,11 +167,11 @@ sandbox.decodeURIComponent = decodeURIComponent;
 try {
   // Create a VM context with our sandbox
   const context = vm.createContext(sandbox);
-  
+  console.log(parseAndPolishJSStringAdvanced(workerData.code), 'WORKER DATA')
   // Wrap the user code to ensure it's a function
   const script = new vm.Script(`
     (async function(props) {
-      ${workerData.code}
+      ${parseAndPolishJSStringAdvanced(workerData.code)}
     })
   `);
   

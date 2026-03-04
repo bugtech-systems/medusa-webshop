@@ -13,7 +13,7 @@ export async function POST(
     
     
     // Add audit metadata
-  // let updateValid = data.filter((a: any) => String(a.id).includes('action_view'));
+  let updateValid = data.filter((a: any) => String(a.id).includes('action_view'));
   // let createValid = data.filter((a: any) => String(a.id).includes('tab')).map((a) => {
   //   let {id, ...validData} = a;
   //   return {...validData, type: 'tab'};
@@ -24,11 +24,13 @@ export async function POST(
     
     console.log(data, 'DATAAAA')
     
-    // if(updateValid && updateValid.length){
-    //  await actionEngine.updateActionViews(updateValid)
-    // } 
+    if(updateValid && updateValid.length){
+     await actionEngine.updateActionViews(updateValid)
+    } 
 
-     await actionEngine.updateActionViews(data)
+    // if(createValid && createValid.length){
+    //  await actionEngine.createActionViews(createValid)
+    // }
 
     return res.json({
       success: true,

@@ -52,6 +52,7 @@
     "socket.io": "^4.8.3",
     "typeorm": "^0.3.28",
     "use-undo": "^1.1.1",
+    "uuid": "^13.0.0",
     "worker-loader": "^3.0.8",
     "zod": "3.25.76"
   },

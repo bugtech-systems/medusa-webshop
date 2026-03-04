@@ -55,9 +55,7 @@ export class DbOperationService {
     const client = await this.pool.connect();
     try {
       const { sql, params } = this.buildQuery(config);
-      console.log(sql, params, 'QUERY PARAMS')
       const result = await client.query(sql, params);
-     console.log(result, 'QUERY RESULT')
       let formattedResult = result.rows as any;
            // For read operations with joins, transform the result to nested structure
       if (config.operation === 'read' && config.joins && config.joins.length > 0) {
@@ -92,7 +90,6 @@ export class DbOperationService {
   
   
   
-    console.log(config, 'BUILD WQUERY CONFIG')
   
     switch (config.operation) {
       case 'read': return this.buildSelect(config);

@@ -269,6 +269,9 @@ const CustomTablePage = ({
     setCurrentPage(1)
   }
 
+
+
+  console.log(columns, selectedRows, paginatedData, "TABLE DAATA")
   return (
     <Container>
       {/* Header Section */}
@@ -280,7 +283,7 @@ const CustomTablePage = ({
           )}
         </div>
         <div className="flex items-center gap-2">
-          {customActions}
+          {/* {customActions} */}
           {enableExport && (
             <>
               <Button
@@ -444,7 +447,7 @@ const CustomTablePage = ({
             <Text size="small">
               {selectedRows.length} item{selectedRows.length !== 1 ? 's' : ''} selected
             </Text>
-            <div className="flex items-center gap-2">
+            {/* <div className="flex items-center gap-2">
               {bulkActions ? (
                 bulkActions(selectedRows)
               ) : (
@@ -456,7 +459,7 @@ const CustomTablePage = ({
                   Bulk Action
                 </Button>
               )}
-            </div>
+            </div> */}
           </div>
         </div>
       )}
@@ -486,9 +489,9 @@ const CustomTablePage = ({
                   </div>
                 </Table.HeaderCell>
               ))}
-              <Table.HeaderCell className="w-10">
+              {/* <Table.HeaderCell className="w-10">
                 <span className="sr-only">Actions</span>
-              </Table.HeaderCell>
+              </Table.HeaderCell> */}
             </Table.Row>
           </Table.Header>
           <Table.Body>

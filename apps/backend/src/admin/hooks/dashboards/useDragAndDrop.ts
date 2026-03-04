@@ -1,17 +1,31 @@
-import { useState, useCallback, useRef, useEffect } from "react"
-import { Widget, DragState, GridMetrics, WidgetPosition } from "../../../types/dashboards"
-import { pixelsToGrid, checkCollision, isValidPosition, calculateSwapPositions } from "../../utils/dashboards/gridHelpers"
+import { useState, useCallback, useRef } from "react"
+import { Widget, WidgetPosition, checkCollision, isValidPosition, calculateSwapPositions } from "../../components/dashboard/types"
+import { throttle } from "../../components/dashboard/utils"
+import { DRAG_THROTTLE_MS } from "../../components/dashboard/constants"
+import { PendingChange } from "./usePendingChanges"
+
+interface DragState {
+  widget: Widget
+  startX: number
+  startY: number
+  startPos: WidgetPosition
+  offsetX: number
+  offsetY: number
+  ghostPosition: WidgetPosition
+  isValidDrop?: boolean
+  affectedWidgets?: Widget[]
+  swapPreview?: Map<string, WidgetPosition>
+}
 
 interface UseDragAndDropProps {
   isEditing: boolean
   activeTab: any
   activeTabId: string
   gridColumns: number
-  rowHeight: number
-  gap: number
-  gridMetrics: GridMetrics
-  updateTabs: (updater: any) => void
-  addPendingChange: (type: string, tabId: string, data: any, widgetId?: string) => void
+  gridRef: React.RefObject<HTMLDivElement>
+  pixelsToGrid: (x: number, y: number) => { gridX: number; gridY: number }
+  addPendingChange: (type: PendingChange['type'], tabId: string, data: any, widgetId?: string) => void
+  setTabs: React.Dispatch<React.SetStateAction<any[]>>
 }
 
 export const useDragAndDrop = ({
@@ -19,11 +33,10 @@ export const useDragAndDrop = ({
   activeTab,
   activeTabId,
   gridColumns,
-  rowHeight,
-  gap,
-  gridMetrics,
-  updateTabs,
+  gridRef,
+  pixelsToGrid,
   addPendingChange,
+  setTabs,
 }: UseDragAndDropProps) => {
   const [draggingWidget, setDraggingWidget] = useState<DragState | null>(null)
   const rafRef = useRef<number>()
@@ -54,94 +67,101 @@ export const useDragAndDrop = ({
       affectedWidgets: [],
       swapPreview: new Map(),
     })
-  }, [isEditing])
+  }, [isEditing, gridRef])
 
-  const handleDragMove = useCallback((e: MouseEvent) => {
-    if (!draggingWidget || !activeTab || !gridRef.current || !isEditing) return
+  const handleDragMove = useCallback(
+    throttle((e: MouseEvent) => {
+      if (!draggingWidget || !activeTab || !gridRef.current || !isEditing) return
 
-    if (rafRef.current) {
-      cancelAnimationFrame(rafRef.current)
-    }
-
-    rafRef.current = requestAnimationFrame(() => {
-      const gridRect = gridRef.current!.getBoundingClientRect()
-      
-      const newLeft = e.clientX - gridRect.left - draggingWidget.offsetX
-      const newTop = e.clientY - gridRect.top - draggingWidget.offsetY
-      
-      const { gridX, gridY } = pixelsToGrid(newLeft, newTop, gridMetrics.colWidth, rowHeight, gap)
-      
-      const maxX = gridColumns - draggingWidget.widget.position.w
-      const newGridX = Math.max(0, Math.min(maxX, gridX))
-      const newGridY = Math.max(0, gridY)
-
-      const ghostPosition = {
-        x: newGridX,
-        y: newGridY,
-        w: draggingWidget.widget.position.w,
-        h: draggingWidget.widget.position.h
+      if (rafRef.current) {
+        cancelAnimationFrame(rafRef.current)
       }
 
-      const otherWidgets = activeTab.widgets.filter(w => w.id !== draggingWidget.widget.id)
-      const overlappingWidget = otherWidgets.find(w => 
-        checkCollision(ghostPosition, w.position)
-      )
+      rafRef.current = requestAnimationFrame(() => {
+        const gridRect = gridRef.current!.getBoundingClientRect()
+        
+        const newLeft = e.clientX - gridRect.left - draggingWidget.offsetX
+        const newTop = e.clientY - gridRect.top - draggingWidget.offsetY
+        
+        const { gridX, gridY } = pixelsToGrid(newLeft, newTop)
+        
+        const maxX = gridColumns - draggingWidget.widget.position.w
+        const newGridX = Math.max(0, Math.min(maxX, gridX))
+        const newGridY = Math.max(0, gridY)
 
-      const isValid = isValidPosition(
-        activeTab.widgets,
-        draggingWidget.widget.id,
-        ghostPosition,
-        gridColumns
-      )
+        const ghostPosition = {
+          x: newGridX,
+          y: newGridY,
+          w: draggingWidget.widget.position.w,
+          h: draggingWidget.widget.position.h
+        }
 
-      let swapPreview = new Map<string, WidgetPosition>()
-      let affectedWidgets: Widget[] = []
+        // Find overlapping widgets
+        const otherWidgets = activeTab.widgets.filter((w: Widget) => w.id !== draggingWidget.widget.id)
+        const overlappingWidget = otherWidgets.find((w: Widget) => 
+          checkCollision(ghostPosition, w.position)
+        )
 
-      if (overlappingWidget && isValid) {
-        const { newPositions, isValid: canSwap, affectedWidgets: affected } = calculateSwapPositions(
+        // Check if position is valid
+        const isValid = isValidPosition(
           activeTab.widgets,
-          draggingWidget.widget,
-          overlappingWidget,
+          draggingWidget.widget.id,
+          ghostPosition,
           gridColumns
         )
-        
-        if (canSwap) {
-          swapPreview = newPositions
-          affectedWidgets = affected
 
-          updateTabs(prev => prev.map(tab => {
-            if (tab.id !== activeTabId) return tab
-            return {
-              ...tab,
-              widgets: tab.widgets.map(w => {
-                const newPos = swapPreview.get(w.id)
-                if (newPos) {
-                  return { 
-                    ...w, 
-                    position: { 
-                      x: newPos.x, 
-                      y: newPos.y,
-                      w: w.position.w,
-                      h: w.position.h
-                    } 
+        let swapPreview = new Map<string, WidgetPosition>()
+        let affectedWidgets: Widget[] = []
+
+        if (overlappingWidget && isValid) {
+          // Calculate swap with full size consideration
+          const { newPositions, isValid: canSwap, affectedWidgets: affected } = calculateSwapPositions(
+            activeTab.widgets,
+            draggingWidget.widget,
+            overlappingWidget,
+            gridColumns
+          )
+          
+          if (canSwap) {
+            swapPreview = newPositions
+            affectedWidgets = affected
+
+            // Apply swap preview immediately
+            setTabs(prev => prev.map(tab => {
+              if (tab.id !== activeTabId) return tab
+              return {
+                ...tab,
+                widgets: tab.widgets.map((w: Widget) => {
+                  const newPos = swapPreview.get(w.id)
+                  if (newPos) {
+                    return { 
+                      ...w, 
+                      position: { 
+                        x: newPos.x, 
+                        y: newPos.y,
+                        w: w.position.w,
+                        h: w.position.h
+                      } 
+                    }
                   }
-                }
-                return w
-              })
-            }
-          }))
+                  return w
+                })
+              }
+            }))
+          }
         }
-      }
 
-      setDraggingWidget(prev => prev ? {
-        ...prev,
-        ghostPosition,
-        isValidDrop: isValid,
-        affectedWidgets,
-        swapPreview,
-      } : null)
-    })
-  }, [draggingWidget, activeTab, gridColumns, gridMetrics, rowHeight, gap, activeTabId, updateTabs])
+        setDraggingWidget(prev => prev ? {
+          ...prev,
+          ghostPosition,
+          isValidDrop: isValid,
+          affectedWidgets,
+          swapPreview,
+        } : null)
+      })
+    }, DRAG_THROTTLE_MS),
+    [draggingWidget, activeTab, gridColumns, pixelsToGrid, activeTabId, setTabs]
+  )
 
   const handleDragEnd = useCallback(() => {
     if (!draggingWidget || !activeTab || !isEditing) {
@@ -149,9 +169,10 @@ export const useDragAndDrop = ({
       return
     }
 
-    if (draggingWidget.swapPreview.size > 0) {
+    // Apply final positions if swap preview exists
+    if (draggingWidget.swapPreview && draggingWidget.swapPreview.size > 0) {
       draggingWidget.swapPreview.forEach((position, widgetId) => {
-        const widget = activeTab.widgets.find(w => w.id === widgetId)
+        const widget = activeTab.widgets.find((w: Widget) => w.id === widgetId)
         if (widget) {
           addPendingChange(
             'move',
@@ -170,13 +191,15 @@ export const useDragAndDrop = ({
         }
       })
     } else if (draggingWidget.isValidDrop) {
-      const widget = activeTab.widgets.find(w => w.id === draggingWidget.widget.id)
+      // Single widget move
+      const widget = activeTab.widgets.find((w: Widget) => w.id === draggingWidget.widget.id)
       if (widget) {
-        updateTabs(prev => prev.map(tab => {
+        // Update local state with final position
+        setTabs(prev => prev.map(tab => {
           if (tab.id !== activeTabId) return tab
           return {
             ...tab,
-            widgets: tab.widgets.map(w => 
+            widgets: tab.widgets.map((w: Widget) => 
               w.id === draggingWidget.widget.id
                 ? { 
                     ...w, 
@@ -208,11 +231,12 @@ export const useDragAndDrop = ({
         )
       }
     } else {
-      updateTabs(prev => prev.map(tab => {
+      // Revert to original position
+      setTabs(prev => prev.map(tab => {
         if (tab.id !== activeTabId) return tab
         return {
           ...tab,
-          widgets: tab.widgets.map(w => 
+          widgets: tab.widgets.map((w: Widget) => 
             w.id === draggingWidget.widget.id
               ? { ...w, position: draggingWidget.startPos }
               : w
@@ -225,28 +249,13 @@ export const useDragAndDrop = ({
     if (rafRef.current) {
       cancelAnimationFrame(rafRef.current)
     }
-  }, [draggingWidget, activeTab, isEditing, activeTabId, addPendingChange, updateTabs])
-
-  // Event listeners
-  useEffect(() => {
-    if (draggingWidget && isEditing) {
-      window.addEventListener("mousemove", handleDragMove)
-      window.addEventListener("mouseup", handleDragEnd)
-      return () => {
-        window.removeEventListener("mousemove", handleDragMove)
-        window.removeEventListener("mouseup", handleDragEnd)
-        if (rafRef.current) {
-          cancelAnimationFrame(rafRef.current)
-        }
-      }
-    }
-  }, [draggingWidget, isEditing, handleDragMove, handleDragEnd])
-
-  const gridRef = useRef<HTMLDivElement>(null)
+  }, [draggingWidget, activeTab, isEditing, activeTabId, addPendingChange, setTabs])
 
   return {
     draggingWidget,
-    gridRef,
+    setDraggingWidget,
     handleDragStart,
+    handleDragMove,
+    handleDragEnd,
   }
 }

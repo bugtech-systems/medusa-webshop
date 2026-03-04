@@ -11,12 +11,12 @@ import {
   Heading,
   Text,
   ProgressTabs,
+  Checkbox,
 } from "@medusajs/ui"
-import { Plus, Trash,  ArrowDown } from "@medusajs/icons"
-import { AdminReport, AdminUpdateReport } from "../../../../types/reports"
+import { Plus, Trash, ArrowUpMini, ArrowDown } from "@medusajs/icons"
+import { AdminReport, AdminUpdateReport } from "../../../types/reports"
 import { Config } from "../types"
 import { useExecution } from "../../../hooks/api/actions"
-import { ArrowUp } from "lucide-react"
 
 interface EditReportDrawerProps {
   open: boolean
@@ -30,13 +30,16 @@ interface Field {
   id: string
   key: string
   label: string
-  type: 'text' | 'number' | 'date' | 'boolean'
+  type: 'text' | 'number' | 'date' | 'boolean' | 'currency' | 'percentage'
   sortable: boolean
   filterable: boolean
   searchable: boolean
   visible: boolean
+  editable?: boolean
+  required?: boolean
   width?: string
   format?: string
+  alignment?: 'left' | 'center' | 'right'
 }
 
 // Custom Select Component
@@ -121,7 +124,7 @@ const CustomSelect = ({
   )
 }
 
-// Basic Information Tab
+// Basic Information Tab (same as before)
 const BasicInfoTab = ({
   data,
   onChange,
@@ -136,23 +139,16 @@ const BasicInfoTab = ({
     { 
       value: "table", 
       label: "Table Report", 
-      description: "Display data in a sortable, filterable table format"
+      description: "Display data in a sortable, filterable table format",
+      disabled: false
     },
     { 
       value: "list", 
       label: "List Report", 
-      description: "Show data as a formatted list with icons"
+      description: "Show data as a formatted list with icons",
+      disabled: true
     },
   ]
-
-  const validateField = (field: string, value: any) => {
-    if (!value?.trim()) {
-      setErrors(prev => ({ ...prev, [field]: `${field} is required` }))
-      return false
-    }
-    setErrors(prev => ({ ...prev, [field]: undefined }))
-    return true
-  }
 
   const actionOptions = actionsData?.data ? actionsData.data.map((action: any) => ({
     value: action.id,
@@ -162,36 +158,24 @@ const BasicInfoTab = ({
 
   return (
     <div className="space-y-6">
-      {/* Report Title */}
       <div>
         <Label htmlFor="edit-report-title" className="text-ui-fg-subtle">
           Report Title <span className="text-ui-fg-error">*</span>
         </Label>
         <Input
           id="edit-report-title"
-          placeholder="e.g., Orders Report, Customer List"
           value={data.title || ""}
-          onChange={(e) => {
-            onChange({ ...data, title: e.target.value })
-            validateField('title', e.target.value)
-          }}
+          onChange={(e) => onChange({ ...data, title: e.target.value })}
           className="mt-1"
         />
-        {errors.title && (
-          <Text size="small" className="text-ui-tag-red-text mt-1">
-            {errors.title}
-          </Text>
-        )}
       </div>
 
-      {/* Description */}
       <div>
         <Label htmlFor="edit-report-description" className="text-ui-fg-subtle">
           Description <span className="text-ui-fg-muted">(optional)</span>
         </Label>
         <Textarea
           id="edit-report-description"
-          placeholder="Describe what this report shows..."
           value={data.description || ""}
           onChange={(e) => onChange({ ...data, description: e.target.value })}
           rows={3}
@@ -199,7 +183,6 @@ const BasicInfoTab = ({
         />
       </div>
 
-      {/* Data Action */}
       <div>
         <Label htmlFor="edit-data-action" className="text-ui-fg-subtle">
           Data Action <span className="text-ui-fg-error">*</span>
@@ -207,29 +190,17 @@ const BasicInfoTab = ({
         <div className="mt-1">
           <CustomSelect
             value={data.action_id || ""}
-            onValueChange={(val) => {
-              onChange({ ...data, action_id: val })
-              validateField('action_id', val)
-            }}
+            onValueChange={(val) => onChange({ ...data, action_id: val })}
             options={actionOptions}
             placeholder="Select data action..."
-            error={errors.action_id}
           />
         </div>
-        {errors.action_id && (
-          <Text size="small" className="text-ui-tag-red-text mt-1">
-            {errors.action_id}
-          </Text>
-        )}
       </div>
 
-      {/* Report Type */}
       <div>
         <Label htmlFor="edit-report-type" className="text-ui-fg-subtle">
           Report Type <span className="text-ui-fg-error">*</span>
         </Label>
-        
-        {/* Report Type Cards */}
         <div className="grid grid-cols-2 gap-4 mt-2">
           {reportTypes.map((type) => {
             const isSelected = data.type === type.value
@@ -238,10 +209,8 @@ const BasicInfoTab = ({
               <button
                 key={type.value}
                 type="button"
-                onClick={() => {
-                  onChange({ ...data, type: type.value })
-                  validateField('type', type.value)
-                }}
+                disabled={type.disabled}
+                onClick={() => onChange({ ...data, type: type.value })}
                 className={`p-4 border rounded-lg text-left hover:border-ui-border-interactive transition-colors ${
                   isSelected 
                     ? "border-ui-border-interactive bg-ui-bg-base-hover ring-2 ring-ui-border-interactive ring-offset-2" 
@@ -260,18 +229,12 @@ const BasicInfoTab = ({
             )
           })}
         </div>
-        
-        {errors.type && (
-          <Text size="small" className="text-ui-tag-red-text mt-2">
-            {errors.type}
-          </Text>
-        )}
       </div>
     </div>
   )
 }
 
-// Configuration Tab
+// Enhanced Configuration Tab with proper field management
 const ConfigTab = ({
   data,
   onChange,
@@ -283,6 +246,7 @@ const ConfigTab = ({
 }) => {
   const [fields, setFields] = useState<Field[]>(data.fields || [])
   const [nextId, setNextId] = useState((data.fields?.length || 0) + 1)
+  const [showAddField, setShowAddField] = useState(false)
   const [newField, setNewField] = useState<Partial<Field>>({
     key: '',
     label: '',
@@ -291,42 +255,30 @@ const ConfigTab = ({
     filterable: true,
     searchable: true,
     visible: true,
+    editable: true,
+    required: false,
+    alignment: 'left',
   })
-  const [showAddField, setShowAddField] = useState(false)
+
+  // Update parent when fields change
+  useEffect(() => {
+    onChange({ ...data, fields })
+  }, [fields])
 
   const handleFieldChange = (index: number, updates: Partial<Field>) => {
     const updatedFields = [...fields]
     updatedFields[index] = { ...updatedFields[index], ...updates }
     setFields(updatedFields)
-    onChange({ ...data, fields: updatedFields })
-  }
-
-  const handleAddField = () => {
-    if (!newField.key || !newField.label) return
-    
-    const field: Field = {
-      id: nextId.toString(),
-      key: newField.key,
-      label: newField.label,
-      type: newField.type as any || 'text',
-      sortable: newField.sortable ?? true,
-      filterable: newField.filterable ?? true,
-      searchable: newField.searchable ?? true,
-      visible: newField.visible ?? true,
-    }
-    
-    const updatedFields = [...fields, field]
-    setFields(updatedFields)
-    onChange({ ...data, fields: updatedFields })
-    setNewField({ key: '', label: '', type: 'text', sortable: true, filterable: true, searchable: true, visible: true })
-    setShowAddField(false)
-    setNextId(nextId + 1)
   }
 
   const handleRemoveField = (index: number) => {
-    const updatedFields = fields.filter((_, i) => i !== index)
-    setFields(updatedFields)
-    onChange({ ...data, fields: updatedFields })
+    // Show confirmation before removing
+    const fieldToRemove = fields[index]
+    if (window.confirm(`Are you sure you want to remove the field "${fieldToRemove.label}"?`)) {
+      const updatedFields = fields.filter((_, i) => i !== index)
+      setFields(updatedFields)
+      toast.success(`Field "${fieldToRemove.label}" removed`)
+    }
   }
 
   const handleMoveField = (index: number, direction: 'up' | 'down') => {
@@ -341,7 +293,50 @@ const ConfigTab = ({
     updatedFields[newIndex] = temp
     
     setFields(updatedFields)
-    onChange({ ...data, fields: updatedFields })
+  }
+
+  const handleAddField = () => {
+    if (!newField.key || !newField.label) {
+      toast.error("Field key and label are required")
+      return
+    }
+
+    // Check for duplicate keys
+    if (fields.some(f => f.key === newField.key)) {
+      toast.error(`Field with key "${newField.key}" already exists`)
+      return
+    }
+    
+    const field: Field = {
+      id: nextId.toString(),
+      key: newField.key,
+      label: newField.label,
+      type: newField.type as any || 'text',
+      sortable: newField.sortable ?? true,
+      filterable: newField.filterable ?? true,
+      searchable: newField.searchable ?? true,
+      visible: newField.visible ?? true,
+      editable: newField.editable ?? true,
+      required: newField.required ?? false,
+      alignment: newField.alignment || 'left',
+    }
+    
+    setFields([...fields, field])
+    setNewField({
+      key: '',
+      label: '',
+      type: 'text',
+      sortable: true,
+      filterable: true,
+      searchable: true,
+      visible: true,
+      editable: true,
+      required: false,
+      alignment: 'left',
+    })
+    setShowAddField(false)
+    setNextId(nextId + 1)
+    toast.success(`Field "${field.label}" added`)
   }
 
   const renderTableConfig = () => (
@@ -376,14 +371,43 @@ const ConfigTab = ({
             />
           </div>
         </div>
+
+        <div className="flex items-center gap-4 mt-4">
+          <label className="flex items-center gap-2">
+            <Checkbox 
+              checked={data.showRowNumbers || false}
+              onCheckedChange={(checked) => onChange({ ...data, showRowNumbers: checked })}
+            />
+            <Text size="small">Show Row Numbers</Text>
+          </label>
+          <label className="flex items-center gap-2">
+            <Checkbox 
+              checked={data.stickyHeader || true}
+              onCheckedChange={(checked) => onChange({ ...data, stickyHeader: checked })}
+            />
+            <Text size="small">Sticky Header</Text>
+          </label>
+          <label className="flex items-center gap-2">
+            <Checkbox 
+              checked={data.exportable || false}
+              onCheckedChange={(checked) => onChange({ ...data, exportable: checked })}
+            />
+            <Text size="small">Allow Export</Text>
+          </label>
+        </div>
       </div>
 
       {/* Fields Configuration */}
       <div className="p-4 bg-ui-bg-subtle rounded-lg border border-ui-border-base">
         <div className="flex items-center justify-between mb-4">
-          <Heading level="h3" className="text-sm font-medium">
-            Fields
-          </Heading>
+          <div>
+            <Heading level="h3" className="text-sm font-medium">
+              Fields ({fields.length})
+            </Heading>
+            <Text size="xsmall" className="text-ui-fg-subtle">
+              Configure display and behavior of each field
+            </Text>
+          </div>
           <Button
             variant="secondary"
             size="small"
@@ -396,115 +420,153 @@ const ConfigTab = ({
         </div>
 
         {/* Fields Table */}
-        <div className="border border-ui-border-base rounded-lg overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-ui-bg-base-hover">
-              <tr>
-                <th className="px-4 py-2 text-left">Order</th>
-                <th className="px-4 py-2 text-left">Field Key</th>
-                <th className="px-4 py-2 text-left">Label</th>
-                <th className="px-4 py-2 text-left">Type</th>
-                <th className="px-4 py-2 text-center">Sortable</th>
-                <th className="px-4 py-2 text-center">Filterable</th>
-                <th className="px-4 py-2 text-center">Searchable</th>
-                <th className="px-4 py-2 text-center">Visible</th>
-                <th className="px-4 py-2 text-center">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {fields.map((field, index) => (
-                <tr key={field.id} className="border-t border-ui-border-base">
-                  <td className="px-4 py-2">
-                    <div className="flex items-center gap-1">
-                      <button
-                        onClick={() => handleMoveField(index, 'up')}
-                        disabled={index === 0}
-                        className="p-1 hover:bg-ui-bg-base-hover rounded disabled:opacity-30"
-                      >
-                        <ArrowUp className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => handleMoveField(index, 'down')}
-                        disabled={index === fields.length - 1}
-                        className="p-1 hover:bg-ui-bg-base-hover rounded disabled:opacity-30"
-                      >
-                        <ArrowDown className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </td>
-                  <td className="px-4 py-2">
-                    <Input
-                      value={field.key}
-                      onChange={(e) => handleFieldChange(index, { key: e.target.value })}
-                      size="small"
-                    />
-                  </td>
-                  <td className="px-4 py-2">
-                    <Input
-                      value={field.label}
-                      onChange={(e) => handleFieldChange(index, { label: e.target.value })}
-                      size="small"
-                    />
-                  </td>
-                  <td className="px-4 py-2">
-                    <select
-                      value={field.type}
-                      onChange={(e) => handleFieldChange(index, { type: e.target.value as any })}
-                      className="w-full px-2 py-1 bg-ui-bg-base border border-ui-border-base rounded"
-                    >
-                      <option value="text">Text</option>
-                      <option value="number">Number</option>
-                      <option value="date">Date</option>
-                      <option value="boolean">Boolean</option>
-                    </select>
-                  </td>
-                  <td className="px-4 py-2 text-center">
-                    <Switch
-                      checked={field.sortable}
-                      onCheckedChange={(checked) => handleFieldChange(index, { sortable: checked })}
-                    />
-                  </td>
-                  <td className="px-4 py-2 text-center">
-                    <Switch
-                      checked={field.filterable}
-                      onCheckedChange={(checked) => handleFieldChange(index, { filterable: checked })}
-                    />
-                  </td>
-                  <td className="px-4 py-2 text-center">
-                    <Switch
-                      checked={field.searchable}
-                      onCheckedChange={(checked) => handleFieldChange(index, { searchable: checked })}
-                    />
-                  </td>
-                  <td className="px-4 py-2 text-center">
-                    <Switch
-                      checked={field.visible}
-                      onCheckedChange={(checked) => handleFieldChange(index, { visible: checked })}
-                    />
-                  </td>
-                  <td className="px-4 py-2 text-center">
-                    <button
-                      onClick={() => handleRemoveField(index)}
-                      className="p-1 text-ui-tag-red-text hover:bg-ui-tag-red-bg rounded"
-                    >
-                      <Trash className="w-4 h-4" />
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        {fields.length > 0 ? (
+          <div className="border border-ui-border-base rounded-lg overflow-hidden">
+            <div className="max-h-96 overflow-y-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-ui-bg-base-hover sticky top-0">
+                  <tr>
+                    <th className="px-4 py-2 text-left w-16">Order</th>
+                    <th className="px-4 py-2 text-left">Field Key</th>
+                    <th className="px-4 py-2 text-left">Label</th>
+                    <th className="px-4 py-2 text-left">Type</th>
+                    <th className="px-4 py-2 text-center">Sortable</th>
+                    <th className="px-4 py-2 text-center">Filterable</th>
+                    <th className="px-4 py-2 text-center">Searchable</th>
+                    <th className="px-4 py-2 text-center">Visible</th>
+                    <th className="px-4 py-2 text-center">Editable</th>
+                    <th className="px-4 py-2 text-center">Required</th>
+                    <th className="px-4 py-2 text-center w-20">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {fields.map((field, index) => (
+                    <tr key={field.id} className="border-t border-ui-border-base hover:bg-ui-bg-base-hover">
+                      <td className="px-4 py-2">
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => handleMoveField(index, 'up')}
+                            disabled={index === 0}
+                            className="p-1 hover:bg-ui-bg-base rounded disabled:opacity-30"
+                            title="Move up"
+                          >
+                            <ArrowUpMini className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleMoveField(index, 'down')}
+                            disabled={index === fields.length - 1}
+                            className="p-1 hover:bg-ui-bg-base rounded disabled:opacity-30"
+                            title="Move down"
+                          >
+                            <ArrowDown className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
+                      <td className="px-4 py-2">
+                        <Input
+                          value={field.key}
+                          onChange={(e) => handleFieldChange(index, { key: e.target.value })}
+                          size="small"
+                          className="w-32"
+                        />
+                      </td>
+                      <td className="px-4 py-2">
+                        <Input
+                          value={field.label}
+                          onChange={(e) => handleFieldChange(index, { label: e.target.value })}
+                          size="small"
+                          className="w-32"
+                        />
+                      </td>
+                      <td className="px-4 py-2">
+                        <select
+                          value={field.type}
+                          onChange={(e) => handleFieldChange(index, { type: e.target.value as any })}
+                          className="w-24 px-2 py-1 bg-ui-bg-base border border-ui-border-base rounded text-sm"
+                        >
+                          <option value="text">Text</option>
+                          <option value="number">Number</option>
+                          <option value="currency">Currency</option>
+                          <option value="percentage">Percentage</option>
+                          <option value="date">Date</option>
+                          <option value="boolean">Boolean</option>
+                        </select>
+                      </td>
+                      <td className="px-4 py-2 text-center">
+                        <Switch
+                          checked={field.sortable}
+                          onCheckedChange={(checked) => handleFieldChange(index, { sortable: checked })}
+                        />
+                      </td>
+                      <td className="px-4 py-2 text-center">
+                        <Switch
+                          checked={field.filterable}
+                          onCheckedChange={(checked) => handleFieldChange(index, { filterable: checked })}
+                        />
+                      </td>
+                      <td className="px-4 py-2 text-center">
+                        <Switch
+                          checked={field.searchable}
+                          onCheckedChange={(checked) => handleFieldChange(index, { searchable: checked })}
+                        />
+                      </td>
+                      <td className="px-4 py-2 text-center">
+                        <Switch
+                          checked={field.visible}
+                          onCheckedChange={(checked) => handleFieldChange(index, { visible: checked })}
+                        />
+                      </td>
+                      <td className="px-4 py-2 text-center">
+                        <Switch
+                          checked={field.editable || false}
+                          onCheckedChange={(checked) => handleFieldChange(index, { editable: checked })}
+                        />
+                      </td>
+                      <td className="px-4 py-2 text-center">
+                        <Switch
+                          checked={field.required || false}
+                          onCheckedChange={(checked) => handleFieldChange(index, { required: checked })}
+                        />
+                      </td>
+                      <td className="px-4 py-2 text-center">
+                        <button
+                          onClick={() => handleRemoveField(index)}
+                          className="p-1 text-ui-tag-red-text hover:bg-ui-tag-red-bg rounded transition-colors"
+                          title="Remove field"
+                        >
+                          <Trash className="w-4 h-4" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        ) : (
+          <div className="p-8 text-center bg-ui-bg-subtle rounded-lg border border-ui-border-base">
+            <Text className="text-ui-fg-subtle mb-2">No fields configured yet</Text>
+            <Button
+              variant="secondary"
+              size="small"
+              onClick={() => setShowAddField(true)}
+            >
+              Add your first field
+            </Button>
+          </div>
+        )}
 
         {/* Add Field Form */}
         {showAddField && (
-          <div className="mt-4 p-4 border border-ui-border-base rounded-lg">
+          <div className="mt-4 p-4 border border-ui-border-base rounded-lg bg-ui-bg-base">
             <Heading level="h4" className="text-sm font-medium mb-4">
               Add New Field
             </Heading>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label size="xsmall">Field Key</Label>
+                <Label size="xsmall" className="text-ui-fg-subtle">
+                  Field Key <span className="text-ui-fg-error">*</span>
+                </Label>
                 <Input
                   size="small"
                   value={newField.key}
@@ -514,7 +576,9 @@ const ConfigTab = ({
                 />
               </div>
               <div>
-                <Label size="xsmall">Display Label</Label>
+                <Label size="xsmall" className="text-ui-fg-subtle">
+                  Display Label <span className="text-ui-fg-error">*</span>
+                </Label>
                 <Input
                   size="small"
                   value={newField.label}
@@ -528,15 +592,81 @@ const ConfigTab = ({
                 <select
                   value={newField.type}
                   onChange={(e) => setNewField({ ...newField, type: e.target.value as any })}
-                  className="w-full px-2 py-1.5 bg-ui-bg-base border border-ui-border-base rounded text-sm"
+                  className="w-full px-2 py-1.5 bg-ui-bg-base border border-ui-border-base rounded text-sm mt-1"
                 >
                   <option value="text">Text</option>
                   <option value="number">Number</option>
+                  <option value="currency">Currency</option>
+                  <option value="percentage">Percentage</option>
                   <option value="date">Date</option>
                   <option value="boolean">Boolean</option>
                 </select>
               </div>
+              <div>
+                <Label size="xsmall">Alignment</Label>
+                <select
+                  value={newField.alignment}
+                  onChange={(e) => setNewField({ ...newField, alignment: e.target.value as any })}
+                  className="w-full px-2 py-1.5 bg-ui-bg-base border border-ui-border-base rounded text-sm mt-1"
+                >
+                  <option value="left">Left</option>
+                  <option value="center">Center</option>
+                  <option value="right">Right</option>
+                </select>
+              </div>
             </div>
+
+            <div className="grid grid-cols-2 gap-4 mt-4">
+              <div className="flex items-center gap-4">
+                <label className="flex items-center gap-2">
+                  <Checkbox 
+                    checked={newField.sortable}
+                    onCheckedChange={(checked) => setNewField({ ...newField, sortable: checked })}
+                  />
+                  <Text size="small">Sortable</Text>
+                </label>
+                <label className="flex items-center gap-2">
+                  <Checkbox 
+                    checked={newField.filterable}
+                    onCheckedChange={(checked) => setNewField({ ...newField, filterable: checked })}
+                  />
+                  <Text size="small">Filterable</Text>
+                </label>
+              </div>
+              <div className="flex items-center gap-4">
+                <label className="flex items-center gap-2">
+                  <Checkbox 
+                    checked={newField.searchable}
+                    onCheckedChange={(checked) => setNewField({ ...newField, searchable: checked })}
+                  />
+                  <Text size="small">Searchable</Text>
+                </label>
+                <label className="flex items-center gap-2">
+                  <Checkbox 
+                    checked={newField.visible}
+                    onCheckedChange={(checked) => setNewField({ ...newField, visible: checked })}
+                  />
+                  <Text size="small">Visible</Text>
+                </label>
+              </div>
+              <div className="flex items-center gap-4">
+                <label className="flex items-center gap-2">
+                  <Checkbox 
+                    checked={newField.editable}
+                    onCheckedChange={(checked) => setNewField({ ...newField, editable: checked })}
+                  />
+                  <Text size="small">Editable</Text>
+                </label>
+                <label className="flex items-center gap-2">
+                  <Checkbox 
+                    checked={newField.required}
+                    onCheckedChange={(checked) => setNewField({ ...newField, required: checked })}
+                  />
+                  <Text size="small">Required</Text>
+                </label>
+              </div>
+            </div>
+
             <div className="flex justify-end gap-2 mt-4">
               <Button
                 variant="secondary"
@@ -569,29 +699,23 @@ const ConfigTab = ({
         <div className="space-y-4">
           <div className="flex items-center gap-4">
             <label className="flex items-center gap-2">
-              <input
-                type="checkbox"
+              <Checkbox
                 checked={data.showIcons !== false}
-                onChange={(e) => onChange({ ...data, showIcons: e.target.checked })}
-                className="rounded border-ui-border-base"
+                onCheckedChange={(checked) => onChange({ ...data, showIcons: checked })}
               />
               <Text size="small">Show Icons</Text>
             </label>
             <label className="flex items-center gap-2">
-              <input
-                type="checkbox"
+              <Checkbox
                 checked={data.dense || false}
-                onChange={(e) => onChange({ ...data, dense: e.target.checked })}
-                className="rounded border-ui-border-base"
+                onCheckedChange={(checked) => onChange({ ...data, dense: checked })}
               />
               <Text size="small">Dense Layout</Text>
             </label>
             <label className="flex items-center gap-2">
-              <input
-                type="checkbox"
+              <Checkbox
                 checked={data.dividers !== false}
-                onChange={(e) => onChange({ ...data, dividers: e.target.checked })}
-                className="rounded border-ui-border-base"
+                onCheckedChange={(checked) => onChange({ ...data, dividers: checked })}
               />
               <Text size="small">Show Dividers</Text>
             </label>
@@ -604,14 +728,56 @@ const ConfigTab = ({
               value={data.maxItems || 10}
               onChange={(e) => onChange({ ...data, maxItems: parseInt(e.target.value) })}
               min={1}
-              max={100}
-              className="mt-1"
+              max={1000}
+              className="mt-1 w-32"
             />
+          </div>
+
+          <div>
+            <Label>Icon Field</Label>
+            <select
+              value={data.iconField || ''}
+              onChange={(e) => onChange({ ...data, iconField: e.target.value })}
+              className="w-full px-2 py-1.5 bg-ui-bg-base border border-ui-border-base rounded text-sm mt-1"
+            >
+              <option value="">None</option>
+              {fields.filter(f => f.visible).map(f => (
+                <option key={f.id} value={f.key}>{f.label}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <Label>Primary Field</Label>
+            <select
+              value={data.primaryField || ''}
+              onChange={(e) => onChange({ ...data, primaryField: e.target.value })}
+              className="w-full px-2 py-1.5 bg-ui-bg-base border border-ui-border-base rounded text-sm mt-1"
+            >
+              <option value="">Select primary field</option>
+              {fields.filter(f => f.visible).map(f => (
+                <option key={f.id} value={f.key}>{f.label}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <Label>Secondary Field</Label>
+            <select
+              value={data.secondaryField || ''}
+              onChange={(e) => onChange({ ...data, secondaryField: e.target.value })}
+              className="w-full px-2 py-1.5 bg-ui-bg-base border border-ui-border-base rounded text-sm mt-1"
+            >
+              <option value="">None</option>
+              {fields.filter(f => f.visible).map(f => (
+                <option key={f.id} value={f.key}>{f.label}</option>
+              ))}
+            </select>
           </div>
         </div>
       </div>
 
-      {/* Fields Configuration (reuse from table) */}
+      {/* Reuse fields configuration from table */}
       {renderTableConfig()}
     </div>
   )
@@ -655,17 +821,24 @@ export const EditReportDrawer: React.FC<EditReportDrawerProps> = ({
   useEffect(() => {
     if (record) {
       setFormData({
+        ...record.configuration,
         title: record.label || "",
-        description: record.description || "",
-        type: record.metadata.type || "",
+        description: record?.configuration?.description || "",
+        type: record?.configuration?.type || "",
         action_id: record.action_id || "",
-        fields: record.configuration.fields || [],
-        pageSize: record.configuration.pageSize || 10,
-        pageSizeOptions: record.configuration.pageSizeOptions || [10, 25, 50, 100],
-        showIcons: record.configuration.showIcons !== false,
-        dense: record.configuration.dense || false,
-        dividers: record.configuration.dividers !== false,
-        maxItems: record.configuration.maxItems || 10,
+        fields: record?.configuration?.fields || [],
+        pageSize: record?.configuration?.pageSize || 10,
+        pageSizeOptions: record?.configuration?.pageSizeOptions || [10, 25, 50, 100],
+        showRowNumbers: record?.configuration?.showRowNumbers || false,
+        stickyHeader: record?.configuration?.stickyHeader !== false,
+        exportable: record?.configuration?.exportable || false,
+        showIcons: record?.configuration?.showIcons !== false,
+        dense: record?.configuration?.dense || false,
+        dividers: record?.configuration?.dividers !== false,
+        maxItems: record?.configuration?.maxItems || 10,
+        iconField: record?.configuration?.iconField || '',
+        primaryField: record?.configuration?.primaryField || '',
+        secondaryField: record?.configuration?.secondaryField || '',
       })
     }
   }, [record])
@@ -673,13 +846,13 @@ export const EditReportDrawer: React.FC<EditReportDrawerProps> = ({
   if (!record) return null
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+    // e.preventDefault()
     setIsSubmitting(true)
     try {
+
       // Prepare the update data
       const updateData = {
         ...formData,
-        // Ensure fields are properly structured
         fields: formData.fields?.map((field: any) => ({
           key: field.key,
           label: field.label,
@@ -688,9 +861,14 @@ export const EditReportDrawer: React.FC<EditReportDrawerProps> = ({
           filterable: field.filterable,
           searchable: field.searchable,
           visible: field.visible,
+          editable: field.editable,
+          required: field.required,
+          alignment: field.alignment,
         })),
       }
       
+      console.log(updateData, 'UPDATING DATA')
+
       await onUpdate(updateData)
       onOpenChange(false)
       toast.success("Report updated successfully")
@@ -702,7 +880,6 @@ export const EditReportDrawer: React.FC<EditReportDrawerProps> = ({
   }
 
   const handleNext = () => {
-    // Validate basic info before proceeding
     if (!formData.title || !formData.type || !formData.action_id) {
       toast.error("Please fill in all required fields")
       return
@@ -712,9 +889,9 @@ export const EditReportDrawer: React.FC<EditReportDrawerProps> = ({
 
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
-      <Drawer.Content className="z-40 max-w-4xl">
+      <Drawer.Content className="z-40 max-w-5xl">
         <Drawer.Header>
-          <Drawer.Title>Edit Report</Drawer.Title>
+          <Drawer.Title>Edit Report: {record.title}</Drawer.Title>
           <div className="flex items-center gap-4 w-full mt-2">
             <ProgressTabs value={step.toString()} className="w-full">
               <ProgressTabs.List className="border-0">
@@ -731,7 +908,7 @@ export const EditReportDrawer: React.FC<EditReportDrawerProps> = ({
                   onClick={() => formData.title && formData.type && formData.action_id ? setStep(1) : null}
                   disabled={!formData.title || !formData.type || !formData.action_id}
                 >
-                  Configure Fields
+                  Configure Fields ({formData.fields?.length || 0})
                 </ProgressTabs.Trigger>
               </ProgressTabs.List>
             </ProgressTabs>
@@ -739,7 +916,7 @@ export const EditReportDrawer: React.FC<EditReportDrawerProps> = ({
         </Drawer.Header>
         
         <Drawer.Body className="overflow-y-auto max-h-[calc(100vh-200px)]">
-          <form onSubmit={handleSubmit}>
+          {/* <form onSubmit={handleSubmit}> */}
             {step === 0 && (
               <BasicInfoTab
                 data={formData}
@@ -785,7 +962,7 @@ export const EditReportDrawer: React.FC<EditReportDrawerProps> = ({
                     Back
                   </Button>
                   <Button 
-                    type="submit"
+                    onClick={() => handleSubmit()}
                     isLoading={isSubmitting}
                   >
                     Update Report
@@ -793,7 +970,7 @@ export const EditReportDrawer: React.FC<EditReportDrawerProps> = ({
                 </div>
               )}
             </div>
-          </form>
+          {/* </form> */}
         </Drawer.Body>
       </Drawer.Content>
     </Drawer>

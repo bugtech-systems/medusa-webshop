@@ -35,7 +35,7 @@ const ActionsPage = () => {
   const [searchQuery, setSearchQuery] = useState("")
   const [sortField, setSortField] = useState<SortField>('created_at')
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc')
-  const [statusFilter, setStatusFilter] = useState<FilterStatus>('all')
+  const [statusFilter, setStatusFilter] = useState<FilterStatus>('active')
   const [typeFilter, setTypeFilter] = useState<FilterType>('all')
   const [showAdvancedStatuses, setShowAdvancedStatuses] = useState(false)
 

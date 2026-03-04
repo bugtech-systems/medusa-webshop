@@ -9,17 +9,17 @@ import { widgetRegistry } from "./widgets"
 
 interface DraggableWidgetProps {
   widget: Widget
-  onUpdate: (widgetId: string, updates: Partial<Widget>) => void
+  onUpdate?: (widgetId: string, updates: Partial<Widget>) => void
   onDelete: (widgetId: string) => void
   onEdit: (widget: Widget) => void
-  onDuplicate: (widgetId: string) => void
+  onDuplicate?: (widgetId: string) => void
   onDragStart?: (e: React.MouseEvent, widget: Widget) => void
   onResizeStart?: (e: React.MouseEvent, widget: Widget, direction: string, axis?: 'x' | 'y') => void
   isDragging?: boolean
   isResizing?: boolean
   dragOffset?: { x: number; y: number }
-  gridMetrics: { colWidth: number; rowHeight: number; gap: number }
-  isEditing: boolean
+  gridMetrics: { colWidth: number; totalWidth?: number; rowHeight?: number; gap: number }
+  isEditing: any
 }
 
 export const DraggableWidget: React.FC<DraggableWidgetProps> = ({
@@ -104,7 +104,7 @@ export const DraggableWidget: React.FC<DraggableWidgetProps> = ({
       {/* Controls */}
       {isEditing && showControls && !isDragging && !isResizing && (
         <div className="absolute top-2 right-2 flex gap-1 z-10">
-          <Tooltip content="Edit widget">
+          {/* <Tooltip content="Edit widget">
             <Button
               size="small"
               variant="secondary"
@@ -113,8 +113,8 @@ export const DraggableWidget: React.FC<DraggableWidgetProps> = ({
             >
               <PencilSquare className="w-4 h-4" />
             </Button>
-          </Tooltip>
-          <Tooltip content="Duplicate widget">
+          </Tooltip> */}
+          {/* <Tooltip content="Duplicate widget">
             <Button
               size="small"
               variant="secondary"
@@ -123,7 +123,7 @@ export const DraggableWidget: React.FC<DraggableWidgetProps> = ({
             >
               <Copy className="w-4 h-4" />
             </Button>
-          </Tooltip>
+          </Tooltip> */}
           <Tooltip content="Delete widget">
             <Button
               size="small"
