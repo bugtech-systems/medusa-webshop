@@ -14,12 +14,12 @@
     "isolatedModules": true,
     "jsx": "preserve",
     "incremental": true,
-    "baseUrl": "./",
     "paths": {
       "@lib/*": ["src/lib/*"],
       "@modules/*": ["src/modules/*"],
       "@components/*": ["src/components/*"],
       "@pages/*": ["src/pages/*"],
+      "styles/*": ["src/styles/*"],
        "@/*": [
         "src/*"
       ],
