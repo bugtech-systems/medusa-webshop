@@ -16,12 +16,11 @@ import {
   setAuthToken,
 } from "./cookies"
 import { cache } from "react"
-import { B2BCustomer } from "types/global"
 
 
 
 export const getCustomer = cache(
-  async function (): Promise<B2BCustomer | null> {
+  async function (): Promise<any | null> {
     return await sdk.store.customer
       .retrieve(
         {
@@ -29,7 +28,7 @@ export const getCustomer = cache(
         },
         { ...(await getCacheHeaders("customers")), ...(await getAuthHeaders()) }
       )
-      .then(({ customer }) => customer as B2BCustomer)
+      .then(({ customer }) => customer as any)
       .catch(() => null)
   }
 )
@@ -66,7 +65,7 @@ export const retrieveCustomer =
      if(!authCustomer) return null;  
       
     let customerData = await retrieveCustomerById(authCustomer?.id) 
-    customer = {...authCustomer, membership: customerData?.groups ? customerData?.groups[0].name : 'nonmember' }  
+    customer = {...authCustomer, membership: customerData?.groups ? customerData?.groups[0]?.name : 'nonmember' }  
     return customer;
       
   }
@@ -101,7 +100,7 @@ export const retrieveCustomerById =
       .catch((e) => console.log(e, 'ERR'))
       
       
-      customerData = {...authCustomer, membership: authCustomer?.groups[0] ? authCustomer?.groups[0].name : 'nonmember'}
+      customerData = {...authCustomer, membership: authCustomer?.groups[0] ? authCustomer?.groups[0]?.name : 'nonmember'}
       
       return customerData
   }
