@@ -60,7 +60,6 @@ fetchWidget(widget.id)
   }, [widget, isEditing, isDragging])
 
 
-console.log(widgetData, widget, 'WDIDD')
 
   const WidgetComponent = widgetRegistry[widget?.type]
 

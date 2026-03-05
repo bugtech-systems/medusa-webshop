@@ -271,7 +271,6 @@ let context_template = template.context_template;
     )
 
     
-    console.log(template.config, config, context, "CONTXT")
     // let cleanConfig = removeNullKeys(config);
 
     // Execute based on type
@@ -478,11 +477,9 @@ private async executeScript(config: any, context: any): Promise<any> {
           {context: variables, outputs: workflowResults }
         ))
 
-        console.log(conf, actionConfig, 'ACTION ID')
 
       const action = await this.getActionTemplate(conf);
       if (!action) continue;
-      console.log(action, conf, 'ACTION DATA')
       let params = actionConfig.parameters;
             // Merge parameters
       const mergedParams = {

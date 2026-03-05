@@ -386,7 +386,6 @@ export const EditWidgetDrawer: React.FC<EditWidgetDrawerProps> = ({
       })
       setConfigValues(widget.configuration)
       if(widget?.metadata?.type == 'table'){
-      console.log(widget, 'WIIF CONF')
         setFields(widget?.configuration?.fields || [])
 
       }
