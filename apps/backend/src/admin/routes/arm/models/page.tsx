@@ -409,7 +409,6 @@ const AiModelsPage = () => {
   
   
   
-  console.log(filteredModels, 'modells', data, 'ddd')
 
   return (
     <>

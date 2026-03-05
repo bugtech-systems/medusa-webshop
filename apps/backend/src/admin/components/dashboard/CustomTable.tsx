@@ -271,7 +271,6 @@ const CustomTablePage = ({
 
 
 
-  console.log(columns, selectedRows, paginatedData, "TABLE DAATA")
   return (
     <Container>
       {/* Header Section */}

@@ -102,7 +102,6 @@ export const ConfigStep: React.FC<ConfigStepProps> = ({
   let { data: actions } = useExecution("get-active-actions") as any;
   const [errors, setErrors] = useState<Record<string, string>>({})
 
-console.log(actions, 'ACTIONs')
 
   const validate = () => {
     const { isValid, errors: validationErrors } = validateWidgetConfig(type, config)

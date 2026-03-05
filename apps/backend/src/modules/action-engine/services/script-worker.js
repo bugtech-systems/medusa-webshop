@@ -1,11 +1,9 @@
-// script-worker.js
 const { parentPort, workerData } = require("worker_threads");
 const vm = require("vm");
 
 const params = Object.freeze(workerData.params || {});
 const callStack = workerData.callStack || [];
 const memo = {};
-
 
 function parseAndPolishJSStringAdvanced(codeString) {
   // Remove carriage returns and split into lines
@@ -90,7 +88,8 @@ async function requestSubAction(type, identifier, params = {}) {
   });
 }
 
-// Create a sandboxed context using vm module instead of modifying global
+// Create a sandboxed context using vm module
+// Important: We need to create a context without any pre-existing bindings
 const sandbox = {
   // Allow these Node.js built-ins
   Buffer: Buffer,
@@ -104,7 +103,7 @@ const sandbox = {
   callAction: (name, params) => requestSubAction("callAction", name, params),
   callActionById: (id, params) => requestSubAction("callActionById", id, params),
   
-  // Create a safe process object
+  // Create a safe process object - FIXED: Use a Proxy to intercept property access
   process: new Proxy({}, {
     get(target, prop) {
       // Block dangerous methods
@@ -130,45 +129,45 @@ const sandbox = {
       };
       
       return safeProps[prop];
+    },
+    
+    // Prevent setting properties on process
+    set(target, prop, value) {
+      throw new Error(`Cannot set property ${prop} on process object in sandbox`);
     }
   }),
   
-  // Explicitly block these
-  require: undefined,
-  module: undefined,
-  exports: undefined,
-  __filename: undefined,
-  __dirname: undefined,
-  global: undefined,
+  // Add common globals that are safe
+  Array: Array,
+  Object: Object,
+  String: String,
+  Number: Number,
+  Boolean: Boolean,
+  Date: Date,
+  RegExp: RegExp,
+  Error: Error,
+  TypeError: TypeError,
+  Promise: Promise,
+  JSON: JSON,
+  Math: Math,
+  parseInt: parseInt,
+  parseFloat: parseFloat,
+  isNaN: isNaN,
+  isFinite: isFinite,
+  encodeURI: encodeURI,
+  encodeURIComponent: encodeURIComponent,
+  decodeURI: decodeURI,
+  decodeURIComponent: decodeURIComponent,
 };
 
-// Add common globals that are safe
-sandbox.Array = Array;
-sandbox.Object = Object;
-sandbox.String = String;
-sandbox.Number = Number;
-sandbox.Boolean = Boolean;
-sandbox.Date = Date;
-sandbox.RegExp = RegExp;
-sandbox.Error = Error;
-sandbox.TypeError = TypeError;
-sandbox.Promise = Promise;
-sandbox.JSON = JSON;
-sandbox.Math = Math;
-sandbox.parseInt = parseInt;
-sandbox.parseFloat = parseFloat;
-sandbox.isNaN = isNaN;
-sandbox.isFinite = isFinite;
-sandbox.encodeURI = encodeURI;
-sandbox.encodeURIComponent = encodeURIComponent;
-sandbox.decodeURI = decodeURI;
-sandbox.decodeURIComponent = decodeURIComponent;
+// Create the VM context with our sandbox
+const context = vm.createContext(sandbox);
 
 try {
-  // Create a VM context with our sandbox
-  const context = vm.createContext(sandbox);
-  console.log(parseAndPolishJSStringAdvanced(workerData.code), 'WORKER DATA')
+  console.log(parseAndPolishJSStringAdvanced(workerData.code), 'WORKER DATA');
+  
   // Wrap the user code to ensure it's a function
+  // IMPORTANT: Don't try to redeclare require or other globals in the code itself
   const script = new vm.Script(`
     (async function(props) {
       ${parseAndPolishJSStringAdvanced(workerData.code)}

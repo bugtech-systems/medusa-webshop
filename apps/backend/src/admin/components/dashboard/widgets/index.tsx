@@ -174,7 +174,6 @@ import { transformFieldsToColumns } from "../../widgets/modals/ViewWidgetModal"
 
   // Table Widget - Fills entire container with scrolling
   // export const TableWidget: React.FC<{ widget: Widget }> = ({ widget }) => {
-  //   console.log(widget, 'TABLLE WID')
   //   const { columns = [], data = [], pageSize = 5 } = widget.config
 
   //   return (

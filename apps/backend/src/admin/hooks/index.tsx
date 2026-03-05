@@ -37,8 +37,6 @@ export const useDrivers = (
     fetchDrivers();
   }, []);
   
-  
-console.log(data, 'DATAAA DRIVERS')
   return { data, loading };
 };
 

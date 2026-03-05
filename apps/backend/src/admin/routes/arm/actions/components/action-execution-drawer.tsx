@@ -526,13 +526,11 @@ export const ExecuteActionDrawer = ({
       
 
 
-  console.log(params, parsed, 'PARAAAMS')
   
       
       setLastParams(parsed)
       let newLogs = [];
 
-        console.log(parsed, 'Parsed cleaned')
 
       const res = await executeAction({
         parameters: parsed,
@@ -540,7 +538,6 @@ export const ExecuteActionDrawer = ({
         context: values.context,
         timeout: values.timeout,
       }) as any
-      console.log(res, 'RESSS', parsed)
       setExecutionId(res.executionId)
       
       
@@ -555,7 +552,6 @@ export const ExecuteActionDrawer = ({
       
       if(res?.outputs){
           newLogs = Object.entries(res.outputs).map(([key, value]) => {
-          console.log(key, value, 'OBJECT ENTRIES')
             return {data: value, action: key}
           }) as any
           setLogs(newLogs)

@@ -74,7 +74,6 @@ export const ModelActionsMenu = ({ model }: ActionActionsMenuProps) => {
   const handleDeploy = async () => {
     try {
     
-      console.log(model, 'eexeec')
     
       await executeAction({ parameters: {
         model: model.model_name,
@@ -105,13 +104,11 @@ export const ModelActionsMenu = ({ model }: ActionActionsMenuProps) => {
   }
 
   const handleUpdateContext = (newContext: any) => {
-    console.log('Context updated:', newContext)
     // Save context to state or backend
   }
 
 
 
-console.log(model, 'MODELL')
   return (
   <>
   <ModelFormDrawer 

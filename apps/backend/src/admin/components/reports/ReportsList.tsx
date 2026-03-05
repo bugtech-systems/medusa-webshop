@@ -82,7 +82,6 @@ export const ReportsList = ({ config }: ReportsListProps) => {
   }
 
   const handleCreate = async (data: any) => {
-    console.log(data, 'REPORT DATA CREATING')
     await createReport({ parameters: {
         ...data,
         label: data?.title,
@@ -129,7 +128,6 @@ export const ReportsList = ({ config }: ReportsListProps) => {
   // Calculate page count
   const pageCount = reports?.count ? Math.ceil(reports.count / pageSize) : 0
 
-console.log(reports, selectedRecord, 'REPP')
   
   let reportsData = reports?.data ? reports.data.map(a => ({...a, type: a.configuration?.type})) : [];
 

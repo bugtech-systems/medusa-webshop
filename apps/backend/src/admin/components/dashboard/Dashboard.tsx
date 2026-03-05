@@ -98,7 +98,6 @@ export const Dashboard: React.FC<DashboardProps> = ({}) => {
       if(dashboardData?.data){
        let newTabs = dashboardData?.data ? dashboardData?.data.map(tab => ({...tab, ...tab.configuration, title: tab.label, description: tab.description})) : []
         
-       console.log(dashboardData?.data, newTabs, 'NEWWW TABSS')
        return newTabs
       } else if (saved) {
         return JSON.parse(saved)
@@ -107,8 +106,6 @@ export const Dashboard: React.FC<DashboardProps> = ({}) => {
     }, [dashboardData])
 
 
-
-    console.log(dashboardData, initialTabs, 'INITIALS')
   // State for tracking changes
   const [tabs, setTabs] = useState<DashboardTab[]>(initialTabs)
   const [savedTabs, setSavedTabs] = useState<DashboardTab[]>(initialTabs)
@@ -264,7 +261,6 @@ export const Dashboard: React.FC<DashboardProps> = ({}) => {
       try {
         const result = await getDashboardTabs();
         if (result?.data && isMountedRef.current) {
-          console.log(result?.data, 'RESULTT')
           const transformedTabs = transformApiData(result.data)
           
           setTabs(transformedTabs)
@@ -380,7 +376,6 @@ export const Dashboard: React.FC<DashboardProps> = ({}) => {
       }
 
       // await updateLayout(bulkUpdate)
-      console.log(bulkUpdate, 'BULK UPDATEEs');
 
       let newTabs = tabs.map((tab: any) => ({id: tab.id, label: tab.title, description: tab.description, configuration: { ...tab.configuration, layout: tab.layout, widgets: tab.widgets }}))
 
@@ -484,7 +479,6 @@ export const Dashboard: React.FC<DashboardProps> = ({}) => {
 
   const gridMetrics = useMemo(() => {
     const metrics = getGridMetrics()
-    console.log('Grid metrics recalculated:', metrics, 'for tab:', activeTab?.id)
     return metrics
   }, [getGridMetrics, activeTab?.id, activeTab?.widgets])
 
@@ -902,7 +896,6 @@ const handleDragEnd = useCallback(() => {
   // RENDER GRID - WITH METRICS READY CHECK
   // ============================================================================
   const renderGrid = () => {
-    console.log(activeTab, 'render grid')
     if (!activeTab) return null
 
     const gridHeight = Math.max(
@@ -913,7 +906,6 @@ const handleDragEnd = useCallback(() => {
     const { colWidth } = gridMetrics
     const metricsValid = colWidth > 0
 
-    console.log('Grid render - metrics valid:', metricsValid, 'colWidth:', colWidth)
 
     return (
       <div 
@@ -1068,7 +1060,6 @@ const handleDragEnd = useCallback(() => {
 
   // Create new tab
   const handleCreateTab = async (tab: any) => {
-console.log(tab, 'TABB CREATE')
 
     if (!tab.title.trim()) {
       toast.error("Please enter a tab title")
@@ -1102,7 +1093,6 @@ console.log(tab, 'TABB CREATE')
       config: widget.config,
     }
         newWidgets.push(newWidget);
-      console.log(widget, 'WIDG')
 
 
     }
@@ -1175,7 +1165,6 @@ console.log(tab, 'TABB CREATE')
 
   // Update tab
   const handleUpdateTab = (updateData: any) => {
-    console.log(updateData, newTabTitle, 'UPDATE DATA')
     if (!editingTab) return
     if (!newTabTitle.trim()) {
       toast.error("Please enter a tab title")
@@ -1205,7 +1194,6 @@ console.log(tab, 'TABB CREATE')
       config: widget.config,
     }
         newWidgets.push(newWidget);
-      console.log(widget, 'WIDG')
     addPendingChange('update', activeTabId, newWidget, widget.id)
 
 
@@ -1216,7 +1204,6 @@ console.log(tab, 'TABB CREATE')
       title: newTabTitle,
       description: newTabDescription
     }
-      console.log(newWidgets, 'NEW WIDGSS')
 
 
     // Update local state

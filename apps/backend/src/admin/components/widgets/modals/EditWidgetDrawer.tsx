@@ -769,7 +769,6 @@ const renderTableConfig = () => (
 
 
   const renderConfigFields = () => {
-    console.log(selectedWidgetType, 'SELECTED WWIDG')
     if (!selectedWidgetType) return null
     
     if(selectedWidgetType.value == 'table') return renderTableConfig();
@@ -858,7 +857,6 @@ const renderTableConfig = () => (
   }
 
 
-  console.log(jsonConfig, 'JSONs')
   const renderStepContent = () => {
     if (isJsonMode) {
       return (
@@ -1002,7 +1000,6 @@ const renderTableConfig = () => (
     }
   }
 
-console.log(widget, 'WIDGET')
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
       <Drawer.Content className="z-40">

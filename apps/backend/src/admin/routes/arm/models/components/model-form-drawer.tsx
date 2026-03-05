@@ -480,11 +480,9 @@ export const ModelFormDrawer = ({
   }
 
   const onSubmit = async (data: AiModelFormData) => {
-  console.log(data, 'ddddd')
     try {
 
 
-  console.log(data, aiModel, 'MODELL UPDATEn yn')
 
       if (aiModel) {
         await updateAiModel(data)
@@ -503,7 +501,6 @@ export const ModelFormDrawer = ({
 
 
 
-console.log(baseModelsData, 'MODELS')
 
   return (
     <>

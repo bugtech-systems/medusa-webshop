@@ -36,7 +36,6 @@ const handleMessages = async () => {
 
 let conversation = data[0];
 
-console.log(data, conversation, 'CONVVER', conversation_id)
 
 
 
@@ -54,7 +53,6 @@ console.log(data, conversation, 'CONVVER', conversation_id)
 //     )
 //   }
 
-console.log(error, conversation, 'CONVVV')
 
   if (error || !conversation) {
     return (

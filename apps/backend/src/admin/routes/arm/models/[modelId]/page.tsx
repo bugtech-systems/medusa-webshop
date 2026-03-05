@@ -225,10 +225,7 @@ useEffect(() => {
   
   const handleModels = async () => {
     // let { data } = modelData
-         console.log('MODEL DDDD', error)
       let modelData = await executeAction({});
-      
-       console.log(modelData, 'MODEL DAAA', error)
   }
   
   const handleTraining = async () => {
@@ -239,7 +236,6 @@ useEffect(() => {
         parameters: model?.config
       }
       })
-     console.log(model, trainData, 'MODD')
 
   }
 
@@ -255,7 +251,6 @@ useEffect(() => {
   
 
 
-console.log(model, 'AVAAILABLE')
 
   return (
     <div className="flex flex-col gap-4">

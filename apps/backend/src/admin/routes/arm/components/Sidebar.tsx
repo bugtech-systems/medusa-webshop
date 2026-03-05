@@ -36,7 +36,6 @@ export default function Sidebar() {
     week: conversations.filter(c => c.group === "week"),
   }
   
-  console.log(conversations, 'wew')
 
   return (
     <>

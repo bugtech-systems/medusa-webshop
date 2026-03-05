@@ -303,7 +303,6 @@ const TableWidgetView = ({ config, metadata }: { config: TableConfig; metadata?:
     }
   }
 
-  console.log(config.columns, 'COLLS')
 
   return (
     <div className="space-y-6">
@@ -607,7 +606,6 @@ export default function WidgetViewModal({
   }
 
 
-console.log(widgetId, 'WIDG')
 
   // Get icon based on widget type
   const getWidgetIcon = () => {
@@ -630,7 +628,6 @@ console.log(widgetId, 'WIDG')
     if (!widget) return null
     
 
-    console.log(widget, 'WIDGET')
     switch (widget.type) {
       case 'stat':
         return <StatWidgetView config={widget.config as StatConfig} metadata={widget.metadata} />

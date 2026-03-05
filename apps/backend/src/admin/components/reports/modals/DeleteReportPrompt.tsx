@@ -22,7 +22,6 @@ export const DeleteReportPrompt: React.FC<DeleteReportPromptProps> = ({
     // onOpenChange(false)
   }
 
-  console.log(record, 'DELETE RECORD')
 
   return (
     <Prompt open={open} onOpenChange={onOpenChange}>

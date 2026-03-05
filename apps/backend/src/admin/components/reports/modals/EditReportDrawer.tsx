@@ -867,7 +867,6 @@ export const EditReportDrawer: React.FC<EditReportDrawerProps> = ({
         })),
       }
       
-      console.log(updateData, 'UPDATING DATA')
 
       await onUpdate(updateData)
       onOpenChange(false)

@@ -13,11 +13,7 @@ const DeliveryRow = ({ delivery }: { delivery: DeliveryDTO }) => {
     return <Table.Row></Table.Row>;
   }
 
-  console.log(data, 'dataaa compp', delivery)
-
   const company = data?.companies[0];
-
-  console.log(data, 'dataaa', delivery)
 
   return (
     <Table.Row>

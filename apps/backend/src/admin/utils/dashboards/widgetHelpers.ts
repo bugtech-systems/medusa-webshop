@@ -378,9 +378,7 @@ export const getWidgetStats = (tabs: DashboardTab[] = []): Record<string, number
   const stats: Record<string, number> = {}
  let newTabs = tabs ?? [];
 
- console.log(newTabs, 'TABDDD')
   newTabs.forEach(tab => {
-    console.log(tab.widgets, 'WIDGEE')
     tab.widgets ? tab.widgets.forEach(widget => {
       stats[widget.type] = (stats[widget.type] || 0) + 1
     }) : []

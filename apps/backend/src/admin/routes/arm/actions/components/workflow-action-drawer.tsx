@@ -255,7 +255,6 @@ const WorkflowActionDrawer = ({
     }
     
     
-    console.log(updatedAction, action, selectedAction, selectedActionId, 'UPDAATED ACT')
     
     
     onUpdateAction(updatedAction)

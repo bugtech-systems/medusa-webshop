@@ -159,7 +159,6 @@ const ActionFlowsPage = () => {
 
   // Handle edge changes (add, update, delete)
   const handleEdgesChange = (edges: ConnectionEdge[]) => {
-  console.log(edges, 'EDDGW')
     setWorkflowEdges(edges)
   }
 
@@ -197,7 +196,6 @@ const ActionFlowsPage = () => {
         if(!success) return;
     
     
-      console.log(data, 'ACT RESP')
     
             // Create edge from source to new node
     const newEdge: ConnectionEdge = {

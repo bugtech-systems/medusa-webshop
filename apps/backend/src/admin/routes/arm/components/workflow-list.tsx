@@ -31,7 +31,6 @@ export default function WorkflowList({ selectedId, onSelect }: Props) {
   }
   
   
-  console.log(isCreating, data, isLoading, 'wwwork')
 
   return (
     <div>

@@ -303,7 +303,6 @@ export const ActionDetailsTab = ({
 }, [watch]);
 
   const handleSave = async (data: ActionFormData) => {
-  console.log(data, 'DATAA')
     try {
       await updateAction({
         name: data.name,
@@ -359,7 +358,6 @@ export const ActionDetailsTab = ({
       setValue("type", pastedData.type)
     }
     
-    console.log(pastedData, 'PASATED')
 
     // Configuration
     if (pastedData.config) setValue("config", pastedData.config)
@@ -1128,7 +1126,6 @@ useEffect(() => {
 
   // Handle save from JsCodeEditor
   const handleSave = (config) => {
-  console.log(config, 'SASVEE')
     setValue('config.code', config.code)
     // onEditModeChange(false)
   }

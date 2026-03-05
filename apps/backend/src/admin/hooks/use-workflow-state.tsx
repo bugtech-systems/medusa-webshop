@@ -118,7 +118,6 @@ export const useWorkflowState = (workflowId: string | null) => {
   }, [setState])
 
 
-console.log(data, state, 'wwwork da')
 
   return {
     nodes,

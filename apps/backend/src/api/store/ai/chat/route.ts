@@ -51,7 +51,6 @@ console.log(req.body, 'REQQQ')
     
 
   let aiResponse =  await aiService.streamChat({ session_id, user_message: message, language, onToken })
-console.log(assistantResponse, 'aasssit', aiResponse)
     // Return the AI response
     const response: any = {
       session_id,

@@ -116,14 +116,12 @@ export const WidgetsList = ({  onWidgetUpdate }: WidgetsListProps) => {
   const fetchWidget = async (widgetId: any) => {
         let widget = widgets.find(a => a.id == widgetId);
         let {data: widgetData} = await getWidgetData({parameters: {widget_id: widgetId}}) as any;
-console.log(widgetData, widgetData.type, 'WIDGGDDA')
 return {...widgetData, type: widget?.metadata?.type, ...(widgetData.type == 'table' ? {fields: widgetData.config.fields} : {}), data: widgetData.data};
   }
 
 
   const handleAddWidget = async (widgetData: Partial<Widget>) => {
     try {
-     console.log(widgetData, 'ADD WWIDGE')
 
       const newWidget = {
         ...widgetData,
@@ -146,7 +144,6 @@ return {...widgetData, type: widget?.metadata?.type, ...(widgetData.type == 'tab
     try {
 
 
-      console.log(widgetId, updates, 'WIDGET UPDATE')
       await updateWidget({ 
         parameters: {id: widgetId, ...updates} 
       })
@@ -194,7 +191,6 @@ return {...widgetData, type: widget?.metadata?.type, ...(widgetData.type == 'tab
     return colors[type] || "grey"
   }
 
-  console.log(widgetsData, "WIDSG DAT")
 
   return (
     <Container>

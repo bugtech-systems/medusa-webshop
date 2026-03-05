@@ -85,7 +85,6 @@ export const useAdminCreateCustomer = (
       });
       
       
-            console.log(customers, 'CUSTOMERRS')
 
 
       const existingCustomer = customers?.find(
@@ -94,7 +93,6 @@ export const useAdminCreateCustomer = (
           c.company_name === companyName
       );
       
-      console.log(customers, 'CUSTOMERRS', existingCustomer)
 
       /**
        * 2. Return existing customer if found
