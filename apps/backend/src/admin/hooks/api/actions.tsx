@@ -354,11 +354,128 @@ export const useUpdateActionTemplate = (
 
 
 
-
 /* ============================================================
-   Execute Action Hooks
+   Execute Action Hooks with Caching
 ============================================================ */
 
+// Cache configuration
+const CACHE_CONFIG = {
+  // Cache duration in milliseconds (5 minutes default)
+  DEFAULT_TTL: 5 * 60 * 1000,
+  // Maximum cache size (number of entries)
+  MAX_CACHE_SIZE: 100,
+  // Cache keys for different types
+  keys: {
+    actionExecution: (actionId: string, paramsHash?: string) => 
+      `action-execution-${actionId}${paramsHash ? `-${paramsHash}` : ''}`,
+    actionHistory: (actionId: string, page?: number) => 
+      `action-history-${actionId}${page ? `-page-${page}` : ''}`,
+  }
+};
+
+// In-memory cache implementation
+class ActionCache {
+  private cache: Map<string, {
+    data: any;
+    timestamp: number;
+    ttl: number;
+  }> = new Map();
+
+  set(key: string, data: any, ttl: number = CACHE_CONFIG.DEFAULT_TTL) {
+    // Enforce max cache size
+    if (this.cache.size >= CACHE_CONFIG.MAX_CACHE_SIZE) {
+      const oldestKey = this.cache.keys().next().value;
+      this.cache.delete(oldestKey);
+    }
+    
+    this.cache.set(key, {
+      data,
+      timestamp: Date.now(),
+      ttl
+    });
+  }
+
+  get(key: string): any | null {
+    const entry = this.cache.get(key);
+    
+    if (!entry) return null;
+    
+    // Check if cache has expired
+    if (Date.now() - entry.timestamp > entry.ttl) {
+      this.cache.delete(key);
+      return null;
+    }
+    
+    return entry.data;
+  }
+
+  invalidate(pattern?: RegExp) {
+    if (!pattern) {
+      this.cache.clear();
+      return;
+    }
+    
+    for (const key of this.cache.keys()) {
+      if (pattern.test(key)) {
+        this.cache.delete(key);
+      }
+    }
+  }
+
+  invalidateAction(actionId: string) {
+    const pattern = new RegExp(`action-execution-${actionId}`);
+    this.invalidate(pattern);
+  }
+
+  get size() {
+    return this.cache.size;
+  }
+}
+
+// Create cache instance
+const actionCache = new ActionCache();
+
+// Simple browser-compatible hash function
+const generateSimpleHash = (str: string): string => {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash; // Convert to 32-bit integer
+  }
+  return Math.abs(hash).toString(36);
+};
+
+// Browser-compatible params hash generator (no Buffer dependency)
+const generateParamsHash = (params: any): string => {
+  if (!params) return '';
+  
+  try {
+    // Create deterministic string representation
+    const sortedParams = Object.keys(params)
+      .sort()
+      .reduce((acc, key) => {
+        if (params[key] !== undefined && params[key] !== null) {
+          acc[key] = params[key];
+        }
+        return acc;
+      }, {} as Record<string, any>);
+    
+    // Stringify and create a simple hash
+    const paramsString = JSON.stringify(sortedParams);
+    
+    // Use a simple hashing algorithm instead of Buffer
+    return generateSimpleHash(paramsString);
+    
+  } catch (error) {
+    console.warn('Failed to generate params hash:', error);
+    // Fallback to timestamp to avoid cache collisions but still function
+    return Date.now().toString();
+  }
+};
+
+
+// Execute action with caching
 export const useExecuteAction = (
   actionId: string,
   options?: UseMutationOptions<
@@ -367,11 +484,27 @@ export const useExecuteAction = (
     any
   >
 ) => {
-  const queryClient = useQueryClient()
+  const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (execution?: any) =>
-      sdk.client.fetch<AdminExecuteActionResponse>(
+    mutationFn: async (execution?: any) => {
+      // Generate cache key
+      const paramsHash = execution ? generateParamsHash(execution) : '';
+      const cacheKey = CACHE_CONFIG.keys.actionExecution(actionId, paramsHash);
+      
+      // Check cache first for GET-like operations
+      if (!execution || Object.keys(execution).length === 0) {
+        const cachedData = actionCache.get(cacheKey);
+        if (cachedData) {
+          console.log(`[Cache HIT] Action execution: ${actionId}`);
+          return cachedData;
+        }
+      }
+      
+      console.log(`[Cache MISS] Action execution: ${actionId}`);
+      
+      // Execute the action
+      const response = await sdk.client.fetch<AdminExecuteActionResponse>(
         `/admin/actions/${actionId}/execute`,
         {
           method: "POST",
@@ -380,56 +513,187 @@ export const useExecuteAction = (
           },
           body: execution,
         }
-      ),
+      );
+      
+      // Cache the response if it's a GET-like operation (no execution payload)
+      if (!execution || Object.keys(execution).length === 0) {
+        actionCache.set(cacheKey, response);
+      }
+      
+      return response;
+    },
     onSuccess: (data, variables, context) => {
+      // Invalidate cache for this action
+      actionCache.invalidateAction(actionId);
+      
+      // Invalidate React Query cache
       queryClient.invalidateQueries({
         queryKey: actionsQueryKey.detail(actionId),
-      })
+      });
+      
       queryClient.invalidateQueries({
         queryKey: ["actionExecutionHistory", actionId],
-      })
-      options?.onSuccess?.(data, variables, context)
+      });
+      
+      options?.onSuccess?.(data, variables, context);
     },
     ...options,
-  })
-}
+  });
+};
 
-
-
-// List reports with filtering, pagination, and sorting
+// List executions with caching
 export const useExecution = (
   actionId?: any,
   query?: any,
   options?: any
 ) => {
-  const filterQuery = query ? new URLSearchParams(
-    Object.entries(query).reduce((acc, [key, value]) => {
-      if (value !== undefined && value !== null && value !== "") {
-        acc[key] = String(value)
-      }
-      return acc
-    }, {} as Record<string, string>)
-  ).toString() : ""
-
-  const fetchReports = async () =>
-    sdk.client.fetch<AdminExecuteActionResponse>(
-        `/admin/actions/${actionId}/execute`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: query ? query : {},
+  const fetchReports = async () => {
+    if (!actionId) return null;
+    
+    // Generate cache key based on actionId and query params
+    const paramsHash = query ? generateParamsHash(query) : '';
+    const cacheKey = CACHE_CONFIG.keys.actionExecution(actionId, paramsHash);
+    
+    // Check cache
+    const cachedData = actionCache.get(cacheKey);
+    if (cachedData) {
+      console.log(`[Cache HIT] Execution list: ${actionId}`, query);
+      return cachedData;
+    }
+    
+    console.log(`[Cache MISS] Execution list: ${actionId}`, query);
+    
+    // Build query string
+    const filterQuery = query ? new URLSearchParams(
+      Object.entries(query).reduce((acc, [key, value]) => {
+        if (value !== undefined && value !== null && value !== "") {
+          acc[key] = String(value);
         }
-      )
+        return acc;
+      }, {} as Record<string, string>)
+    ).toString() : "";
+    
+    const url = `/admin/actions/${actionId}/execute${filterQuery ? `?${filterQuery}` : ''}`;
+    
+    const response = await sdk.client.fetch<AdminExecuteActionResponse>(
+      url,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: query ? query : {},
+      }
+    );
+    
+    // Cache the response
+    actionCache.set(cacheKey, response);
+    
+    return response;
+  };
 
   return useQuery({
-    queryKey: actionsQueryKey.list(actionId),
+    queryKey: actionsQueryKey.list(actionId, query),
     queryFn: fetchReports,
-    ...(options ? options : {}),
-  })
-}
+    staleTime: CACHE_CONFIG.DEFAULT_TTL, // Consider data stale after TTL
+    gcTime: CACHE_CONFIG.DEFAULT_TTL * 2, // Keep in cache twice as long as stale time
+    enabled: !!actionId,
+    ...options,
+  });
+};
 
+// Cache management utilities
+export const actionCacheUtils = {
+  // Clear entire cache
+  clearCache: () => {
+    actionCache.invalidate();
+  },
+  
+  // Invalidate cache for specific action
+  invalidateAction: (actionId: string) => {
+    actionCache.invalidateAction(actionId);
+  },
+  
+  // Get cache stats
+  getCacheStats: () => {
+    return {
+      size: actionCache.size,
+      maxSize: CACHE_CONFIG.MAX_CACHE_SIZE,
+    };
+  },
+  
+  // Prefetch action execution
+  prefetchExecution: async (actionId: string, query?: any) => {
+    const paramsHash = query ? generateParamsHash(query) : '';
+    const cacheKey = CACHE_CONFIG.keys.actionExecution(actionId, paramsHash);
+    
+    // Skip if already cached
+    if (actionCache.get(cacheKey)) {
+      return;
+    }
+    
+    const filterQuery = query ? new URLSearchParams(
+      Object.entries(query).reduce((acc, [key, value]) => {
+        if (value !== undefined && value !== null && value !== "") {
+          acc[key] = String(value);
+        }
+        return acc;
+      }, {} as Record<string, string>)
+    ).toString() : "";
+    
+    const url = `/admin/actions/${actionId}/execute${filterQuery ? `?${filterQuery}` : ''}`;
+    
+    const response = await sdk.client.fetch<AdminExecuteActionResponse>(
+      url,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: query ? query : {},
+      }
+    );
+    
+    actionCache.set(cacheKey, response);
+    return response;
+  },
+  
+  // Set custom TTL for specific action
+  setCustomTTL: (actionId: string, ttl: number) => {
+    // This would require extending the cache implementation
+    // For now, we'll just log a warning
+    console.warn('Custom TTL not implemented yet');
+  },
+};
+
+// // Optional: Add persistence to localStorage/sessionStorage
+// export const usePersistentCache = (enabled: boolean = false) => {
+//   if (!enabled) return;
+  
+//   // Load cache from storage on mount
+//   React.useEffect(() => {
+//     try {
+//       const savedCache = localStorage.getItem('action-cache');
+//       if (savedCache) {
+//         const parsed = JSON.parse(savedCache);
+//         // Rehydrate cache (implementation depends on your needs)
+//         console.log('Loaded cache from storage:', parsed);
+//       }
+//     } catch (error) {
+//       console.error('Failed to load cache from storage:', error);
+//     }
+    
+//     // Save cache to storage on unmount
+//     return () => {
+//       try {
+//         // This is a simplified example - you'd need to serialize your cache properly
+//         // localStorage.setItem('action-cache', JSON.stringify(actionCache));
+//       } catch (error) {
+//         console.error('Failed to save cache to storage:', error);
+//       }
+//     };
+//   }, []);
+// };
 
 export const useActionExecutionHistory = (
   actionId: string,

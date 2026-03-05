@@ -52,13 +52,15 @@ export const DraggableWidget: React.FC<DraggableWidgetProps> = ({
 
 
   useEffect(() => {
-
+if(!isEditing && !isDragging){
 fetchWidget(widget.id)    
+}
 
 
-  }, [widget])
+  }, [widget, isEditing, isDragging])
 
 
+console.log(widgetData, widget, 'WDIDD')
 
   const WidgetComponent = widgetRegistry[widget?.type]
 
