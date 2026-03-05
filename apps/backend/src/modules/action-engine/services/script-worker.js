@@ -1,124 +1,158 @@
-const { parentPort, workerData } = require("worker_threads");
-const vm = require("vm");
+const { parentPort, workerData } = require("worker_threads")
+const vm = require("vm")
 
-// ==================== Configuration ====================
-// Allowed global objects from Node.js
-const ALLOWED_GLOBALS = [
-  'console', 'setTimeout', 'clearTimeout', 'setInterval', 'clearInterval',
-  'Buffer', 'Array', 'Object', 'String', 'Number', 'Boolean', 'Date',
-  'RegExp', 'Error', 'TypeError', 'Promise', 'JSON', 'Math',
-  'parseInt', 'parseFloat', 'isNaN', 'isFinite',
-  'encodeURI', 'encodeURIComponent', 'decodeURI', 'decodeURIComponent'
-];
+// ================= Allowed Globals =================
+const ALLOWED_GLOBALS = {
+  console,
+  setTimeout,
+  clearTimeout,
+  setInterval,
+  clearInterval,
+  Buffer,
+  Array,
+  Object,
+  String,
+  Number,
+  Boolean,
+  Date,
+  RegExp,
+  Error,
+  TypeError,
+  Promise,
+  JSON,
+  Math,
+  parseInt,
+  parseFloat,
+  isNaN,
+  isFinite,
+  encodeURI,
+  encodeURIComponent,
+  decodeURI,
+  decodeURIComponent,
+}
 
-// ==================== Safe Process Proxy ====================
-const safeProcess = new Proxy({}, {
-  get(target, prop) {
-    const blocked = ['exit', 'kill', 'abort', 'abortOnUncaughtException', 'dlopen', 'binding'];
-    if (blocked.includes(prop)) {
-      throw new Error(`process.${prop}() is disabled in sandbox`);
-    }
-    const safe = {
-      env: { NODE_ENV: process.env.NODE_ENV || 'development' },
-      cwd: () => process.cwd(),
-      nextTick: (fn) => Promise.resolve().then(() => fn()),
-      platform: process.platform,
-      arch: process.arch,
-      pid: null,
-      ppid: null,
-      argv: [],
-      argv0: null,
-      version: process.version,
-      versions: process.versions,
-    };
-    return safe[prop];
-  },
-  set() { throw new Error("Cannot modify process object in sandbox"); }
-});
+// ================= Safe Process Proxy =================
+const safeProcess = new Proxy(
+  {},
+  {
+    get(target, prop) {
+      const blocked = [
+        "exit",
+        "kill",
+        "abort",
+        "dlopen",
+        "binding",
+        "abortOnUncaughtException",
+      ]
 
-// ==================== Request Sub-Action ====================
-const memo = new Map();
-const callStack = workerData.callStack || [];
+      if (blocked.includes(prop)) {
+        throw new Error(`process.${prop}() is disabled in sandbox`)
+      }
+
+      const safe = {
+        env: { NODE_ENV: process.env.NODE_ENV || "development" },
+        cwd: () => process.cwd(),
+        platform: process.platform,
+        arch: process.arch,
+        version: process.version,
+        versions: process.versions,
+        nextTick: (fn) => Promise.resolve().then(fn),
+      }
+
+      return safe[prop]
+    },
+  }
+)
+
+// ================= Sub Action Messaging =================
+const memo = new Map()
+const callStack = workerData.callStack || []
 
 async function requestSubAction(type, identifier, params = {}) {
-  const key = JSON.stringify({ type, identifier, params });
-  if (memo.has(key)) return memo.get(key);
+  const key = JSON.stringify({ type, identifier, params })
+
+  if (memo.has(key)) {
+    return memo.get(key)
+  }
 
   return new Promise((resolve) => {
     parentPort.once("message", (msg) => {
       if (msg.type === "callActionResult") {
-        memo.set(key, msg.payload);
-        resolve(msg.payload);
+        memo.set(key, msg.payload)
+        resolve(msg.payload)
       }
-    });
+    })
 
     parentPort.postMessage({
       type,
-      payload: { identifier, params, callStack }
-    });
-  });
+      payload: { identifier, params, callStack },
+    })
+  })
 }
 
-// ==================== Sandbox Creation ====================
+// ================= Create Sandbox =================
 function createSandbox() {
-  const sandbox = {};
+  const sandbox = Object.create(null)
 
-  // Add allowed globals
-  for (const g of ALLOWED_GLOBALS) {
-    if (g === 'console') {
-      // Optional: prefix logs for better debugging
-      sandbox.console = new Proxy(console, {
-        get(target, prop) {
-          if (typeof target[prop] === 'function') {
-            return (...args) => target[prop]('[Sandbox]', ...args);
-          }
-          return target[prop];
-        }
-      });
-    } else {
-      sandbox[g] = global[g];
-    }
-  }
+  // inject allowed globals
+  Object.assign(sandbox, ALLOWED_GLOBALS)
 
-  // Custom Medusa action functions
-  sandbox.callAction = (name, params) => requestSubAction("callAction", name, params);
-  sandbox.callActionById = (id, params) => requestSubAction("callActionById", id, params);
+  // safer console
+  sandbox.console = new Proxy(console, {
+    get(target, prop) {
+      if (typeof target[prop] === "function") {
+        return (...args) => target[prop]("[Sandbox]", ...args)
+      }
+      return target[prop]
+    },
+  })
 
-  // Safe process object
-  sandbox.process = safeProcess;
+  // medusa actions
+  sandbox.callAction = (name, params) =>
+    requestSubAction("callAction", name, params)
 
-  return sandbox;
+  sandbox.callActionById = (id, params) =>
+    requestSubAction("callActionById", id, params)
+
+  sandbox.process = safeProcess
+
+  // explicitly block dangerous globals
+  sandbox.require = undefined
+  sandbox.module = undefined
+  sandbox.exports = undefined
+  sandbox.global = undefined
+
+  return sandbox
 }
 
-// ==================== Main Execution ====================
-(async () => {
+// ================= Execution =================
+async function execute() {
+  const { code, params } = workerData
+
+  const sandbox = createSandbox()
+
+  const context = vm.createContext(sandbox, {
+    name: "medusa-script-sandbox",
+  })
+
   try {
-    const { code, params } = workerData;
+    // compile function safely
+    const userFn = vm.compileFunction(
+      `"use strict"; ${code}`,
+      ["props"],
+      {
+        parsingContext: context,
+      }
+    )
 
-    // Create isolated sandbox and context
-    const sandbox = createSandbox();
-    const context = vm.createContext(sandbox);
+    const result = await userFn(Object.freeze(params))
 
-    // Wrap user code in an async function that receives `props`
-    const scriptSource = `
-      (async function(props) {
-        ${code}
-      })
-    `;
-
-    // Compile and run to get the function
-    const script = new vm.Script(scriptSource);
-    const userFn = script.runInContext(context);
-
-    if (typeof userFn !== 'function') {
-      throw new TypeError("The provided code did not evaluate to a function");
-    }
-
-    // Execute with frozen parameters to prevent mutation
-    const result = await userFn(Object.freeze(params));
-
-    parentPort.postMessage({ result });
+    parentPort.postMessage({ result })
   } catch (err) {
-    parentPort.postMessage({ error: err.message });
+    parentPort.postMessage({
+      error: err?.stack || err?.message || String(err),
+    })
   }
-})();
+}
+
+execute()
