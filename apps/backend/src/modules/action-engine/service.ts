@@ -437,21 +437,32 @@ private async executeScript(config: any, context: any): Promise<any> {
         workerData: {
           code: config.code,
           params: context,
-          callStack: [context.executionId || "root"]
-        }
+          callStack: [context.executionId ?? "root"],
+        },
       }
-    );
+    )
 
-    worker.on("message", (msg) => {
-      if (msg.error) return reject(new Error(msg.error));
-      resolve(msg.result);
-    });
+    worker.once("message", (msg) => {
+      worker.terminate()
 
-    worker.on("error", reject);
-    worker.on("exit", (code) => {
-      if (code !== 0) reject(new Error(`Worker stopped with exit code ${code}`));
-    });
-  });
+      if (msg?.error) {
+        return reject(new Error(msg.error))
+      }
+
+      resolve(msg?.result)
+    })
+
+    worker.once("error", (err) => {
+      worker.terminate()
+      reject(err)
+    })
+
+    worker.once("exit", (code) => {
+      if (code !== 0) {
+        reject(new Error(`Worker stopped with exit code ${code}`))
+      }
+    })
+  })
 }
 
 
