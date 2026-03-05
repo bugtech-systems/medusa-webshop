@@ -103,7 +103,9 @@ export async function generateCompletion({
   
 
   const ollamaResponse = await response.json();
-
+console.log({
+  prompt,
+}, prompt, ollamaResponse, 'OLLAAP')
   // 🟢 Parse the model's JSON string into an object
   try {
     ollamaResponse.response = JSON.parse(ollamaResponse.response);

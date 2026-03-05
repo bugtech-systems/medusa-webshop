@@ -353,7 +353,7 @@ export const EditWidgetDrawer: React.FC<EditWidgetDrawerProps> = ({
   const [showAddField, setShowAddField] = useState(false)
   const [nextId, setNextId] = useState(4)
   const [selectedType, setSelectedType] = useState("stat")
-  const [fields, setFields] = useState<any>(widget?.configuration?.fields || [ ])
+  const [fields, setFields] = useState<any>([ ])
 
 
   const steps = [
@@ -386,7 +386,8 @@ export const EditWidgetDrawer: React.FC<EditWidgetDrawerProps> = ({
       })
       setConfigValues(widget.configuration)
       if(widget?.metadata?.type == 'table'){
-        setFields(widget?.configuration?.fields)
+      console.log(widget, 'WIIF CONF')
+        setFields(widget?.configuration?.fields || [])
 
       }
       // Handle config based on widget type
