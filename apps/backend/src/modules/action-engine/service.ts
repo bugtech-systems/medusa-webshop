@@ -433,7 +433,7 @@ let queryConfig = {debug: true, limit: 10, ...config}
 private async executeScript(config: any, context: any): Promise<any> {
   return new Promise((resolve, reject) => {
     const worker = new Worker(
-      path.resolve(__dirname, "services", "script-worker.js"),
+      path.resolve(__dirname, "services", "script-worker.mjs"),
       {
         workerData: {
           code: config.code,

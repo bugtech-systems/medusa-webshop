@@ -699,15 +699,7 @@ export default function WidgetViewModal({
       <FocusModal.Content>
         <FocusModal.Header>
           <div className="flex items-center gap-2">
-            {getWidgetIcon()}
-            <Text weight="plus" className="text-ui-fg-base">
-              Widget ID: {widget.id}
-            </Text>
-          </div>
-          <div className="flex items-center gap-2">
-            {widget.metadata?.version && (
-              <Badge size="small">v{widget.metadata.version}</Badge>
-            )}
+
             <Button variant="primary" onClick={handleClose}>
               Close
             </Button>
@@ -738,7 +730,7 @@ export default function WidgetViewModal({
             {renderWidgetContent()}
 
             {/* Export/Action Buttons */}
-            <div className="mt-8 flex justify-end gap-2">
+            {/* <div className="mt-8 flex justify-end gap-2">
               <Button variant="secondary">
                 Export Data
               </Button>
@@ -750,7 +742,7 @@ export default function WidgetViewModal({
               }}>
                 Refresh
               </Button>
-            </div>
+            </div> */}
           </div>
         </FocusModal.Body>
       </FocusModal.Content>
