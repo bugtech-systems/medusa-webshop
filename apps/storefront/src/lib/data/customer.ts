@@ -24,7 +24,7 @@ export const getCustomer = cache(
     return await sdk.store.customer
       .retrieve(
         {
-          fields: "+orders.*",
+          fields: "*orders",
         },
         { ...(await getCacheHeaders("customers")), ...(await getAuthHeaders()) }
       )
@@ -53,14 +53,14 @@ export const retrieveCustomer =
       .fetch<{ customer: any }>(`/store/customers/me`, {
         method: "GET",
         query: {
-          fields: "*orders",
+          // fields: "*orders",
         },
         headers,
         next,
         cache: "force-cache",
       })
       .then(({ customer }) => customer)
-      .catch((e) => console.log(e, 'ERR'))
+      .catch((e) => {return null})
        
      if(!authCustomer) return null;  
       

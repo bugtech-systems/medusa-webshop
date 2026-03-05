@@ -24,7 +24,9 @@
         "src/*"
       ],
       "@starter/types": ["src/types"],
-      "@starter/types/*": ["src/types/*"]
+      "@starter/types/*": ["src/types/*"],
+      "types/*": ["src/types/*"]
+
     },
     "plugins": [
       {

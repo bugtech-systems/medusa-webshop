@@ -3,7 +3,7 @@ import { listCartPaymentMethods } from "@lib/data/payment"
 import SignInPrompt from "@modules/cart/components/sign-in-prompt"
 import BillingAddress from "@modules/checkout/components/billing-address"
 import Company from "@modules/checkout/components/company"
-import ContactDetails from "@modules/checkout/components/contact-details"
+// import ContactDetails from "@modules/checkout/components/contact-details"
 // import ContactDetails from "@modules/checkout/components/contact-details"
 import Payment from "@modules/checkout/components/payment"
 import Shipping from "@modules/checkout/components/shipping"
@@ -11,14 +11,13 @@ import ShippingAddress from "@modules/checkout/components/shipping-address"
 import Button from "@modules/common/components/button"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import UTurnArrowRight from "@modules/common/icons/u-turn-arrow-right"
-import { B2BCart, B2BCustomer } from "types/global"
 
 export default async function CheckoutForm({
   cart,
   customer,
 }: {
-  cart: B2BCart | null
-  customer: B2BCustomer | null
+  cart: any
+  customer: any | null
 }) {
   if (!cart) {
     return null
@@ -33,6 +32,8 @@ export default async function CheckoutForm({
   
   
   
+
+    console.log(cart, shippingMethods, paymentMethods,'CART')
 
   return (
     <div>

@@ -639,6 +639,7 @@ export const ExecuteActionDrawer = ({
 
 
 
+  console.log(executionResult, 'EXECC')
 
   return (
     <>
@@ -1124,7 +1125,7 @@ export const ExecuteActionDrawer = ({
                             </Heading>
                           </div>
                           <JsonViewer 
-                            data={executionResult?.data || {}} 
+                            data={executionResult?.data || executionResult || {}} 
                             title="Response"
                             collapsible={true}
                           />

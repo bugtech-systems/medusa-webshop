@@ -7,8 +7,7 @@ import { Container, Heading, Text, useToggleState } from "@medusajs/ui"
 import Divider from "@modules/common/components/divider"
 import Spinner from "@modules/common/icons/spinner"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
-import { useCallback } from "react"
-import { useFormState } from "react-dom"
+import { useCallback, useState, useTransition } from "react" // ✅ Updated imports
 import { B2BCart, B2BCustomer } from "types/global"
 import ErrorMessage from "../error-message"
 import ShippingAddressForm from "../shipping-address-form"
@@ -24,6 +23,8 @@ const ShippingAddress = ({
   const searchParams = useSearchParams()
   const router = useRouter()
   const pathname = usePathname()
+  const [isPending, startTransition] = useTransition() // ✅ For loading state
+  const [message, setMessage] = useState(null) // ✅ Replace useActionState with useState
 
   const isOpen = searchParams.get("step") === "shipping-address"
 
@@ -37,11 +38,11 @@ const ShippingAddress = ({
     (name: string, value: string) => {
       const params = new URLSearchParams(searchParams)
       params.set(name, value)
-
       return params.toString()
     },
     [searchParams]
   )
+
   const handleEdit = () => {
     router.push(
       pathname + "?" + createQueryString("step", "shipping-address"),
@@ -49,8 +50,13 @@ const ShippingAddress = ({
     )
   }
 
-  const [message, formAction] = useFormState(setAddresses, null)
-
+  // ✅ Create a form action handler for React 18
+  const handleSubmit = async (formData: FormData) => {
+    startTransition(async () => {
+      const result = await setAddresses(null, formData)
+      setMessage(result)
+    })
+  }
 
   return (
     <Container>
@@ -78,16 +84,14 @@ const ShippingAddress = ({
         </div>
         <Divider />
         {isOpen ? (
-          <form action={formAction}>
+          <form action={handleSubmit}> {/* ✅ Updated to use handleSubmit */}
             <div className="pb-8">
-              <ShippingAddressForm
-                customer={customer}
-                cart={cart}
-              />
+              <ShippingAddressForm customer={customer} cart={cart} />
               <div className="flex flex-col gap-y-2 items-end">
                 <SubmitButton
                   className="mt-6"
                   data-testid="submit-address-button"
+                  isLoading={isPending} // ✅ Add loading state
                 >
                   Next step
                 </SubmitButton>

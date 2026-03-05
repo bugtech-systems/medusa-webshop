@@ -15,6 +15,8 @@ import { Worker } from "worker_threads"
 import path from "path"
 import { chatCompletion, generateCompletion, generateEmbedding, streamChatCompletion } from "../../utils/ollama"
 import { DbOperationService } from "./services/database-action-service"
+import {  } from "./services/script-worker"
+
 import { ActionConfig, Condition, ExecutionStatus, HealthCheckResult, QueryBuilderResult, QueryConfig, StandardResponse, WhereCondition } from "./types"
 import { parseActionInput, validateActionInput } from "../../utils/validators"
 import { parseFieldsString, refineObjectByFields, removeEmptyObjects, removeNullKeys } from "../../utils/helpers"
@@ -64,16 +66,6 @@ export interface ActionEngineServiceTypes {
   deleteActionRelation: ReturnType<ActionEngineService['deleteActionRelations']>
 }
 
-const pool = new Piscina({
-  filename: path.join(__dirname, "services", "script-worker.js"),
-
-  minThreads: 2,
-  maxThreads: Math.min(4, require("os").cpus().length),
-  idleTimeout: 30000,
-    // 5 seconds max per job
-  concurrentTasksPerWorker: 1,
-  maxQueue: 100,
-})
 
 
 // ========== SERVICE CLASS ==========
@@ -92,7 +84,7 @@ export default class ActionEngineService extends MedusaService({
   private postgresPool?: any
   private customEventBus?: any
   private dbService: DbOperationService
-  private pricsina: any
+  protected workerPool_: any;
 
   // Execution context
   private executionId: string | null = null
@@ -111,7 +103,7 @@ export default class ActionEngineService extends MedusaService({
     // Get logger from Medusa container
     this.logger_ = container.logger
     this.dbService = new DbOperationService(container.postgresPool)
-    this.pricsina = pool;
+    this.workerPool_ = container.workerPool;
     // Get loader-registered services (use optional chaining)
     this.postgresPool = container.postgresPool
     this.customEventBus = container.eventBus // Custom event bus from loader
@@ -481,7 +473,9 @@ let queryConfig = {debug: true, limit: 10, ...config}
 
 private async executeScript(config: any, context: any): Promise<any> {
   try {
-    const result = await this.pricsina.run({
+
+
+    const result = await this.workerPool_.run({
       code: config.code,
       params: context
     })

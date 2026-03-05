@@ -6,9 +6,8 @@ import ItemsPreviewTemplate from "@modules/cart/templates/preview"
 import DiscountCode from "@modules/checkout/components/discount-code"
 import Review from "@modules/checkout/components/review"
 import Divider from "@modules/common/components/divider"
-import { B2BCart } from "types/global"
 
-const CheckoutSummary = async ({ cart }: { cart: B2BCart }) => {
+const CheckoutSummary = async ({ cart }: { cart: any }) => {
   const customer = await getCustomer()
   const spendLimitExceeded = checkSpendingLimit(cart, customer)
 

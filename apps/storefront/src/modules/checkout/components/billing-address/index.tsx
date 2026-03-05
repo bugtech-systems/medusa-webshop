@@ -9,8 +9,7 @@ import Divider from "@modules/common/components/divider"
 import { setBillingAddress, updateCart } from "@lib/data/cart"
 import compareAddresses from "@lib/util/compare-addresses"
 import { CheckCircleSolid } from "@medusajs/icons"
-import { useCallback } from "react"
-import { useFormState } from "react-dom"
+import { useCallback, useState, useTransition } from "react" // ✅ Updated imports
 import BillingAddressForm from "../billing-address-form"
 import ErrorMessage from "../error-message"
 import { SubmitButton } from "../submit-button"
@@ -26,6 +25,8 @@ const BillingAddress = ({
   const searchParams = useSearchParams()
   const router = useRouter()
   const pathname = usePathname()
+  const [isPending, startTransition] = useTransition() // ✅ Add loading state
+  const [message, setMessage] = useState(null) // ✅ Replace useActionState
 
   const isOpen = searchParams.get("step") === "billing-address"
 
@@ -39,11 +40,11 @@ const BillingAddress = ({
     (name: string, value: string) => {
       const params = new URLSearchParams(searchParams)
       params.set(name, value)
-
       return params.toString()
     },
     [searchParams]
   )
+
   const handleEdit = () => {
     router.push(pathname + "?" + createQueryString("step", "billing-address"), {
       scroll: false,
@@ -61,7 +62,13 @@ const BillingAddress = ({
     }
   }
 
-  const [message, formAction] = useFormState(setBillingAddress, null)
+  // ✅ Create form action handler for React 18
+  const handleSubmit = async (formData: FormData) => {
+    startTransition(async () => {
+      const result = await setBillingAddress(null, formData)
+      setMessage(result)
+    })
+  }
 
   return (
     <Container>
@@ -98,14 +105,15 @@ const BillingAddress = ({
         {isOpen ? (
           <div>
             <Divider />
-            <form action={formAction}>
+            <form action={handleSubmit}> {/* ✅ Updated to use handleSubmit */}
               <div className="py-2">
-                <BillingAddressForm cart={cart} />
+                <BillingAddressForm cart={cart} customer={customer} />
               </div>
               <div className="flex flex-col gap-y-2 items-end">
                 <SubmitButton
                   className="mt-6"
                   data-testid="submit-address-button"
+                  isLoading={isPending} // ✅ Add loading state
                 >
                   Next step
                 </SubmitButton>

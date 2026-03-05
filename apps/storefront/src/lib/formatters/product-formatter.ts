@@ -121,7 +121,7 @@ let discount_price = product.metadata ? product.metadata[membership] : standard_
       ...variant,
       id: variant.id,
       title: variant.title || product.title || "",
-      price: firstVariant?.prices[0].amount || standard_price || 0
+      price: firstVariant?.prices[0]?.amount || standard_price || 0
     })),
     categories: product.categories,
     tags: product.tags?.map(tag => ({
@@ -154,7 +154,7 @@ export const formatProductList = (products: HttpTypes.StoreProduct[]): Array<{
 }> => {
   return products.map(product => {
     const firstVariant = product.variants?.[0] as any;
-  const calculatedPrices = firstVariant?.prices || firstVariant?.prices[0].amount || 0
+  const calculatedPrices = firstVariant?.prices || firstVariant?.prices[0]?.amount || 0
   const originalPrice = firstVariant?.prices[0].amount || calculatedPrices
   
     const thumbnail = product.images?.[0]?.url || product.thumbnail || ""
