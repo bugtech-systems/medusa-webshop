@@ -48,6 +48,7 @@
     "lucide-react": "^0.575.0",
     "monaco-editor": "^0.55.1",
     "pg": "^8.11.3",
+    "piscina": "^5.1.4",
     "prettier": "^2.8.8",
     "recharts": "^3.7.0",
     "socket.io": "^4.8.3",

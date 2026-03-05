@@ -18,6 +18,7 @@ import { DbOperationService } from "./services/database-action-service"
 import { ActionConfig, Condition, ExecutionStatus, HealthCheckResult, QueryBuilderResult, QueryConfig, StandardResponse, WhereCondition } from "./types"
 import { parseActionInput, validateActionInput } from "../../utils/validators"
 import { parseFieldsString, refineObjectByFields, removeEmptyObjects, removeNullKeys } from "../../utils/helpers"
+import Piscina from "piscina"
 
 
 
@@ -63,6 +64,15 @@ export interface ActionEngineServiceTypes {
   deleteActionRelation: ReturnType<ActionEngineService['deleteActionRelations']>
 }
 
+const pool = new Piscina({
+  filename: path.join(__dirname, "services", "script-worker.js"),
+
+  minThreads: 2,
+  maxThreads: 8,
+
+  idleTimeout: 30000
+})
+
 
 // ========== SERVICE CLASS ==========
 
@@ -80,6 +90,7 @@ export default class ActionEngineService extends MedusaService({
   private postgresPool?: any
   private customEventBus?: any
   private dbService: DbOperationService
+  private pricsina: any
 
   // Execution context
   private executionId: string | null = null
@@ -98,6 +109,7 @@ export default class ActionEngineService extends MedusaService({
     // Get logger from Medusa container
     this.logger_ = container.logger
     this.dbService = new DbOperationService(container.postgresPool)
+    this.pricsina = pool;
     // Get loader-registered services (use optional chaining)
     this.postgresPool = container.postgresPool
     this.customEventBus = container.eventBus // Custom event bus from loader
@@ -429,40 +441,53 @@ let queryConfig = {debug: true, limit: 10, ...config}
   /**
    * Script execution handler
    */
+// private async executeScript(config: any, context: any): Promise<any> {
+//   return new Promise((resolve, reject) => {
+//     const worker = new Worker(
+//       path.resolve(__dirname, "services", "script-worker.js"),
+//       {
+//         workerData: {
+//           code: config.code,
+//           params: context,
+//           callStack: [context.executionId ?? "root"],
+//         },
+//       }
+//     )
+
+//     worker.once("message", (msg) => {
+//       worker.terminate()
+
+//       if (msg?.error) {
+//         return reject(new Error(msg.error))
+//       }
+
+//       resolve(msg?.result)
+//     })
+
+//     worker.once("error", (err) => {
+//       worker.terminate()
+//       reject(err)
+//     })
+
+//     worker.once("exit", (code) => {
+//       if (code !== 0) {
+//         reject(new Error(`Worker stopped with exit code ${code}`))
+//       }
+//     })
+//   })
+// }
+
 private async executeScript(config: any, context: any): Promise<any> {
-  return new Promise((resolve, reject) => {
-    const worker = new Worker(
-      path.resolve(__dirname, "services", "script-worker.js"),
-      {
-        workerData: {
-          code: config.code,
-          params: context,
-          callStack: [context.executionId ?? "root"],
-        },
-      }
-    )
-
-    worker.once("message", (msg) => {
-      worker.terminate()
-
-      if (msg?.error) {
-        return reject(new Error(msg.error))
-      }
-
-      resolve(msg?.result)
+  try {
+    const result = await pool.run({
+      code: config.code,
+      params: context
     })
 
-    worker.once("error", (err) => {
-      worker.terminate()
-      reject(err)
-    })
-
-    worker.once("exit", (code) => {
-      if (code !== 0) {
-        reject(new Error(`Worker stopped with exit code ${code}`))
-      }
-    })
-  })
+    return result
+  } catch (err: any) {
+    throw new Error(`ExecutionError: ${err.message}`)
+  }
 }
 
 
