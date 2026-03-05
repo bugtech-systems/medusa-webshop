@@ -68,9 +68,11 @@ const pool = new Piscina({
   filename: path.join(__dirname, "services", "script-worker.js"),
 
   minThreads: 2,
-  maxThreads: 8,
-
-  idleTimeout: 30000
+  maxThreads: Math.min(4, require("os").cpus().length),
+  idleTimeout: 30000,
+    // 5 seconds max per job
+  concurrentTasksPerWorker: 1,
+  maxQueue: 100,
 })
 
 
@@ -479,7 +481,7 @@ let queryConfig = {debug: true, limit: 10, ...config}
 
 private async executeScript(config: any, context: any): Promise<any> {
   try {
-    const result = await pool.run({
+    const result = await this.pricsina.run({
       code: config.code,
       params: context
     })

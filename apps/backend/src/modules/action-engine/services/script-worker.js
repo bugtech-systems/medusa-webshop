@@ -51,7 +51,12 @@ module.exports = async function ({ code, params }) {
 
   const script = new vm.Script(wrappedCode)
   const fn = script.runInContext(context)
-
+const result = await Promise.race([
+  fn(Object.freeze(params)),
+  new Promise((_, reject) =>
+    setTimeout(() => reject(new Error("Script timeout")), 5000)
+  )
+])
   // Run the user function with frozen props
-  return await fn(Object.freeze(params))
+  return result
 }
