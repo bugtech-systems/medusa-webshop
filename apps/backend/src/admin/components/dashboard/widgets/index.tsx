@@ -6,6 +6,8 @@
     Text as UiText,
     Table,
     ProgressAccordion,
+    Text,
+    StatusBadge,
   } from "@medusajs/ui"
   import {
     ChartBar,
@@ -17,8 +19,10 @@
     DocumentText,
     ArrowUpCircleSolid,
     ArrowDown,
+    Calendar,
   } from "@medusajs/icons"
   import { Widget } from "../types"
+import { transformFieldsToColumns } from "../../widgets/modals/ViewWidgetModal"
 
   // Stat Card Widget - Fills entire container
   export const StatWidget: React.FC<{ widget: Widget }> = ({ widget }) => {
@@ -101,44 +105,112 @@
     )
   }
 
-  // Table Widget - Fills entire container with scrolling
-  export const TableWidget: React.FC<{ widget: Widget }> = ({ widget }) => {
-    const { columns = [], data = [], pageSize = 5 } = widget.config
+ export const TableWidget: React.FC<{ widget: Widget }> = ({ widget }) => {
+    const { fields = [], data = []  } = widget as any;
 
-    return (
-      <div className="h-full w-full p-4 bg-ui-bg-base rounded-lg border border-ui-border-base flex flex-col">
-        <Heading level="h2" className="text-lg mb-4 flex-shrink-0">{widget.title}</Heading>
-        
-        <div className="flex-1 min-h-0 overflow-auto">
-          <Table>
-            <Table.Header className="sticky top-0 bg-ui-bg-base">
-              <Table.Row>
-                {columns.map((col: string, idx: number) => (
-                  <Table.HeaderCell key={idx}>{col}</Table.HeaderCell>
+ let tableColumns = transformFieldsToColumns(
+      fields, 
+      widget
+    )
+
+    
+    const renderCell = (item: any, column: any) => {
+    const value = item[column.id]
+
+    switch (column.type) {
+      case 'badge':
+        return <Badge>{value}</Badge>
+      case 'status':
+        return (
+          <StatusBadge color={value === 'active' ? 'green' : 'grey'}>
+            {value}
+          </StatusBadge>
+        )
+      case 'currency':
+        return `$${value.toLocaleString()}`
+      case 'date':
+        return new Date(value).toLocaleDateString()
+      default:
+        return value
+    }
+  }
+
+
+  return (
+    <div className="space-y-6">
+      {/* Summary Cards */}
+
+
+      {/* Table */}
+      <Container className="p-0 overflow-hidden">
+        <Table>
+          <Table.Header>
+            <Table.Row>
+              {tableColumns.map((column) => (
+                <Table.HeaderCell key={column.key}>
+                  {column.header}
+                </Table.HeaderCell>
+              ))}
+            </Table.Row>
+          </Table.Header>
+          <Table.Body>
+            {data.map((item, index) => (
+              <Table.Row key={index}>
+                {tableColumns.map((column) => (
+                  <Table.Cell key={`${index}-${column.id}`}>
+                    {renderCell(item, column)}
+                  </Table.Cell>
                 ))}
               </Table.Row>
-            </Table.Header>
-            <Table.Body>
-              {data.slice(0, pageSize).map((row: any, rowIdx: number) => (
-                <Table.Row key={rowIdx}>
-                  {columns.map((col: string, colIdx: number) => (
-                    <Table.Cell key={colIdx}>{row[col] || "-"}</Table.Cell>
-                  ))}
-                </Table.Row>
-              ))}
-              {data.length === 0 && (
-                <Table.Row>
-                  <Table.Cell colSpan={columns.length} className="text-center py-8">
-                    <UiText className="text-ui-fg-subtle">No data available</UiText>
-                  </Table.Cell>
-                </Table.Row>
-              )}
-            </Table.Body>
-          </Table>
-        </div>
-      </div>
-    )
-  }
+            ))}
+          </Table.Body>
+        </Table>
+
+        
+      </Container>
+    </div>
+  )
+}
+
+  // Table Widget - Fills entire container with scrolling
+  // export const TableWidget: React.FC<{ widget: Widget }> = ({ widget }) => {
+  //   console.log(widget, 'TABLLE WID')
+  //   const { columns = [], data = [], pageSize = 5 } = widget.config
+
+  //   return (
+  //     <div className="h-full w-full p-4 bg-ui-bg-base rounded-lg border border-ui-border-base flex flex-col">
+  //       <Heading level="h2" className="text-lg mb-4 flex-shrink-0">{widget.title}</Heading>
+        
+  //       <div className="flex-1 min-h-0 overflow-auto">
+  //         <Table>
+  //           <Table.Header className="sticky top-0 bg-ui-bg-base">
+  //             <Table.Row>
+  //               {columns.map((col: string, idx: number) => (
+  //                 <Table.HeaderCell key={idx}>{col}</Table.HeaderCell>
+  //               ))}
+  //             </Table.Row>
+  //           </Table.Header>
+  //           <Table.Body>
+  //             {data.slice(0, pageSize).map((row: any, rowIdx: number) => (
+  //               <Table.Row key={rowIdx}>
+  //                 {columns.map((col: string, colIdx: number) => (
+  //                   <Table.Cell key={colIdx}>{row[col] || "-"}</Table.Cell>
+  //                 ))}
+  //               </Table.Row>
+  //             ))}
+  //             {data.length === 0 && (
+  //               <Table.Row>
+  //                 <Table.Cell colSpan={columns.length} className="text-center py-8">
+  //                   <UiText className="text-ui-fg-subtle">No data available</UiText>
+  //                 </Table.Cell>
+  //               </Table.Row>
+  //             )}
+  //           </Table.Body>
+  //         </Table>
+  //       </div>
+  //     </div>
+  //   )
+  // }
 
   // List Widget - Fills entire container
   export const ListWidget: React.FC<{ widget: Widget }> = ({ widget }) => {

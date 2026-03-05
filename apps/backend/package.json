@@ -49,6 +49,7 @@
     "monaco-editor": "^0.55.1",
     "pg": "^8.11.3",
     "prettier": "^2.8.8",
+    "recharts": "^3.7.0",
     "socket.io": "^4.8.3",
     "typeorm": "^0.3.28",
     "use-undo": "^1.1.1",

@@ -1,11 +1,13 @@
 "use client"
 
-import React, { useState } from "react"
+import React, { useEffect, useState } from "react"
 import { Button, Tooltip, useToggleState, Text as UiText } from "@medusajs/ui"
 import { PencilSquare, Trash, ArrowsPointingOut,  Minus } from "@medusajs/icons";
 import {Copy } from 'lucide-react'
 import { Widget } from "./types"
 import { widgetRegistry } from "./widgets"
+import { useExecuteAction, useExecution } from "../../hooks/api/actions"
+
 
 interface DraggableWidgetProps {
   widget: Widget
@@ -36,11 +38,29 @@ export const DraggableWidget: React.FC<DraggableWidgetProps> = ({
   gridMetrics,
   isEditing,
 }) => {
+  const { mutateAsync: getWidgetData } = useExecuteAction('get-widget-data')
   const [showControls, setShowControls] = useState(false)
+  const [widgetData, setWidgetData] = useState({});
   const [isHovered, setIsHovered] = useState(false)
   const deletePrompt = useToggleState()
 
-  const WidgetComponent = widgetRegistry[widget.type]
+  const fetchWidget = async (widgetId: any) => {
+        let {data} = await getWidgetData({parameters: {widget_id: widgetId}}) as any;
+    setWidgetData({...widget.configuration,...data, type: data.type, ...(data.type == 'table' ? {fields: data.config.fields, data: data.data} : {data: data.data})});
+  }
+
+
+
+  useEffect(() => {
+
+fetchWidget(widget.id)    
+
+
+  }, [widget])
+
+
+
+  const WidgetComponent = widgetRegistry[widget?.type]
 
   if (!WidgetComponent) {
     return (
@@ -49,6 +69,9 @@ export const DraggableWidget: React.FC<DraggableWidgetProps> = ({
       </div>
     )
   }
+
+
+
 
   // Drag transform for smooth movement
   const dragStyle = isDragging && dragOffset ? {
@@ -86,7 +109,7 @@ export const DraggableWidget: React.FC<DraggableWidgetProps> = ({
     >
       {/* Widget Content */}
   <div className="h-full w-full">
-        <WidgetComponent widget={widget} />
+        <WidgetComponent widget={{...widget, ...widgetData}} />
       </div>
 
       {/* Drag Handle */}

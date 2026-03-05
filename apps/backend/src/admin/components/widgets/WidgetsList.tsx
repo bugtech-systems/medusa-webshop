@@ -48,10 +48,9 @@ import {
 import { 
   AddWidgetModal, 
   EditWidgetDrawer, 
-  DeleteWidgetPrompt 
+  DeleteWidgetPrompt,
 } from "./modals"
-
-
+import   WidgetViewModal  from "./modals/ViewWidgetModal";
 
 
 
@@ -83,16 +82,18 @@ export const WidgetsList = ({  onWidgetUpdate }: WidgetsListProps) => {
   // Modal states
   const [addModalOpen, setAddModalOpen] = useState(false)
   const [editDrawerOpen, setEditDrawerOpen] = useState(false)
+    const [viewDrawerOpen, setViewDrawerOpen] = useState(false)
+
   const [deletePromptOpen, setDeletePromptOpen] = useState(false)
 
   // Fetch widgets for this tab
   const { data: widgetsData, isPending: isLoading, refetch: fetchWidgets } = 
     useExecution('get-dashboard-widgets')
 
+  const { mutateAsync: getWidgetData } = useExecuteAction('get-widget-data')
   const { mutateAsync: createWidget } = useExecuteAction('create-widget')
   const { mutateAsync: updateWidget } = useExecuteAction('update-widget')
   const { mutateAsync: deleteWidget } = useExecuteAction('delete-widget')
-  const { mutateAsync: duplicateWidget } = useExecuteAction('duplicate-widget')
 
   // Load widgets
   useEffect(() => {
@@ -111,6 +112,13 @@ export const WidgetsList = ({  onWidgetUpdate }: WidgetsListProps) => {
     }
   }
 
+
+  const fetchWidget = async (widgetId: any) => {
+        let widget = widgets.find(a => a.id == widgetId);
+        let {data: widgetData} = await getWidgetData({parameters: {widget_id: widgetId}}) as any;
+console.log(widgetData, widgetData.type, 'WIDGGDDA')
+return {...widgetData, type: widget?.metadata?.type, ...(widgetData.type == 'table' ? {fields: widgetData.config.fields} : {}), data: widgetData.data};
+  }
 
 
   const handleAddWidget = async (widgetData: Partial<Widget>) => {
@@ -166,8 +174,12 @@ export const WidgetsList = ({  onWidgetUpdate }: WidgetsListProps) => {
     }
   }
 
-    const handleView = (widgetId: string) => {
-    window.location.href = `/app/dashboards/widgets/${widgetId}`
+    const handleView = (widget: any) => {
+    // window.location.href = `/app/dashboards/widgets/${widgetId}`
+    setViewDrawerOpen(true)
+
+    setSelectedWidget(widget)
+
   }
 
   const getWidgetTypeBadge = (type: string) => {
@@ -181,6 +193,8 @@ export const WidgetsList = ({  onWidgetUpdate }: WidgetsListProps) => {
     }
     return colors[type] || "grey"
   }
+
+  console.log(widgetsData, "WIDSG DAT")
 
   return (
     <Container>
@@ -355,6 +369,13 @@ export const WidgetsList = ({  onWidgetUpdate }: WidgetsListProps) => {
         onOpenChange={setEditDrawerOpen}
         widget={selectedWidget}
         onUpdate={handleUpdateWidget}
+      />
+
+         <WidgetViewModal
+        widgetId={selectedWidget}
+        open={viewDrawerOpen}
+        onOpenChange={setViewDrawerOpen}
+        fetchWidget={fetchWidget}
       />
 
       {/* Delete Confirmation Prompt */}

@@ -275,11 +275,11 @@ const CustomSelect = ({
                   }`}
                 >
                   <div>
-                    <Text size="small" weight="plus">{option.label}</Text>
+                    <UiText size="small" weight="plus">{option.label}</UiText>
                     {option.description && (
-                      <Text size="xsmall" className="text-ui-fg-subtle">
+                      <UiText size="xsmall" className="text-ui-fg-subtle">
                         {option.description}
-                      </Text>
+                      </UiText>
                     )}
                   </div>
                   {value === option.value && (

@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { useParams, useNavigate } from "react-router-dom"
+import { useState, useEffect, useMemo } from 'react'
+import { useNavigate } from "react-router-dom"
 import { 
   FocusModal, 
   Heading, 
@@ -11,16 +11,14 @@ import {
   Badge,
   StatusBadge,
   Table,
-  ProgressAccordion,
 } from "@medusajs/ui"
 import { 
-  AtSymbol, 
-  Phone, 
   ChartBar, 
   ListBullet,
   Calendar,
   Envelope,
-  CurrencyDollar
+  AtSymbol,
+  Phone,
 } from "@medusajs/icons"
 import { toast } from "@medusajs/ui"
 import {
@@ -39,7 +37,7 @@ import {
 } from 'recharts'
 import { TableCellsMerge, TrendingUp } from 'lucide-react'
 
-// Types (keep the same as before)
+// Types
 interface WidgetDetails {
   id: string
   type: 'stat' | 'table' | 'list' | 'chart'
@@ -119,43 +117,68 @@ interface ChartConfig {
   }
 }
 
-// Custom hook for fetching widget details
-function useWidgetDetails(id: string) {
-  const [widget, setWidget] = useState<WidgetDetails | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    const fetchWidgetDetails = async () => {
-      try {
-        setLoading(true)
-        // Replace with actual API call
-        const response = await fetch(`/api/widgets/${id}`)
-        if (!response.ok) throw new Error('Failed to fetch widget details')
-        const data = await response.json()
-        setWidget(data)
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'An error occurred')
-        toast.error('Failed to load widget details')
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    if (id) {
-      fetchWidgetDetails()
-    }
-  }, [id])
-
-  return { widget, loading, error }
+interface WidgetViewModalProps {
+  widgetId: string
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  fetchWidget?: (id: string) => Promise<WidgetDetails>
 }
 
-// Widget Content Renderers (keep the same as before)
+// ============================================
+// Helper function to transform config fields to table columns
+// ============================================
+export const transformFieldsToColumns = (fields: any[], config: any): any[] => {
+  return fields
+    .filter(field => field.visible) // Only include visible fields
+    .map(field => ({
+      id: field.key,
+      header: field.label,
+      accessorKey: field.key,
+      enableSorting: field.sortable || false,
+      enableFiltering: field.filterable || false,
+      enableSearch: field.searchable || false,
+      alignment: field.alignment || 'left',
+      cell: (value: any, row: any) => {
+        // Handle different field types with appropriate formatting
+        switch (field.type) {
+          case 'date':
+            if (value) {
+              const date = new Date(value)
+              return date.toLocaleDateString()
+            }
+            return '—'
+          case 'boolean':
+            return value ? 'Yes' : 'No'
+          case 'email':
+            return value ? (
+              <div className="flex items-center gap-1">
+                <AtSymbol className="text-ui-fg-subtle w-4 h-4" />
+                <Text size="small">{value}</Text>
+              </div>
+            ) : '—'
+          case 'phone':
+            return value ? (
+              <div className="flex items-center gap-1">
+                <Phone className="text-ui-fg-subtle w-4 h-4" />
+                <Text size="small" className="font-mono">{value}</Text>
+              </div>
+            ) : '—'
+          case 'number':
+            return value?.toLocaleString() || '0'
+          default:
+            return value || '—'
+        }
+      }
+    }))
+}
+
+
+// Widget Content Renderers
 const StatWidgetView = ({ config, metadata }: { config: StatConfig; metadata?: WidgetDetails['metadata'] }) => {
   const formatValue = (value: number) => {
     switch (config.format) {
       case 'currency':
-        return <CurrencyAmount amount={value} currency="USD" />
+        return `$${value.toLocaleString()}`
       case 'percentage':
         return `${value}%`
       default:
@@ -170,8 +193,7 @@ const StatWidgetView = ({ config, metadata }: { config: StatConfig; metadata?: W
         <div className="flex items-start justify-between">
           <div>
             <Text size="small" className="text-ui-fg-subtle flex items-center gap-1">
-              {config.icon && <span>{config.icon}</span>}
-              Current Value
+              {<span>{config.title}</span>}
             </Text>
             <Heading level="h1" className="text-3xl font-semibold mt-2">
               {formatValue(config.value)}
@@ -184,10 +206,10 @@ const StatWidgetView = ({ config, metadata }: { config: StatConfig; metadata?: W
           )}
         </div>
 
-        {config.previousValue && (
+        {config.subtitle && (
           <div className="mt-4 pt-4 border-t border-ui-border-base">
             <Text size="small" className="text-ui-fg-subtle">
-              Previous: {formatValue(config.previousValue)}
+             {config.subtitle}
             </Text>
           </div>
         )}
@@ -261,7 +283,7 @@ const StatWidgetView = ({ config, metadata }: { config: StatConfig; metadata?: W
 
 const TableWidgetView = ({ config, metadata }: { config: TableConfig; metadata?: WidgetDetails['metadata'] }) => {
   const renderCell = (item: any, column: TableConfig['columns'][0]) => {
-    const value = item[column.key]
+    const value = item[column.id]
 
     switch (column.type) {
       case 'badge':
@@ -273,13 +295,15 @@ const TableWidgetView = ({ config, metadata }: { config: TableConfig; metadata?:
           </StatusBadge>
         )
       case 'currency':
-        return <CurrencyAmount amount={value} currency="USD" />
+        return `$${value.toLocaleString()}`
       case 'date':
         return new Date(value).toLocaleDateString()
       default:
         return value
     }
   }
+
+  console.log(config.columns, 'COLLS')
 
   return (
     <div className="space-y-6">
@@ -306,7 +330,7 @@ const TableWidgetView = ({ config, metadata }: { config: TableConfig; metadata?:
             <Table.Row>
               {config.columns.map((column) => (
                 <Table.HeaderCell key={column.key}>
-                  {column.label}
+                  {column.header}
                 </Table.HeaderCell>
               ))}
             </Table.Row>
@@ -315,7 +339,7 @@ const TableWidgetView = ({ config, metadata }: { config: TableConfig; metadata?:
             {config.data.map((item, index) => (
               <Table.Row key={index}>
                 {config.columns.map((column) => (
-                  <Table.Cell key={`${index}-${column.key}`}>
+                  <Table.Cell key={`${index}-${column.id}`}>
                     {renderCell(item, column)}
                   </Table.Cell>
                 ))}
@@ -528,28 +552,62 @@ const ChartWidgetView = ({ config, metadata }: { config: ChartConfig; metadata?:
 }
 
 // Main Focus Modal Component
-export default function WidgetViewModal() {
-  const params = useParams()
-  const navigate = useNavigate()
-  const widgetId = params.id as string
-  const [isModalOpen, setIsModalOpen] = useState(true)
-  const { widget, loading, error } = useWidgetDetails(widgetId)
+export default function WidgetViewModal({ 
+  widgetId, 
+  open, 
+  onOpenChange,
+  fetchWidget 
+}: WidgetViewModalProps) {
+  const [widget, setWidget] = useState<WidgetDetails | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  // Handle modal close and navigate back
-  const handleClose = () => {
-    setIsModalOpen(false)
-    // Navigate back to previous page
-    navigate(-1)
-  }
+// Transform fields to columns whenever report changes
+  const tableColumns = useMemo(() => {
+     if(widget?.type != 'table') return;
+    if (!widget?.fields) return []
+    return transformFieldsToColumns(
+      widget?.fields, 
+      widget
+    )
+  }, [widget])
 
-  // Handle modal open change from FocusModal component
-  const handleOpenChange = (open: boolean) => {
-    setIsModalOpen(open)
-    if (!open) {
-      // Navigate back when modal is closed
-      navigate(-1)
+  // Fetch widget details when modal opens or widgetId changes
+  useEffect(() => {
+    const loadWidget = async () => {
+      if (!open || !widgetId) return
+      
+      try {
+        setLoading(true)
+        setError(null)
+        const data = await fetchWidget(widgetId)
+        setWidget(data)
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to load widget details')
+        toast.error('Failed to load widget details')
+      } finally {
+        setLoading(false)
+      }
     }
+
+    loadWidget()
+  }, [widgetId, open])
+
+  // Reset state when modal closes
+  useEffect(() => {
+    if (!open) {
+      setWidget(null)
+      setError(null)
+    }
+  }, [open])
+
+  // Handle modal close
+  const handleClose = () => {
+    onOpenChange(false)
   }
+
+
+console.log(widgetId, 'WIDG')
 
   // Get icon based on widget type
   const getWidgetIcon = () => {
@@ -571,11 +629,13 @@ export default function WidgetViewModal() {
   const renderWidgetContent = () => {
     if (!widget) return null
     
+
+    console.log(widget, 'WIDGET')
     switch (widget.type) {
       case 'stat':
         return <StatWidgetView config={widget.config as StatConfig} metadata={widget.metadata} />
       case 'table':
-        return <TableWidgetView config={widget.config as TableConfig} metadata={widget.metadata} />
+        return <TableWidgetView config={{...widget, columns: tableColumns} as any} metadata={widget.metadata} />
       case 'list':
         return <ListWidgetView config={widget.config as ListConfig} metadata={widget.metadata} />
       case 'chart':
@@ -594,7 +654,7 @@ export default function WidgetViewModal() {
   // Render loading state
   if (loading) {
     return (
-      <FocusModal open={isModalOpen} onOpenChange={handleOpenChange}>
+      <FocusModal open={open} onOpenChange={onOpenChange}>
         <FocusModal.Content>
           <FocusModal.Header>
             <Button variant="secondary" onClick={handleClose}>
@@ -615,7 +675,7 @@ export default function WidgetViewModal() {
   // Render error state
   if (error || !widget) {
     return (
-      <FocusModal open={isModalOpen} onOpenChange={handleOpenChange}>
+      <FocusModal open={open} onOpenChange={onOpenChange}>
         <FocusModal.Content>
           <FocusModal.Header>
             <Button variant="secondary" onClick={handleClose}>
@@ -638,7 +698,7 @@ export default function WidgetViewModal() {
   }
 
   return (
-    <FocusModal open={isModalOpen} onOpenChange={handleOpenChange}>
+    <FocusModal open={open} onOpenChange={onOpenChange}>
       <FocusModal.Content>
         <FocusModal.Header>
           <div className="flex items-center gap-2">
@@ -689,7 +749,6 @@ export default function WidgetViewModal() {
                 Share
               </Button>
               <Button variant="primary" onClick={() => {
-                // Refresh logic here
                 toast.success('Widget refreshed')
               }}>
                 Refresh
