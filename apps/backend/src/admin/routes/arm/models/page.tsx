@@ -4,8 +4,6 @@ import {
   Plus, 
   Sparkles,
   Puzzle,
-  Globe,
-  ChartActivity,
   InformationCircle,
   XCircle,
   Calendar,
@@ -34,16 +32,17 @@ import { useState, useMemo } from "react"
 import { useAiModels } from "../../../hooks/api/ai-models"
 import { ModelFormDrawer } from "./components/model-form-drawer"
 import { ModelActionsMenu } from "./components/model-actions-menu"
+import { Globe, Workflow } from "lucide-react"
 
 const providerIcons = {
   openai: Sparkles,
-  anthropic: ChartActivity,
+  anthropic: Workflow,
   cohere: Globe,
-  huggingface: ChartActivity,
+  huggingface: Workflow,
   custom: Puzzle,
   azure: Globe,
-  google: ChartActivity,
-  amazon: ChartActivity,
+  google: Workflow,
+  amazon: Workflow,
 }
 
 const providerColors = {
@@ -295,7 +294,7 @@ const AiModelsPage = () => {
       <div className="bg-ui-bg-subtle border rounded-lg p-4">
         <div className="flex items-center gap-3">
           <div className="p-2 bg-green-50 rounded-lg">
-            <ChartActivity className="w-5 h-5 text-green-500" />
+            <Workflow className="w-5 h-5 text-green-500" />
           </div>
           <div>
             <Text className="text-ui-fg-subtle text-xs uppercase font-semibold tracking-wider">

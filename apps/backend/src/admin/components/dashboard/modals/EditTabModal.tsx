@@ -19,10 +19,9 @@ import {
   CheckCircle,
   Trash,
   Puzzle,
-  Code,
   ChevronDown,
 } from "@medusajs/icons"
-import { ArrowRight } from "lucide-react"
+import { ArrowRight, Code } from "lucide-react"
 import { DashboardTab } from "../../../../types/dashboards"
 import { useExecution } from "../../../hooks/api/actions"
 

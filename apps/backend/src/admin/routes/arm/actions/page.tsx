@@ -1,5 +1,5 @@
 import { defineRouteConfig } from "@medusajs/admin-sdk"
-import { Bolt, Plus, ChartActivity, Webshipper, DocumentSeries, Code, Funnel, ArrowUpDown, Eye } from "@medusajs/icons"
+import { Bolt, Plus, Webshipper, DocumentSeries,  Funnel, ArrowUpDown, Eye } from "@medusajs/icons"
 import {
   Badge,
   Button,
@@ -21,6 +21,7 @@ import { useActions } from "../../../hooks/api/actions"
 import { ActionFormDrawer } from "./components/action-form-drawer"
 import { ActionActionsMenu } from "./components/action-actions-menu"
 import { useState, useMemo } from "react"
+import { Code, Workflow } from "lucide-react"
 
 type SortField = 'name' | 'type' | 'status' | 'created_at' | 'updated_at'
 type SortOrder = 'asc' | 'desc'
@@ -140,7 +141,7 @@ const ActionsPage = () => {
       DB_OPERATION: <DocumentSeries className="text-ui-fg-subtle" />,
       API_CALL: <Webshipper className="text-ui-fg-subtle" />,
       AI_ACTION: <Bolt className="text-ui-fg-subtle" />,
-      WORKFLOW: <ChartActivity className="text-ui-fg-subtle" />,
+      WORKFLOW: <Workflow className="text-ui-fg-subtle" />,
       SCRIPT: <Code className="text-ui-fg-subtle" />
     }
     return icons[type as keyof typeof icons] || <Bolt className="text-ui-fg-subtle" />

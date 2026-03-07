@@ -5,9 +5,6 @@ import {
   Bolt, 
   Calendar, 
   CogSixTooth,
-  File, 
-  ChartActivity, 
-  Code,
   MediaPlay,
   Adjustments,
   Book,
@@ -34,6 +31,7 @@ import { ExecuteActionDrawer } from "../components/action-execution-drawer"
 import { ActionWorkflowEditor } from "../components/action-workflow-graph"
 import { ActionDetailsTab } from '../components/action-details-container';
 import WorkflowActionDrawer from '../components/workflow-action-drawer';
+import { Code, File, Workflow } from 'lucide-react';
 
 
 export interface Parameter {
@@ -102,7 +100,7 @@ const ActionDetailPage = () => {
     DB_OPERATION: Book,
     API_CALL: RocketLaunch,
     AI_ACTION: Bolt,
-    WORKFLOW: ChartActivity,
+    WORKFLOW: Workflow,
     SCRIPT: Code,
   }
   const TypeIcon = typeIcons[action.type as keyof typeof typeIcons] || Bolt
@@ -249,7 +247,7 @@ let actionsData = action?.config?.actions ? action?.config?.actions?.map(act => 
             </Tabs.Trigger>
             {action.type == 'WORKFLOW' &&
             <Tabs.Trigger value="workflow">
-              <ChartActivity className="h-4 w-4 mr-2" />
+              <Workflow className="h-4 w-4 mr-2" />
               Workflow
             </Tabs.Trigger>
             }

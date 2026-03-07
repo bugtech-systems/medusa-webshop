@@ -2,11 +2,12 @@
 
 import { ActionFormDrawer } from './action-form-drawer';
 import { DropdownMenu, IconButton, usePrompt, toast } from "@medusajs/ui"
-import { EllipsisHorizontal, PencilSquare, Trash, MediaPlay, PaperPlane } from "@medusajs/icons"
+import { EllipsisHorizontal, PencilSquare, Trash, MediaPlay } from "@medusajs/icons"
 import { useCreateActionTemplate, useDeleteAction, useDuplicateAction, useExecuteAction } from "../../../../hooks/api/actions"
 import { useNavigate } from "react-router-dom"
 import { useState } from 'react';
 import { ExecuteActionDrawer } from './action-execution-drawer';
+import { Plane } from 'lucide-react';
 
 interface ActionActionsMenuProps {
   action: any
@@ -124,7 +125,7 @@ export const ActionActionsMenu = ({ action }: ActionActionsMenuProps) => {
         </DropdownMenu.Item>
         
         <DropdownMenu.Item onClick={handleDuplicate} disabled={isCreating}>
-          <PaperPlane className="text-ui-fg-subtle mr-2" />
+          <Plane className="text-ui-fg-subtle mr-2" />
           Duplicate
         </DropdownMenu.Item>
         {/* ✅ Correct separator usage */}

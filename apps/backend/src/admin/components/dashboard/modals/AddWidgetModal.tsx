@@ -14,10 +14,9 @@ import {
 import {
   ArrowLeft,
   CheckCircle,
-  Code,
   Puzzle,
 } from "@medusajs/icons"
-import { ArrowRight } from "lucide-react"
+import { ArrowRight, Code } from "lucide-react"
 import JsonEditor from "../../../components/jsonEditor" // Adjust path
 
 // ---------- Types ----------

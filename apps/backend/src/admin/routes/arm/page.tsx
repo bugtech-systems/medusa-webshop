@@ -44,4 +44,5 @@ export default function Home() {
 export const config = defineRouteConfig({
   label: "ARM",
   icon: AiAssistent,
+   
 })

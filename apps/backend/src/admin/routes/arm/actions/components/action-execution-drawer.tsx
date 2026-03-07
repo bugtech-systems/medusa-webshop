@@ -29,22 +29,19 @@ import {
   PlaySolid,
   ChevronDown,
   ChevronUpMini,
-  FilePlus,
   ReplaySolid,
   Clock,
   XCircle,
   CheckCircle,
   InformationCircle,
-  CogSixTooth,
-  Code,
+  CogSixTooth
 } from "@medusajs/icons"
-import { ArrowUp, ArrowDown } from 'lucide-react';
+import { ArrowUp, ArrowDown, FilePlus, Code } from 'lucide-react';
 import {
   useExecuteAction,
   useActionExecutionLogs,
   useActionExecutionHistory,
 } from "../../../../hooks/api/actions"
-import { refineObjectByFields } from "../../../../../utils/helpers";
 
 /* ============================================================
    Types

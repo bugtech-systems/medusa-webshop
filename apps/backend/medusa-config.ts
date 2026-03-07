@@ -60,11 +60,11 @@ export default defineConfig({
     [Modules.WORKFLOW_ENGINE]: { resolve: "@medusajs/medusa/workflow-engine-inmemory" },
         /* -------------------- Payment -------------------- */
     [Modules.PAYMENT]: {
-      resolve: "@medusajs/payment",
+      resolve: "@medusajs/medusa/payment",
       options: {
         providers: [
           {
-            resolve: "@medusajs/payment-stripe",
+            resolve: "@medusajs/medusa/payment-stripe",
             id: "stripe",
             options: {
               apiKey: process.env.STRIPE_API_KEY,

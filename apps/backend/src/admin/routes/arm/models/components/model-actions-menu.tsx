@@ -2,11 +2,12 @@
 
 import { ModelFormDrawer } from './model-form-drawer';
 import { DropdownMenu, IconButton, usePrompt, toast } from "@medusajs/ui"
-import { EllipsisHorizontal, PencilSquare, Trash, MediaPlay, PaperPlane } from "@medusajs/icons"
+import { EllipsisHorizontal, PencilSquare, Trash, MediaPlay, ChatBubble } from "@medusajs/icons"
 import { useDeleteAction, useDuplicateAction, useExecuteAction } from "../../../../hooks/api/actions"
 import { useNavigate } from "react-router-dom"
 import { useState } from 'react';
 import { AIModelTestDrawer } from './model-chat-drawer';
+import { PlaneTakeoff } from 'lucide-react';
 
 interface ActionActionsMenuProps {
   model: any
@@ -139,11 +140,11 @@ export const ModelActionsMenu = ({ model }: ActionActionsMenuProps) => {
         <DropdownMenu.Separator />
       
         <DropdownMenu.Item onClick={handleDeploy} disabled={isDuplicating}>
-          <PaperPlane className="text-ui-fg-subtle mr-2" />
+          <PlaneTakeoff className="text-ui-fg-subtle mr-2" />
           Re-deploy
         </DropdownMenu.Item>
         <DropdownMenu.Item onClick={() => setIsChatDrawerOpen(true)} >
-          <PaperPlane className="text-ui-fg-subtle mr-2" />
+          <ChatBubble className="text-ui-fg-subtle mr-2" />
           Chat-test
         </DropdownMenu.Item>
         {/* ✅ Correct separator usage */}

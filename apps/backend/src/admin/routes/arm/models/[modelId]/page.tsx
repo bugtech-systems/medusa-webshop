@@ -25,7 +25,6 @@ import {
   CogSixTooth,
   ChatBubble,
   Adjustments,
-  Code,
   DocumentText,
   CheckCircle,
 } from "@medusajs/icons";
@@ -34,6 +33,7 @@ import { useParams } from "react-router-dom";
 import { AdminAiModel } from "../../../../../types/ai-model";
 import { useAiModel, useUpdateAiModel, useAiModels } from "../../../../hooks/api";
 import { useExecuteAction } from "../../../../hooks/api/actions";
+import { Code } from "lucide-react";
 
 const AIModelDetails = () => {
   const { modelId } = useParams();

@@ -3,8 +3,7 @@ import {
   AiMemory,
   AiModel,
   AiConversationSession,
-  AiConversationMessage,
-  AiToolExecution,
+  AiConversationMessage
 } from "./models"
 import { chatCompletion, generateEmbedding, streamChatCompletion } from "../../utils/ollama"
 
@@ -12,8 +11,7 @@ class AiModuleService extends MedusaService({
   AiModel,
   AiMemory,
   AiConversationSession,
-  AiConversationMessage,
-  AiToolExecution,
+  AiConversationMessage
 }) {
 
   /**

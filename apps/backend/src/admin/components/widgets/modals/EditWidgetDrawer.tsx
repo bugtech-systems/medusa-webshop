@@ -18,12 +18,11 @@ import {
   ArrowLeft,
   ArrowUpMini,
   CheckCircle,
-  Code,
   Plus,
   Puzzle,
   Trash,
 } from "@medusajs/icons"
-import { ArrowRight } from "lucide-react"
+import { ArrowRight, Code } from "lucide-react"
 import JsonEditor from "../../../components/jsonEditor" // Adjust path
 import { Widget } from "../../dashboard/types"
 import { useExecution } from "../../../hooks/api/actions"

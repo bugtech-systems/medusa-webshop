@@ -365,6 +365,7 @@ if (existingProduct) {
     //  console.log(foundLists, 'FOUND LISTS')
  
       let found = (foundLists || []).find((pl: any) => pl.title === plTitle)
+      console.log(found, 'FOUNDED')
       if (!found) {
           found = await pricingModule.createPriceLists([{
             title: plTitle,
@@ -420,8 +421,8 @@ if (existingProduct) {
         for (const [groupName, priceList] of Object.entries(groupToPriceList)) {
           // try exact group price, fallback to nonmember, fallback to first
           let chosen = incomingPrices.find((ip) => ip.group_name === groupName)
-          // if (!chosen) chosen = incomingPrices.find((ip) => ip.group_name === "nonmember")
-          // if (!chosen) chosen = incomingPrices[0]
+          if (!chosen) chosen = incomingPrices.find((ip) => ip.group_name === "nonmember")
+          if (!chosen) chosen = incomingPrices[0]
           if (!chosen) continue
 
           const priceObj = {
@@ -433,7 +434,7 @@ if (existingProduct) {
           priceBatchesByListId[priceList.id] = priceBatchesByListId[priceList.id] || []
           priceBatchesByListId[priceList.id].push(priceObj)
 
-          if (["member", "student"].includes(groupName)) {
+          if (["member", "student", "nonmember"].includes(groupName)) {
             // store cents
             metadataPricesByProduct[prodId][groupName] = chosen.amount
           }
@@ -442,6 +443,7 @@ if (existingProduct) {
     }
     
     
+    console.log(groupToPriceList, priceBatchesByListId, 'PRICE BATCHERS')
     
   
     // Execute addPrices per price list id (Medusa will add or update)
@@ -451,6 +453,7 @@ if (existingProduct) {
       
       
       
+      console.log(priceListId, 'PRICELIST ID', prices.length)
     addPricePromises.push(batchPriceListPricesWorkflow(req.scope)
     .run({
       input: {

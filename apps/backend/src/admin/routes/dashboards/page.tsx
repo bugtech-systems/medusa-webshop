@@ -891,7 +891,8 @@ const MIMSVendorOrdersPage = () => {
 
 export const config = defineRouteConfig({
   label: "Dashboards",
-  rank: 1
+  nested: "/orders"
+  
 })
 
 export default MIMSVendorOrdersPage
