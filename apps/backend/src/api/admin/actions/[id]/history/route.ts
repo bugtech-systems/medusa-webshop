@@ -12,7 +12,7 @@ export async function POST(
   try {
     const id = req.params.id;
     const body = req.body as any;
-    const actionEngine = req.scope.resolve(ACTION_ENGINE_MODULE)
+    const actionEngine = req.scope.resolve(ACTION_ENGINE_MODULE) as any;
     
     if(!id){
      return res.status(401).json({
@@ -113,7 +113,7 @@ export async function GET(
 
     const id = req.params.id;
     
-    const actionEngine = req.scope.resolve(ACTION_ENGINE_MODULE)
+    const actionEngine = req.scope.resolve(ACTION_ENGINE_MODULE) as any;
     
     
     

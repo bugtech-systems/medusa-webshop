@@ -13,7 +13,7 @@ export async function POST(
 ) {
   try {
     const data = req.body as CreateAiModelInput
-    const aiModelService = req.scope.resolve(AI_MODULE)
+    const aiModelService = req.scope.resolve(AI_MODULE) as any
     
     // Validate required fields
     if (!data.name) {
@@ -66,7 +66,7 @@ export async function GET(
       fields
     } = req.query as any;
     
-    const aiModelService = req.scope.resolve(AI_MODULE)
+    const aiModelService = req.scope.resolve(AI_MODULE) as any
     
     // Build filters
     const filter: any = {}

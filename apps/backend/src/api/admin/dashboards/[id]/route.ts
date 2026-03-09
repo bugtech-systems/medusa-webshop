@@ -11,7 +11,7 @@ export async function PUT(
   try {
     const id = req.params.id;
     const data = req.body as any;
-    const actionEngine = req.scope.resolve(ACTION_ENGINE_MODULE);
+    const actionEngine = req.scope.resolve(ACTION_ENGINE_MODULE) as any;
 
     if (!id) {
       return res.status(401).json({ success: false, error: "Id is required" });

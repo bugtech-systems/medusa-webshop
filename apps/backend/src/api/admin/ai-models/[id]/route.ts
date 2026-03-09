@@ -10,7 +10,7 @@ export async function GET(
   try {
     const { id } = req.params
     const { fields } = req.query
-    const aiModelService = req.scope.resolve(AI_MODULE)
+    const aiModelService = req.scope.resolve(AI_MODULE) as any;
     
     // Build query config
     const config: any = {}
@@ -53,7 +53,7 @@ export async function POST(
   try {
     const { id } = req.params
     const data = req.body as UpdateAiModelInput
-    const aiModelService = req.scope.resolve(AI_MODULE)
+    const aiModelService = req.scope.resolve(AI_MODULE) as any;
     
     
     
@@ -86,7 +86,7 @@ export async function DELETE(
 ) {
   try {
     const { id } = req.params
-    const aiModelService = req.scope.resolve(AI_MODULE)
+    const aiModelService = req.scope.resolve(AI_MODULE) as any
     
     await aiModelService.delete(id)
     

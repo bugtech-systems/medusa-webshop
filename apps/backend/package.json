@@ -1,5 +1,5 @@
 {
-  "name": "psa-webshop-backend",
+  "name": "@psa-webshop/backend",
   "version": "0.0.1",
   "private": true,
   "description": "A starter for Medusa B2B projects.",
@@ -30,7 +30,7 @@
     "@dnd-kit/utilities": "^3.2.2",
     "@medusajs/admin-sdk": "2.11.3",
     "@medusajs/cli": "2.11.3",
-    "@medusajs/draft-order": "^2.11.3",
+    "@medusajs/draft-order": "2.11.3",
     "@medusajs/framework": "2.11.3",
     "@medusajs/js-sdk": "2.11.3",
     "@medusajs/medusa": "2.11.3",
@@ -60,6 +60,7 @@
   },
   "devDependencies": {
     "@medusajs/ui-preset": "2.11.3",
+    "@medusajs/test-utils": "2.11.3",
     "@swc/core": "^1.5.7",
     "@swc/jest": "^0.2.36",
     "@types/d3-force": "^3.0.10",

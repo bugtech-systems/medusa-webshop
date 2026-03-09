@@ -17,7 +17,7 @@ export const POST = async (
   req: AuthenticatedMedusaRequest<ChatRequestBody>,
   res: MedusaResponse
 ) => {
-  const aiService = req.scope.resolve("aiModuleService")
+  const aiService = req.scope.resolve("aiModuleService") as any
   
   const { session_id, message, language } = req.body
 

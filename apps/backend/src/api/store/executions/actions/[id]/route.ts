@@ -11,7 +11,7 @@ export async function PUT(
   try {
     const id = req.params.id;
     const data = req.body as any;
-    const actionEngine = req.scope.resolve(ACTION_ENGINE_MODULE)
+    const actionEngine = req.scope.resolve(ACTION_ENGINE_MODULE) as any
     
     if(!id){
      return res.status(401).json({
@@ -69,7 +69,7 @@ export async function GET(
 
     const templateId = req.params.id;
     
-    const actionEngine = req.scope.resolve(ACTION_ENGINE_MODULE)
+    const actionEngine = req.scope.resolve(ACTION_ENGINE_MODULE) as any
     
     
     

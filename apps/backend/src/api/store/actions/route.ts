@@ -9,7 +9,7 @@ export async function POST(
 ) {
   try {
     let data = req.body as any;
-    const actionEngine = req.scope.resolve(ACTION_ENGINE_MODULE)
+    const actionEngine = req.scope.resolve(ACTION_ENGINE_MODULE) as any
     
     
     // Add audit metadata
@@ -55,7 +55,7 @@ export async function GET(
       limit = 50 
     } = req.query
     
-    const actionEngine = req.scope.resolve(ACTION_ENGINE_MODULE)
+    const actionEngine = req.scope.resolve(ACTION_ENGINE_MODULE) as any
     
     
     

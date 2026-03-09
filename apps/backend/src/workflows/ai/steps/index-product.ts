@@ -8,7 +8,7 @@ export const indexProductStep = createStep(
     input: any,
     { container }
   ): Promise<StepResponse<any, string>> => {
-    const aiService = container.resolve(AI_MODULE)
+    const aiService = container.resolve(AI_MODULE) as any
 
     // fetch product data
     const productService = container.resolve("product")

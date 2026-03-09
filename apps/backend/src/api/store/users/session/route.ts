@@ -1,7 +1,7 @@
 import { MedusaRequest, MedusaResponse } from "@medusajs/framework"
 
 export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
-  const aiService = req.scope.resolve("aiModuleService")
+  const aiService = req.scope.resolve("aiModuleService") as any
 
   const { customer_id, cart_id, language } = req.body || {} as any;
 

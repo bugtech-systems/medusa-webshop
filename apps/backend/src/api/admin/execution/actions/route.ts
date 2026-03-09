@@ -58,7 +58,7 @@ export async function GET(
       limit = 50 
     } = req.query
     
-    const actionEngine = req.scope.resolve(ACTION_ENGINE_MODULE)
+    const actionEngine = req.scope.resolve(ACTION_ENGINE_MODULE) as any
     
     
     
