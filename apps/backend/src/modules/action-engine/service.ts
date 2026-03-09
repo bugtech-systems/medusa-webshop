@@ -472,7 +472,7 @@ let queryConfig = {debug: true, limit: 10, ...config}
 
 private async executeScript(config: any, context: any): Promise<any> {
   try {
-
+    console.log(config, context,'EXECUTING SCRIPT')
 
     const result = await this.workerPool_.run({
       code: config.code,

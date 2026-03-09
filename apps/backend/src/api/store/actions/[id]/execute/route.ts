@@ -81,7 +81,7 @@ if (errors.length > 0) {
     if(oldTemplate.parameters){
      payload  = refineObjectByFields(body.parameters, oldTemplate.parameters || [])
     }
-  console.log("Ready to execute:", payload, oldTemplate.parameters, refineObjectByFields(payload, oldTemplate.parameters || []))
+  // console.log("Ready to execute:", payload, oldTemplate.parameters, refineObjectByFields(payload, oldTemplate.parameters || []))
     
     let template = await actionEngine.execute(oldTemplate?.id, payload, { headers: body.headers, ...body.context, timeout: body.timeout});
     
