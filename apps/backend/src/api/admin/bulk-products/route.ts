@@ -178,8 +178,11 @@ console.log('CURRENCY', existingRegion)
 
 
   for (const product of payload as any) {
+
     const collection_id = await resolveCollectionId(product.collection)
     const category_id = await resolveCategoryId(product.category)
+    let pubFormat = String(product.publishFormat).toLowerCase();
+
     let metadata = {
       external_id: product.external_id
     } as any;
@@ -347,7 +350,6 @@ if (existingProduct) {
 
 
 
-
   updatePayload.push({
     id: existingProduct.id,
     title: product.title,
@@ -357,7 +359,7 @@ if (existingProduct) {
     status: product.status,
     metadata: metadata,
     collection_id,
-    shipping_profile_id: String(product.publishFormat).toLowerCase() == 'digital' ? null :  defaultShipping.id,
+    shipping_profile_id: (pubFormat == 'digital' || pubFormat == 'service') ? null :  defaultShipping.id,
     weight: product.weight,
       ...(category_id ? { categories: [{id: category_id}]} : {}),
       options: [ {
@@ -393,7 +395,7 @@ if (existingProduct) {
       status: product.status,
       metadata: metadata,
       collection_id,
-      shipping_profile_id: String(product.publishFormat).toLowerCase() == 'digital' ? null :  defaultShipping.id,
+      shipping_profile_id: (pubFormat == 'digital' || pubFormat == 'service') ? null :  defaultShipping.id,
       weight: product.weight,
       sales_channels: [{id:defaultChannel.id}], // Assign default sales channel
       ...(category_id ? { categories: [{id: category_id}]} : {}),

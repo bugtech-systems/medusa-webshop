@@ -69,6 +69,10 @@ export default async function PaginatedProducts({
     return null
   }
 
+
+
+
+  console.log(region, 'REGIOn')
   let {
     response: { products, count },
   } = await listProductsWithSort({

@@ -11,7 +11,7 @@ loadEnv(process.env.NODE_ENV || "development", process.cwd())
 
 export default defineConfig({
   projectConfig: {
-    databaseUrl: process.env.SUPABASE_DATABASE_URL,
+    databaseUrl: process.env.DATABASE_URL,
     http: {
       storeCors: process.env.STORE_CORS || "*",
       adminCors: process.env.ADMIN_CORS || "*",
@@ -28,7 +28,7 @@ export default defineConfig({
     [ACTION_ENGINE_MODULE]: { 
     resolve: "./modules/action-engine",
     options: { 
-          connection_url: process.env.SUPABASE_DATABASE_URL,
+          connection_url: process.env.DATABASE_URL,
           max_connections: 20,
           idle_timeout_ms: 30000,
           connection_timeout_ms: 5000,
@@ -60,11 +60,11 @@ export default defineConfig({
     [Modules.WORKFLOW_ENGINE]: { resolve: "@medusajs/medusa/workflow-engine-inmemory" },
         /* -------------------- Payment -------------------- */
     [Modules.PAYMENT]: {
-      resolve: "@medusajs/medusa/payment",
+      resolve: "@medusajs/payment",
       options: {
         providers: [
           {
-            resolve: "@medusajs/medusa/payment-stripe",
+            resolve: "@medusajs/payment-stripe",
             id: "stripe",
             options: {
               apiKey: process.env.STRIPE_API_KEY,
