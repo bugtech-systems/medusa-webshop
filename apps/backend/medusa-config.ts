@@ -35,13 +35,13 @@ export default defineConfig({
           connection_timeout_ms: 5000,
           ssl: process.env.NODE_ENV === 'production',
           worker: {
-        minThreads: 2,
-        maxThreads: 4, // Will be capped at CPU count
-        idleTimeout: 30000,
-        maxQueue: 100,
-        concurrentTasksPerWorker: 1,
-        // Optional custom path
-        workerPath: "./src/modules/action-engine/services/script-worker.js"
+              minThreads: 1,
+            maxThreads: 2,
+            idleTimeout: 30000,
+            maxQueue: 50,
+            concurrentTasksPerWorker: 1,
+            // Use require.resolve so it works after build
+            workerPath: "./src/modules/action-engine/services/script-worker.js",
       }
 
       },

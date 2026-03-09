@@ -20,7 +20,6 @@ import {  } from "./services/script-worker"
 import { ActionConfig, Condition, ExecutionStatus, HealthCheckResult, QueryBuilderResult, QueryConfig, StandardResponse, WhereCondition } from "./types"
 import { parseActionInput, validateActionInput } from "../../utils/validators"
 import { parseFieldsString, refineObjectByFields, removeEmptyObjects, removeNullKeys } from "../../utils/helpers"
-import Piscina from "piscina"
 
 
 

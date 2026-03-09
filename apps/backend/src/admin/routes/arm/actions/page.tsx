@@ -456,7 +456,6 @@ const ActionsPage = () => {
 
 export const config = defineRouteConfig({
   label: "Actions",
-  rank: 0,
   icon: Bolt,
 })
 
