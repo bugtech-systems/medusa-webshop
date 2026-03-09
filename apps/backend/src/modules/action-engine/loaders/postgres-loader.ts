@@ -17,7 +17,7 @@ export default async function postgresConnectionLoader({
     return;
   }
 
-  logger?.info("Initializing custom PostgreSQL connection...");
+  logger?.info(`Initializing custom PostgreSQL connection... ${options.connection_url}`);
 
   const pool = new Pool({
     connectionString: options.connection_url,
