@@ -8,8 +8,6 @@
     "experimentalDecorators": true,
    "skipLibCheck": true,
     "strict": false,
-    "noEmitOnError": false,
-    "noImplicitAny": false,
     "skipDefaultLibCheck": true,
     "strictNullChecks": true,
     "declaration": false,
