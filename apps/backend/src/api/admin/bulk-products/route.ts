@@ -221,12 +221,6 @@ if (existingProduct) {
     for(const p of v.prices) {
                 let selectedPriceList = existingPriceLists.find(a => a.title == p.region_id_or_name) as any;
                 let title = p.region_id_or_name == 'au-default' ? "au-nonmember" : p.region_id_or_name;
-           let splitTitle = String(title).split('-')[1];
-                if(splitTitle){
-                metadata[splitTitle] =  Number(p.amount) / 100;
-                } else {
-                metadata[title] =  Number(p.amount) / 100;
-                }
 
         if(title == 'au-nonmember' || title == 'au-default'){
         let existingPrice = existingVariant.prices.find(a => a.title == "au-nonmember");
@@ -236,12 +230,16 @@ if (existingProduct) {
              amount: Number(p.amount) / 100,
              currency_code: existingRegion.currency_code,
              region_id: existingRegion.id,
-            //  rules: {}
+             rules: {region_id: existingRegion.id}
         })
-        } else {
+        }
+                let splitTitle = String(title).split('-')[1];
+                if(splitTitle){
+                metadata[splitTitle] =  Number(p.amount) / 100;
+                } else {
+                metadata[title] =  Number(p.amount) / 100;
+                }
 
-
-     
                 
                 if(!selectedPriceList){
                     selectedPriceList  = await resolvePriceList(title);
@@ -263,8 +261,6 @@ if (existingProduct) {
               // region_id: existingRegion.id
             })
           }
-      
-         }
       
          }
 
