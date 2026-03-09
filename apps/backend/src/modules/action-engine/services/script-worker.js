@@ -17,10 +17,8 @@ const SAFE_GLOBALS = {
   Boolean,
 }
 
-// Create sandbox for VM
 function createSandbox() {
   const sandbox = Object.create(null)
-
   Object.assign(sandbox, SAFE_GLOBALS)
 
   // Block dangerous globals
@@ -36,14 +34,22 @@ function createSandbox() {
  * Piscina expects a function exported
  * that receives the job payload
  */
-module.exports = async function ({ code, params }) {
+module.exports = async function (task = {}) {
+  const { code, params } = task
+
+  if (typeof code !== "string") {
+    throw new Error("[Worker] 'code' must be a string")
+  }
+
+  const safeParams = params ?? {}
+console.log("[Worker] Received params:", JSON.stringify(safeParams))
+console.time("[Worker] Execution time")
   const sandbox = createSandbox()
   const context = vm.createContext(sandbox)
 
   // Wrap user code in async function
   const wrappedCode = `
     "use strict";
-    const require = undefined;
     (async (props) => {
       ${code}
     })
@@ -51,12 +57,14 @@ module.exports = async function ({ code, params }) {
 
   const script = new vm.Script(wrappedCode)
   const fn = script.runInContext(context)
-const result = await Promise.race([
-  fn(Object.freeze(params)),
-  new Promise((_, reject) =>
-    setTimeout(() => reject(new Error("Script timeout")), 5000)
-  )
-])
-  // Run the user function with frozen props
+
+  // Execute with timeout
+  const result = await Promise.race([
+    fn(Object.freeze(safeParams)),
+    new Promise((_, reject) =>
+      setTimeout(() => reject(new Error("Script timeout")), 5000)
+    ),
+  ])
+
   return result
 }
