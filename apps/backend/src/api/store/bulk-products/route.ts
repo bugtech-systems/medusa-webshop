@@ -359,7 +359,7 @@ if (existingProduct) {
     status: product.status,
     metadata: metadata,
     collection_id,
-    shipping_profile_id: (pubFormat == 'digital' || pubFormat == 'service') ? null :  defaultShipping.id,
+    shipping_profile_id: defaultShipping.id,
     weight: product.weight,
       ...(category_id ? { categories: [{id: category_id}]} : {}),
       options: [ {
@@ -395,7 +395,7 @@ if (existingProduct) {
       status: product.status,
       metadata: metadata,
       collection_id,
-      shipping_profile_id: (pubFormat == 'digital' || pubFormat == 'service') ? null :  defaultShipping.id,
+      shipping_profile_id: defaultShipping.id,
       weight: product.weight,
       sales_channels: [{id:defaultChannel.id}], // Assign default sales channel
       ...(category_id ? { categories: [{id: category_id}]} : {}),
