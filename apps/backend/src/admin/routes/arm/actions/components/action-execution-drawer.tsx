@@ -636,7 +636,6 @@ export const ExecuteActionDrawer = ({
 
 
 
-  console.log(executionResult, 'EXECC')
 
   return (
     <>

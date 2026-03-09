@@ -30,7 +30,6 @@ export function EmployeeCreateDrawer({ company }: { company: QueryCompany }) {
     formData: AdminCreateEmployee & HttpTypes.AdminCreateCustomer
   ) => {
   
-  console.log(company, 'COMPANY')
 
   
     const { customer } = await createCustomer({
@@ -42,7 +41,6 @@ export function EmployeeCreateDrawer({ company }: { company: QueryCompany }) {
     });
 
 
-console.log(customer, 'CUSTOMER')
     if (!customer?.id) {
       toast.error("Failed to create customer");
       return;

@@ -6,7 +6,7 @@ export function getCheckoutStep(cart: B2BCart) {
   } else if (!cart.billing_address?.address_1) {
     return "billing-address"
   } else if (cart?.shipping_methods?.length === 0) {
-    return "delivery"
+    return cart?.shippingMethods?.length ? "delivery" : "payment"
   } else if (
     !cart.payment_collection?.payment_sessions?.find(
       (paymentSession: any) => paymentSession.status === "pending"

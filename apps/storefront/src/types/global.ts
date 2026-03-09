@@ -35,6 +35,7 @@ export enum SpendingLimitResetFrequency {
 }
 
 export interface B2BCart extends HttpTypes.StoreCart {
+  shippingMethods?: any[]
   company: QueryCompany
 }
 

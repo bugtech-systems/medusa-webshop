@@ -109,7 +109,6 @@ const ActionDetailPage = () => {
 
 let actionsData = action?.config?.actions ? action?.config?.actions?.map(act => {
                     let actionData = actions?.actions.find(a => a.id == act.action_id) as any;
-                    console.log(actionData, removeEmptyObjects(act), 'AACTT')
                     if(actionData){
                      return { id: act.action_id, output_template: actionData.output_template, context_template: actionData.context_template, conditions: actionData.conditions, ...act, name: actionData.name, description: actionData.description }
                     } else {

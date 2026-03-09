@@ -494,7 +494,7 @@ export async function setAddresses(currentState: unknown, formData: FormData) {
   }
 
   redirect(
-    `/${formData.get("shipping_address.country_code")}/checkout?step=delivery`
+    `/${formData.get("shipping_address.country_code")}/checkout?step=billing-address`
   )
 }
 
@@ -528,7 +528,7 @@ export async function setBillingAddress(
     return e.message
   }
 
-  redirect(`/checkout?step=delivery`)
+  // redirect(`/checkout?step=delivery`)
 }
 
 /**

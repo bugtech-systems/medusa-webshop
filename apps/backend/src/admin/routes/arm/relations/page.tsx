@@ -250,7 +250,6 @@ const ActionFlowsPage = () => {
   
     // Handle adding new action from button
   const handleAddConnection = async (connection: any) => {
-      console.log(connection, 'CONP')
       let { id, target, source, ...metadata} = connection;
       await createConnection({
         parameters: {

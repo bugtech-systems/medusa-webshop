@@ -18,9 +18,11 @@ import { B2BCart, B2BCustomer } from "types/global"
 const BillingAddress = ({
   cart,
   customer,
+  shippingMethods
 }: {
   cart: B2BCart | null
   customer: B2BCustomer | null
+  shippingMethods: any
 }) => {
   const searchParams = useSearchParams()
   const router = useRouter()
@@ -58,16 +60,24 @@ const BillingAddress = ({
     if (!sameAsBilling && cart?.shipping_address) {
       const { id, ...billing_address } = cart.shipping_address
       await updateCart({ billing_address })
-      router.push(pathname + "?step=delivery", { scroll: false })
+      router.push(pathname + (shippingMethods.length ? "?step=delivery" : "?step=payment"), { scroll: false })
     }
   }
 
   // ✅ Create form action handler for React 18
   const handleSubmit = async (formData: FormData) => {
+    try {
+
+
     startTransition(async () => {
       const result = await setBillingAddress(null, formData)
       setMessage(result)
+      router.push(pathname + (shippingMethods.length ? "?step=delivery" : "?step=payment"), { scroll: false })
     })
+    } catch (err: any){
+      setMessage(err.message || "")
+    }
+
   }
 
   return (

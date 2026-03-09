@@ -2,6 +2,7 @@ import { CartProvider } from "@/lib/context/cart-context"
 import { retrieveCart } from "@/lib/data/cart"
 import { retrieveCustomer } from "@/lib/data/customer"
 import CartTemplate from "@/modules/cart/templates"
+import { listCartShippingMethods } from "@lib/data/fulfillment"
 import { Metadata } from "next"
 
 export const metadata: Metadata = {
@@ -11,10 +12,13 @@ export const metadata: Metadata = {
 
 export default async function Cart() {
   const cart = await retrieveCart().catch(() => null)
-  const customer = await retrieveCustomer()
+  const customer = await retrieveCustomer();
+  const shippingMethods = await listCartShippingMethods(cart?.id || "")
+  
+
   return (
     <CartProvider cart={cart}>
-      <CartTemplate cart={cart} customer={customer} />
+      <CartTemplate cart={cart} customer={customer} shippingMethods={shippingMethods} />
     </CartProvider>
   )
 }

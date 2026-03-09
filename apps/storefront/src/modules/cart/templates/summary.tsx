@@ -18,14 +18,17 @@ import { Container } from "@medusajs/ui"
 type SummaryProps = {
   customer: B2BCustomer | null
   spendLimitExceeded: boolean
+  shippingMethods: any
 }
 
-const Summary = ({ customer, spendLimitExceeded }: SummaryProps) => {
+const Summary = ({ customer, spendLimitExceeded, shippingMethods = [] }: SummaryProps) => {
   const { handleEmptyCart, cart } = useCart()
 
   if (!cart) return null
 
-  const checkoutStep = getCheckoutStep(cart)
+  const checkoutStep = getCheckoutStep({...cart, shippingMethods})
+
+    console.log(checkoutStep, 'CHECKOUT Step')  
   const checkoutPath = checkoutStep
     ? `/checkout?step=${checkoutStep}`
     : "/checkout"

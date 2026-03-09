@@ -11,8 +11,9 @@ import { Heading } from "@medusajs/ui"
 import Link from "next/link"
 import { useMemo } from "react"
 
-const CartTemplate = ({ customer }: { customer: B2BCustomer | null, cart: any }) => {
+const CartTemplate = ({ customer,  shippingMethods}: { customer: B2BCustomer | null, cart: any, shippingMethods: any }) => {
   const { cart } = useCart()
+  
 
   const spendLimitExceeded = useMemo(
     () => checkSpendingLimit(cart, customer),
@@ -50,7 +51,8 @@ const CartTemplate = ({ customer }: { customer: B2BCustomer | null, cart: any })
                   <div className="flex flex-col gap-y-8 sticky top-20">
                     {cart && cart.region && (
                       <Summary
-                        cart={cart}
+                        // cart={cart}
+                        shippingMethods={shippingMethods}
                         customer={customer}
                         spendLimitExceeded={spendLimitExceeded}
                       />
