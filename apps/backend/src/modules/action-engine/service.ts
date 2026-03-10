@@ -81,7 +81,6 @@ export default class ActionEngineService extends MedusaService({
   
   // Loader-registered resources
   private postgresPool?: any
-  private customEventBus?: any
   private dbService: DbOperationService
   protected workerPool_: any;
 
@@ -105,7 +104,6 @@ export default class ActionEngineService extends MedusaService({
     this.workerPool_ = container.workerPool;
     // Get loader-registered services (use optional chaining)
     this.postgresPool = container.postgresPool
-    this.customEventBus = container.eventBus // Custom event bus from loader
     
     this.logger_.info("✅ ActionEngineService initialized")
   }
@@ -155,12 +153,12 @@ export default class ActionEngineService extends MedusaService({
     this.executionId = execution.id
 
 
-      // Emit execution started event
-      await this.emitEvent('executionStarted', {
-        executionId: this.executionId,
-        templateId,
-        startedAt: new Date()
-      })
+      // // Emit execution started event
+      // await this.emitEvent('executionStarted', {
+      //   executionId: this.executionId,
+      //   templateId,
+      //   startedAt: new Date()
+      // })
 
 let result;
 
@@ -204,12 +202,12 @@ let context_template = template.context_template;
         output_data: result
       })
 
-      // Emit completion event
-      await this.emitEvent('executionCompleted', {
-        executionId: this.executionId,
-        duration: Date.now() - startTime,
-        success: true
-      })
+      // // Emit completion event
+      // await this.emitEvent('executionCompleted', {
+      //   executionId: this.executionId,
+      //   duration: Date.now() - startTime,
+      //   success: true
+      // })
 
       return {
         success: true,
@@ -226,23 +224,7 @@ let context_template = template.context_template;
     }
   }
 
-  /**
-   * Emit events through available channels
-   */
-  private async emitEvent(eventType: string, data: any): Promise<void> {
-    // 1. Use custom event bus from loader
-    if (this.customEventBus) {
-      try {
-        this.customEventBus.emit(eventType, data)
-        this.logger_.debug(`Event emitted via custom event bus: ${eventType}`)
-      } catch (error) {
-        this.logger_.warn(`Failed to emit via custom event bus: ${error}`)
-      }
-    }
-    
-    // 3. Log as fallback
-    this.logger_.info(`Event: ${eventType}`)
-  }
+
 
 
   /**
@@ -408,7 +390,7 @@ let queryConfig = {debug: true, limit: 10, ...config}
    * AI call handler
    */
   private async callAI(config: ActionConfig, context: any): Promise<any> {
-    this.logger_.info(`Executing API action ${config.model}`)
+    this.logger_.info(`Executing AI call ${config.model}`)
     
     try {
     
@@ -424,9 +406,12 @@ let queryConfig = {debug: true, limit: 10, ...config}
     //   model: config.model,
     //   timestamp: new Date().toISOString(),
     // }
+
+    console.log(result, 'RESULLT')
           return  result.response
 
    } catch(err) {
+    console.log(err, 'ERROR')
       return { success: false, status_code: 400, status: 'error', message: 'Chat AI Action Error:', err }
     }
   }
@@ -734,11 +719,11 @@ private async executeScript(config: any, context: any): Promise<any> {
         error_message: error.message
       })
       
-      await this.emitEvent('executionFailed', {
-        executionId: this.executionId,
-        error: error.message,
-        duration: Date.now() - startTime
-      })
+      // await this.emitEvent('executionFailed', {
+      //   executionId: this.executionId,
+      //   error: error.message,
+      //   duration: Date.now() - startTime
+      // })
     }
     
     this.logger_.error("Action execution failed:", error)
@@ -971,7 +956,6 @@ private async executeScript(config: any, context: any): Promise<any> {
     const services = {
       logger: !!this.logger_,
       postgresPool: !!this.postgresPool,
-      customEventBus: !!this.customEventBus
     }
     
     return {

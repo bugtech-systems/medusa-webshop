@@ -108,7 +108,6 @@ export interface HealthCheckResult {
   services: {
     logger: boolean
     postgresPool: boolean
-    customEventBus: boolean
   }
   timestamp: string
 }

@@ -8,4 +8,3 @@ export default Module(AI_MODULE, {
   service: AiModuleService
 });
 
-// 

@@ -1,12 +1,11 @@
 "use client"
 
 import { useState, KeyboardEvent } from "react"
-import { useExecuteAction } from "../../../hooks/api/actions"
-import { ArrowUp, Paperclip, Globe } from "lucide-react"
+import { ArrowUp, Paperclip } from "lucide-react"
 
 interface Props {
   conversationId?: string
-  onSend?: any
+  onSend?: (content: string, model?: string) => void
 }
 
 const serviceModels = [
@@ -16,13 +15,13 @@ const serviceModels = [
     model: "alayon-laundry-assistant",
     content: "Help me with laundry services"
   },
-   {
+  {
     id: "lpg",
     name: "✦ Gas (LPG)",
     model: "alayon-gas-assistant",
     content: "Help me with LPG gas delivery"
   },
-   {
+  {
     id: "mineral",
     name: "✦ Mineral Water",
     model: "alayon-water-assistant",
@@ -30,32 +29,27 @@ const serviceModels = [
   }
 ]
 
-
-
-export default function ChatInput({ conversationId, onSend }: Props) {
+export default function ChatInput({ isPending, onSend }: any) {
   const [content, setContent] = useState("")
-  const [service, setService] = useState(null) // default model
+  const [service, setService] = useState<string | null>(null)
 
-  const { mutateAsync: chatAi, isPending } = useExecuteAction("chat-ai-conversation")
 
   const handleSend = async () => {
-    if (!content.trim() || isPending) return
+    if (!content.trim()) return
 
     try {
-     let res = await chatAi({
-        parameters: {
-          content: content.trim(),
-          model: service ? serviceModels.find(a => a.id == service)?.model : 'alayon-ai',
-          conversation_id: conversationId,
-        },
-      }) as any;
+      const model = service ? serviceModels.find((a) => a.id === service)?.model : "alayon-ai"
+      if (onSend) onSend(content.trim(), model)
 
+      // Clear input locally
+      setContent("")
+      setService(null)
 
-      setContent("") // clear input on success
-    if(res?.context && res?.context?.conversation_id && !conversationId){
-    window.location.href = `/app/arm/relations/${res?.context?.conversation_id}`
-     }
-     onSend();
+     
+
+      // if (res?.context?.conversation_id && !conversationId) {
+      //   window.location.href = `/app/arm/relations/${res.context.conversation_id}`
+      // }
     } catch (error) {
       console.error("Chat send failed:", error)
     }
@@ -68,21 +62,18 @@ export default function ChatInput({ conversationId, onSend }: Props) {
     }
   }
 
-  const handleService = (e) => {
-            if(e.id != service){
-            setContent(e.content)
-            setService(e.id)
-            } else {
-            setContent("")
-            setService(null)
-            }
-            
-          
+  const handleService = (model: typeof serviceModels[0]) => {
+    if (model.id !== service) {
+      setContent(model.content)
+      setService(model.id)
+    } else {
+      setContent("")
+      setService(null)
+    }
   }
 
-
   return (
-    <div className="w-full rounded-2xl border bg-white shadow-lg px-4 py-3">
+    <div className="w-full rounded-2xl border bg-white shadow-md px-4 py-3">
       <input
         value={content}
         onChange={(e) => setContent(e.target.value)}
@@ -92,25 +83,27 @@ export default function ChatInput({ conversationId, onSend }: Props) {
         className="w-full bg-transparent outline-none text-sm placeholder:text-neutral-400 disabled:opacity-50"
       />
 
-      <div className="mt-3 flex items-center justify-between">
-        {/* Left actions (quick prompts / model switchers later) */}
-        <div className="flex gap-2">
-        {/* {serviceModels.map(a => {
-            return (
-            <button
+      {/* Quick service/model selector (optional) */}
+      {/* <div className="flex gap-2 mt-3 flex-wrap">
+        {serviceModels.map((m) => (
+          <button
+            key={m.id}
             type="button"
-            onClick={() => handleService(a)}
-            className={`${service == a.id ? 'bg-blue-500 text-white' : 'hover:bg-neutral-50'} flex items-center gap-1 rounded-full border px-3 py-1 text-xs`}
+            onClick={() => handleService(m)}
+            className={`px-3 py-1 rounded-full text-xs border flex items-center gap-1 ${
+              service === m.id
+                ? "bg-blue-600 text-white border-blue-600"
+                : "hover:bg-neutral-50 text-neutral-800 border-neutral-200"
+            }`}
           >
-            {a.name}
+            {m.name}
           </button>
-            )
-        })} */}
+        ))}
+      </div> */}
 
-        </div>
-
-        {/* Right actions */}
-        <div className="flex items-center gap-2">
+      {/* Actions */}
+      <div className="mt-3 flex items-center justify-between">
+        <div className="flex gap-2">
           <button
             type="button"
             className="p-2 rounded-full hover:bg-neutral-100"
@@ -118,16 +111,16 @@ export default function ChatInput({ conversationId, onSend }: Props) {
           >
             <Paperclip size={16} />
           </button>
-
-          <button
-            type="button"
-            onClick={handleSend}
-            disabled={isPending || !content.trim()}
-            className="p-2 rounded-full bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
-          >
-            <ArrowUp size={16} />
-          </button>
         </div>
+
+        <button
+          type="button"
+          onClick={handleSend}
+          disabled={isPending || !content.trim()}
+          className="p-2 rounded-full bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
+        >
+          <ArrowUp size={16} />
+        </button>
       </div>
     </div>
   )
