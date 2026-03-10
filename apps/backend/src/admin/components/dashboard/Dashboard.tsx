@@ -1190,7 +1190,7 @@ const handleDragEnd = useCallback(() => {
       type: widget.type,
       title: widget.title,
       size: "medium",
-      position,
+      position: widget.position ? widget.position : position,
       config: widget.config,
     }
         newWidgets.push(newWidget);
@@ -1279,7 +1279,7 @@ const handleDragEnd = useCallback(() => {
     )
   }
 
-
+console.log(tabs, 'TABBS')
   return (
     <div className="h-full">
       <Toaster />

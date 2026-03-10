@@ -428,6 +428,7 @@ export const EditTabModal: React.FC<EditTabModalProps> = ({
         const src = availableWidgets.find((w: any) => w.id === id)
         if (!src) return null
         return {
+          ...src,
           id: src.id,
           type: src.metadata.type,
           title: src.name || src.label || "New Widget",
@@ -465,6 +466,18 @@ export const EditTabModal: React.FC<EditTabModalProps> = ({
     setEditDrawerOpen(true)
   }
 
+  const handleWidgetConfigChange = (id, field, value) => {
+      let newWidgets = widgets.map(a => {
+              if(id == a.id){
+                return {...a, config: {...a.config, [field]: value}}
+              } else {
+                return a;
+              }
+      })
+        setWidgets(newWidgets)
+        setSelectedWidgets(newWidgets)
+  }
+
   // Save configuration from drawer
   const handleSaveConfig = () => {
     if (!editingWidgetId) return
@@ -476,6 +489,8 @@ export const EditTabModal: React.FC<EditTabModalProps> = ({
     setTempConfig({})
     toast.success("Widget configuration updated")
   }
+
+
 
   const handleSave = async () => {
     if (!isStepValid()) return
@@ -777,7 +792,7 @@ export const EditTabModal: React.FC<EditTabModalProps> = ({
                       </div>
                     ) : (
                       <div className="space-y-3">
-                        {selectedWidgets.map((widget) => {
+                        {selectedWidgets.map((widget: any) => {
                           const typeDef = widgetTypes.find((t) => t.value === widget.type)
                           return (
                             <div
@@ -786,15 +801,16 @@ export const EditTabModal: React.FC<EditTabModalProps> = ({
                             >
                               <span className="text-2xl">{typeDef?.icon || "📦"}</span>
                               <div className="flex-1">
+
+                                <UiText size="small" className="text-ui-fg-subtle">
+                                 [{typeDef?.label || widget.type}] - {widget.title} 
+                                </UiText>
                                 <Input
-                                  value={widget.title}
-                                  onChange={(e) => handleTitleChange(widget.id, e.target.value)}
-                                  placeholder="Widget title"
+                                  value={widget.config.redirect_url}
+                                  onChange={(e) => handleWidgetConfigChange(widget.id, 'redirect_url', e.target.value)}
+                                  placeholder="Widget Report Url"
                                   className="mb-1"
                                 />
-                                <UiText size="small" className="text-ui-fg-subtle">
-                                  {typeDef?.label || widget.type}
-                                </UiText>
                               </div>
                               <div className="flex items-center gap-1">
                                 {/* <Button

@@ -2,8 +2,8 @@
 
 import React, { useEffect, useState } from "react"
 import { Button, Tooltip, useToggleState, Text as UiText } from "@medusajs/ui"
-import { PencilSquare, Trash, ArrowsPointingOut,  Minus } from "@medusajs/icons";
-import {Copy } from 'lucide-react'
+import { PencilSquare, Trash, ArrowsPointingOut,  Minus, Expand } from "@medusajs/icons";
+import {Copy, ViewIcon } from 'lucide-react'
 import { Widget } from "./types"
 import { widgetRegistry } from "./widgets"
 import { useExecuteAction, useExecution } from "../../hooks/api/actions"
@@ -49,6 +49,9 @@ export const DraggableWidget: React.FC<DraggableWidgetProps> = ({
     setWidgetData({...widget.configuration,...data, type: data.type, ...(data.type == 'table' ? {fields: data.config.fields, data: data.data} : {data: data.data})});
   }
 
+  const handleView = (redirect_url: string) => {
+    window.location.href = `/app${redirect_url}`
+  }
 
 
   useEffect(() => {
@@ -138,16 +141,7 @@ fetchWidget(widget.id)
               <PencilSquare className="w-4 h-4" />
             </Button>
           </Tooltip> */}
-          {/* <Tooltip content="Duplicate widget">
-            <Button
-              size="small"
-              variant="secondary"
-              onClick={() => onDuplicate(widget.id)}
-              className="shadow-md bg-ui-bg-base hover:scale-105 transition-transform"
-            >
-              <Copy className="w-4 h-4" />
-            </Button>
-          </Tooltip> */}
+   
           <Tooltip content="Delete widget">
             <Button
               size="small"
@@ -158,6 +152,33 @@ fetchWidget(widget.id)
               <Trash className="w-4 h-4" />
             </Button>
           </Tooltip>
+        </div>
+      )}
+
+         {!isEditing && !isDragging && !isResizing && (
+        <div className="absolute top-2 right-2 flex gap-1 z-10">
+          {/* <Tooltip content="Edit widget">
+            <Button
+              size="small"
+              variant="secondary"
+              onClick={() => onEdit(widget)}
+              className="shadow-md bg-ui-bg-base hover:scale-105 transition-transform"
+            >
+              <PencilSquare className="w-4 h-4" />
+            </Button>
+          </Tooltip> */}
+          {widget?.config?.redirect_url && 
+           <Tooltip content="Duplicate widget">
+            <Button
+              size="small"
+              variant="secondary"
+              onClick={() => handleView(widget?.config?.redirect_url)}
+              className="shadow-md bg-ui-bg-base hover:scale-105 transition-transform"
+            >
+              <ViewIcon className="w-4 h-4" />
+            </Button>
+          </Tooltip> 
+          }
         </div>
       )}
 
