@@ -26,7 +26,26 @@ export default defineConfig({
     },
   },
   modules: {
+  [ACTION_ENGINE_MODULE]: { 
+    resolve: "./modules/action-engine",
+    options: { 
+          connection_url: process.env.DATABASE_URL,
+          max_connections: 20,
+          idle_timeout_ms: 30000,
+          connection_timeout_ms: 5000,
+          ssl: process.env.NODE_ENV === 'production',
+          worker: {
+              minThreads: 1,
+            maxThreads: 2,
+            idleTimeout: 30000,
+            maxQueue: 50,
+            concurrentTasksPerWorker: 1,
+            // Use require.resolve so it works after build
+            workerPath: "./src/modules/action-engine/services/script-worker.js",
+      }
 
+      },
+    },
     [APPROVAL_MODULE]: { resolve: "./modules/approval" },
     [AI_MODULE]: { resolve: "./modules/ai" },
     [COMPANY_MODULE]: { resolve: "./modules/company" },
@@ -79,25 +98,6 @@ export default defineConfig({
         sandbox: process.env.SALESFORCE_SANDBOX === "true",
       },
     },
-    [ACTION_ENGINE_MODULE]: { 
-    resolve: "./modules/action-engine",
-    options: { 
-          connection_url: process.env.DATABASE_URL,
-          max_connections: 20,
-          idle_timeout_ms: 30000,
-          connection_timeout_ms: 5000,
-          ssl: process.env.NODE_ENV === 'production',
-          worker: {
-              minThreads: 1,
-            maxThreads: 2,
-            idleTimeout: 30000,
-            maxQueue: 50,
-            concurrentTasksPerWorker: 1,
-            // Use require.resolve so it works after build
-            workerPath: "./src/modules/action-engine/services/script-worker.js",
-      }
-
-      },
-    },
+  
   }
 });
