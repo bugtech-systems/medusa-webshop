@@ -33,7 +33,10 @@ export default async function piscinaWorkerLoader({
      */
     const workerPath = workerOptions.workerPath
       ? path.resolve(workerOptions.workerPath)
-      : require.resolve("../services/script-worker");
+      : path.resolve(
+        __dirname,
+        "../services/script-worker.js"
+      );
 
     logger?.info(`[Piscina] Resolved worker path: ${workerPath}`);
 
