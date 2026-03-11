@@ -41,7 +41,7 @@ export default defineConfig({
             maxQueue: 50,
             concurrentTasksPerWorker: 1,
             // Use require.resolve so it works after build
-            workerPath: "./src/modules/action-engine/services/script-worker.js",
+            // workerPath: "./src/modules/action-engine/services/script-worker.js",
       }
 
       },
