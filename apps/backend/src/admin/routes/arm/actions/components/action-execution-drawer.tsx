@@ -53,7 +53,7 @@ interface ActionParameter {
   type: "string" | "number" | "boolean" | "json" | "text" | "array" | "object"
   required?: boolean
   placeholder?: string
-  default?: any
+  defaultValue?: any
   description?: string
   options?: { label: string; value: string }[]
 }
@@ -93,6 +93,8 @@ const ParameterField = ({ param }: { param: ActionParameter }) => {
   const { register, control, watch, setValue } = useFormContext()
   const value = watch(param.name)
 
+
+  console.log(param, 'PARAMS')
   const renderField = () => {
     switch (param.type) {
       case "boolean":
@@ -100,7 +102,7 @@ const ParameterField = ({ param }: { param: ActionParameter }) => {
           <Controller
             name={param.name}
             control={control}
-            defaultValue={param.default ?? false}
+            defaultValue={param.defaultValue ?? false}
             render={({ field }) => (
               <div className="flex items-center justify-between">
                 <div className="flex flex-col gap-1">
@@ -158,8 +160,11 @@ const ParameterField = ({ param }: { param: ActionParameter }) => {
                     return "Invalid JSON format"
                   }
                 } : undefined,
+                
               })}
               className="font-mono text-sm min-h-[80px]"
+              defaultValue={param.defaultValue}
+
             />
             {param.type === "json" && (
               <div className="flex justify-end">
@@ -207,6 +212,7 @@ const ParameterField = ({ param }: { param: ActionParameter }) => {
                 required: param.required,
                 valueAsNumber: true,
               })}
+              defaultValue={Number(param.defaultValue)}
             />
           </div>
         )
@@ -238,6 +244,7 @@ const ParameterField = ({ param }: { param: ActionParameter }) => {
                 },
               })}
               className="min-h-[80px]"
+              
             />
           </div>
         )
@@ -262,7 +269,7 @@ const ParameterField = ({ param }: { param: ActionParameter }) => {
               <Controller
                 name={param.name}
                 control={control}
-                defaultValue={param.default ?? ""}
+                defaultValue={param.defaultValue ?? ""}
                 render={({ field }) => (
                   <select
                     className={clx(
@@ -307,6 +314,7 @@ const ParameterField = ({ param }: { param: ActionParameter }) => {
               type="text"
               placeholder={param.placeholder}
               {...register(param.name, { required: param.required })}
+              defaultValue={param.defaultValue}
             />
           </div>
         )

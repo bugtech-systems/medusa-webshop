@@ -1,6 +1,6 @@
 import { Migration } from "@medusajs/framework/mikro-orm/migrations";
 
-export class Migration20260307084024 extends Migration {
+export class Migration20260311175427 extends Migration {
 
   override async up(): Promise<void> {
     this.addSql(`create table if not exists "ai_conversation_session" ("id" text not null, "customer_id" text null, "cart_id" text null, "language" text not null default 'en', "metadata" jsonb null, "context" jsonb null, "created_at" timestamptz not null default now(), "updated_at" timestamptz not null default now(), "deleted_at" timestamptz null, constraint "ai_conversation_session_pkey" primary key ("id"));`);
@@ -10,7 +10,7 @@ export class Migration20260307084024 extends Migration {
     this.addSql(`CREATE INDEX IF NOT EXISTS "IDX_ai_conversation_message_ai_conversation_session_id" ON "ai_conversation_message" ("ai_conversation_session_id") WHERE deleted_at IS NULL;`);
     this.addSql(`CREATE INDEX IF NOT EXISTS "IDX_ai_conversation_message_deleted_at" ON "ai_conversation_message" ("deleted_at") WHERE deleted_at IS NULL;`);
 
-    this.addSql(`create table if not exists "ai_memory" ("id" text not null, "scope" text not null, "scope_id" text not null, "content" text not null, "embedding" jsonb not null, "language" text null, "created_at" timestamptz not null default now(), "updated_at" timestamptz not null default now(), "deleted_at" timestamptz null, constraint "ai_memory_pkey" primary key ("id"));`);
+    this.addSql(`create table if not exists "ai_memory" ("id" text not null, "scope" text null, "scope_id" text null, "content" text null, "embedding" jsonb null, "language" text null, "metadata" jsonb null, "created_at" timestamptz not null default now(), "updated_at" timestamptz not null default now(), "deleted_at" timestamptz null, constraint "ai_memory_pkey" primary key ("id"));`);
     this.addSql(`CREATE INDEX IF NOT EXISTS "IDX_ai_memory_deleted_at" ON "ai_memory" ("deleted_at") WHERE deleted_at IS NULL;`);
 
     this.addSql(`create table if not exists "ai_model" ("id" text not null, "name" text not null, "model_name" text not null, "description" text null, "base_model" text null, "status" text null, "version" text null, "handle" text null, "provider" text null, "system" text null, "metadata" jsonb not null, "config" jsonb not null, "created_at" timestamptz not null default now(), "updated_at" timestamptz not null default now(), "deleted_at" timestamptz null, constraint "ai_model_pkey" primary key ("id"));`);

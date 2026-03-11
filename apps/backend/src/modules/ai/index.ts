@@ -1,10 +1,10 @@
 import { Module } from "@medusajs/framework/utils";
 import AiModuleService from "./service"
-//import AiModuleService from "./ai-service"
 
-export const AI_MODULE = "aiModuleService";
+export const AI_MODULE = "aiService";
 
 export default Module(AI_MODULE, {
   service: AiModuleService
+  // loaders: [AiServiceLoader]
 });
 

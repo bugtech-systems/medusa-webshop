@@ -1,4 +1,15 @@
+type Listener = {
+  url: string
+  listener: (args: any) => Promise<void>
+}
+
 export default class WebhookManagerService {
+  private eventBusService: any
+  private logger: any
+  private container: any
+  private queueService: any
+  private listeners: Record<string, Listener[]>
+
   constructor({ eventBusService, logger, container, queueService }: any) {
     this.eventBusService = eventBusService
     this.logger = logger
@@ -10,14 +21,18 @@ export default class WebhookManagerService {
   /**
    * Register a webhook for a specific event
    */
-  register(event, url) {
+  register(event: string, url: string) {
     if (!this.listeners[event]) this.listeners[event] = []
 
-    const listener = async ({ event: evt, container }) => {
+    const listener = async ({ event: evt }: any) => {
       try {
         const payload = evt?.data
-        console.log(evt, 'EVEENT')
-        await this.queueService.add(`webhook-${event}`, { url, payload })
+        console.log(evt, "EVENT")
+
+        await this.queueService.add(`webhook-${event}`, {
+          url,
+          payload,
+        })
       } catch (err) {
         this.logger.error(`Webhook listener failed for ${event}`, err)
       }
@@ -25,17 +40,21 @@ export default class WebhookManagerService {
 
     this.eventBusService.subscribe(event, listener)
     this.listeners[event].push({ url, listener })
+
     this.logger.info(`Webhook registered for ${event}: ${url}`)
   }
 
-  unregister(event, url) {
+  unregister(event: string, url: string) {
     if (!this.listeners[event]) return
 
-    const index = this.listeners[event].findIndex(l => l.url === url)
+    const index = this.listeners[event].findIndex((l) => l.url === url)
+
     if (index !== -1) {
       const { listener } = this.listeners[event][index]
+
       this.eventBusService.unsubscribe(event, listener)
       this.listeners[event].splice(index, 1)
+
       this.logger.info(`Webhook unregistered for ${event}: ${url}`)
     }
   }
@@ -43,7 +62,7 @@ export default class WebhookManagerService {
   /**
    * Optional: auto-register default webhooks on load
    */
-  loadDefaults(defaults = []) {
-    defaults.forEach(d => this.register(d.event, d.url))
+  loadDefaults(defaults: { event: string; url: string }[] = []) {
+    defaults.forEach((d) => this.register(d.event, d.url))
   }
 }

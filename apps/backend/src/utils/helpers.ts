@@ -1,6 +1,72 @@
 import { evaluateExpression } from "../modules/action-engine/expressionEvaluator"
+import { generateEntityId } from "@medusajs/utils"
 
-    export function serializeTemplateData(data: any) {
+
+export function buildWorkflowData(actions: Record<string, any>) {
+  const steps = Object.entries(actions).map(([key, value]) => ({
+    key,
+    ...value
+  }))
+
+  steps.sort((a, b) => a.index - b.index)
+
+  const buildNested = (index: number): any => {
+    if (index >= steps.length) return undefined
+
+    const step = steps[index]
+
+    const node: any = {
+      uuid: generateEntityId(undefined, "step"),
+      action: step.key,
+      noCompensation: true,
+      input: step
+    }
+
+    const next = buildNested(index + 1)
+
+    if (next) {
+      node.next = next
+    }
+
+    return node
+  }
+
+  return {
+    _v: 0,
+    runId: generateEntityId(undefined, "run"),
+    state: "pending",
+    steps: {},
+    modelId: "dynamic-workflow",
+
+    options: {
+      name: "dynamic-workflow",
+      store: true,
+      idempotent: false,
+      retentionTime: 259200
+    },
+
+    metadata: {
+      sourcePath: "ai-generated",
+      eventGroupId: generateEntityId(undefined, "event"),
+      preventReleaseEvents: false
+    },
+
+    startedAt: Date.now(),
+
+    definition: buildNested(0),
+
+    transactionId: generateEntityId(undefined, "tx"),
+
+    hasAsyncSteps: false,
+    hasFailedSteps: false,
+    hasSkippedSteps: false,
+    hasWaitingSteps: false,
+    hasRevertedSteps: false,
+    hasSkippedOnFailureSteps: false
+  }
+}
+
+export function serializeTemplateData(data: any) {
     // Fields that should be serialized to JSON
     const jsonFields = [
       'config', 'conditions', 'output_template', 'context_template',

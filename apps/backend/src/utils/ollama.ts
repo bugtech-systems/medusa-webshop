@@ -64,7 +64,8 @@ export async function streamChatCompletion({
 export async function chatCompletion({
   messages,
   model = "llama3.2:1b",
-  format = 'json'
+  format = 'json',
+  options = {}
 }: any) {
   const response = await fetch(`${OLLAMA_BASE_URL}/api/chat`, {
     method: "POST",
@@ -72,11 +73,19 @@ export async function chatCompletion({
     body: JSON.stringify({
       model,
       messages,
+      options,
       stream: false,
       format
     }),
   })
 
+  console.log({
+      model,
+      messages,
+      options,
+      stream: false,
+      format
+    }, 'CHAT BODY')
   return response.json()
 }
 
@@ -84,7 +93,8 @@ export async function chatCompletion({
 export async function generateCompletion({
   prompt,
   model = "alayon",
-  format = 'json'
+  format = 'json',
+  options
 }: any) {
 
 
@@ -95,6 +105,7 @@ export async function generateCompletion({
     body: JSON.stringify({
       model,
       prompt,
+      options,
       stream: false,
       format
     }),

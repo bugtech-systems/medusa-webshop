@@ -53,7 +53,7 @@ export async function GET(
       search, 
       workflow_id,
       page = 1,
-      limit = 50 
+      limit = 500 
     } = req.query
     
     const actionEngine = req.scope.resolve(ACTION_ENGINE_MODULE) as any

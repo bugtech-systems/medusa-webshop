@@ -11,12 +11,8 @@ import {
 import { ActionTemplate, Execution, ActionRelation, ActionConnection, ActionView } from "./models"
 import * as expressionEvaluator from "./expressionEvaluator"
 import axios from "axios"
-import { Worker } from "worker_threads"
-import path from "path"
 import { chatCompletion, generateCompletion, generateEmbedding, streamChatCompletion } from "../../utils/ollama"
 import { DbOperationService } from "./services/database-action-service"
-import {  } from "./services/script-worker"
-
 import { ActionConfig, Condition, ExecutionStatus, HealthCheckResult, QueryBuilderResult, QueryConfig, StandardResponse, WhereCondition } from "./types"
 import { parseActionInput, validateActionInput } from "../../utils/validators"
 import { parseFieldsString, refineObjectByFields, removeEmptyObjects, removeNullKeys } from "../../utils/helpers"
@@ -45,7 +41,6 @@ export interface ActionEngineServiceTypes {
   // Method return types
   execute: ReturnType<ActionEngineService['execute']>
   getExecutionStatus: ReturnType<ActionEngineService['getExecutionStatus']>
-  executeWorkflowWithDependencies: ReturnType<ActionEngineService['executeWorkflowWithDependencies']>
   healthCheck: ReturnType<ActionEngineService['healthCheck']>
   // Repository methods (inherited from MedusaService)
   retrieveActionTemplate: ReturnType<ActionEngineService['retrieveActionTemplate']>
@@ -83,7 +78,7 @@ export default class ActionEngineService extends MedusaService({
   private postgresPool?: any
   private dbService: DbOperationService
   protected workerPool_: any;
-
+  private aiModuleService_: any
   // Execution context
   private executionId: string | null = null
   private executionContext = {
@@ -104,10 +99,12 @@ export default class ActionEngineService extends MedusaService({
     this.workerPool_ = container.workerPool;
     // Get loader-registered services (use optional chaining)
     this.postgresPool = container.postgresPool
-    
-    this.logger_.info("✅ ActionEngineService initialized")
-  }
+    // this.aiModuleService_ = container.aiModuleService
 
+    this.logger_.info("✅ ActionEngineService initialized")
+    console.log(Object.keys(container))
+
+  }
   // ========== CORE ACTION ENGINE METHODS ==========
 
   /**
@@ -257,7 +254,7 @@ let context_template = template.context_template;
       context
     )
 
-    
+    console.log(context,' EXECUTE CONTEXT')
     // let cleanConfig = removeNullKeys(config);
 
     // Execute based on type
@@ -301,57 +298,6 @@ let queryConfig = {debug: true, limit: 10, ...config}
   try {
     
       const dbResult = await this.dbService.execute(queryConfig);
-
-    let result: any
-    
-    // switch (queryConfig.operation) {
-    //   case 'read':
-    //     queryResult = this.buildSelectQuery(queryConfig)
-        
-    //     const selectResult = await client.query(queryResult.sql, queryResult.params)
-    //     return selectResult.rows
-        
-    //   case 'create':
-    //     if (Array.isArray(queryConfig.data)) {
-    //       return await this.executeBatchCreate(queryConfig, client)
-    //     }
-    //     queryResult = this.buildInsertQuery(queryConfig)
-        
-    //     const insertResult = await client.query(queryResult.sql, queryResult.params)
-    //     return queryConfig.returning ? insertResult.rows[0] : { success: true, id: insertResult.rows[0]?.id }
-        
-    //   case 'update':
-    //     queryResult = this.buildUpdateQuery(queryConfig)
-    //     const updateResult = await client.query(queryResult.sql, queryResult.params)
-    //     return queryConfig.returning ? updateResult.rows[0] : { success: true, affectedRows: updateResult.rowCount }
-        
-    //   case 'delete':
-    //     queryResult = this.buildDeleteQuery(queryConfig)
-    //     const deleteResult = await client.query(queryResult.sql, queryResult.params)
-    //     return { success: true, affectedRows: deleteResult.rowCount }
-        
-    //   case 'upsert':
-    //     queryResult = this.buildUpsertQuery(queryConfig)
-    //     const upsertResult = await client.query(queryResult.sql, queryResult.params)
-    //     return queryConfig.returning ? upsertResult.rows[0] : { success: true }
-        
-    //   case 'count':
-    //     queryResult = this.buildCountQuery(queryConfig)
-    //     const countResult = await client.query(queryResult.sql, queryResult.params)
-    //     return { count: parseInt(countResult.rows[0].count) }
-        
-    //   case 'exists':
-    //     queryResult = this.buildExistsQuery(queryConfig)
-    //     const existsResult = await client.query(queryResult.sql, queryResult.params)
-    //     return { exists: existsResult.rows[0].exists }
-        
-    //   case 'batch_create':
-    //     return await this.executeBatchCreate(queryConfig, client)
-        
-    //   default:
-    //     return { success: false, status: 'error', message: `Unsupported database operation: ${queryConfig.operation}`}
-    //     // throw new Error(`Unsupported database operation: ${queryConfig.operation}`)
-    // }
     return dbResult
    } catch(err) {
    console.log(err)
@@ -390,13 +336,30 @@ let queryConfig = {debug: true, limit: 10, ...config}
    * AI call handler
    */
   private async callAI(config: ActionConfig, context: any): Promise<any> {
-    this.logger_.info(`Executing AI call ${config.model}`)
+    this.logger_.info(`Executing AI call ${JSON.stringify(config)}`)
     
     try {
     
+    console.log(context, 'AI CONTEXT')
+    let systemInstruction = await expressionEvaluator.evaluatePlaceholders(
+      context.model.metadata.template || context.model.system,
+      context
+    )
+
+
+
+
+    let messages = [
+      {role: 'system', content: systemInstruction},
+      {role: 'user', content: config.message || config.prompt}
+
+    ]
+
+
+    console.log(messages, 'MESSAGES')
     
-    
-    let result = await generateCompletion({prompt: config.message || config.prompt, ...config})
+    let chatResult = await chatCompletion({messages, model: config.model, options: context.model.config})
+    // let result = await generateCompletion({prompt: config.message || config.prompt, ...config, options: context.model.config})
     
     
     // Implement your AI service integration here
@@ -407,8 +370,8 @@ let queryConfig = {debug: true, limit: 10, ...config}
     //   timestamp: new Date().toISOString(),
     // }
 
-    console.log(result, 'RESULLT')
-          return  result.response
+    // console.log(result, chatResult, 'RESULLT')
+          return JSON.parse(chatResult.message.content);
 
    } catch(err) {
     console.log(err, 'ERROR')
@@ -484,6 +447,7 @@ private async executeScript(config: any, context: any): Promise<any> {
     let finalResult;
     let handle;
     let errors;
+    let index = 0;
     const actions = config.actions || [];
     const workflowResults: Record<string, any> = {};
     
@@ -562,6 +526,7 @@ private async executeScript(config: any, context: any): Promise<any> {
       
       // Execute action
       const result = await this.executeAction({...action, ...actionConfig}, {
+        ...context,
         context: variables,
         params: mergedParams,
         outputs: workflowResults
@@ -595,7 +560,7 @@ private async executeScript(config: any, context: any): Promise<any> {
       }
       
  
-      workflowResults[outputKey] = {parameters: mergedParams, context: variables, result: output};
+      workflowResults[outputKey] = {index: index + 1, parameters: mergedParams, context: variables, result: output};
       
       // Store result
       
@@ -610,6 +575,10 @@ private async executeScript(config: any, context: any): Promise<any> {
       
     }
     
+
+  let workflowData = this.buildWorkflowData(workflowResults)    
+
+console.log(workflowData, 'WORKFLOWW')
     return {
       success,
       status_code: success ? 200 : 400,
@@ -618,56 +587,13 @@ private async executeScript(config: any, context: any): Promise<any> {
       ...(errors ? errors : {}),
       outputs: workflowResults,
       context: variables,
-      completedActions: Object.keys(workflowResults).length
+      completedActions: Object.keys(workflowResults).length,
+      workflowData  
+
     };
   }
 
-   
-  // private async executeWorkflow(config: any, context: any): Promise<any> {
-  //   this.logger_.info(`Executing workflow ${config}`)
-    
-  //   // Extract workflow actions
-  //   const actions = config.actions || [] as any
-  //   const results = new Map<string, any>()
-  //   const logs = [] as any;
-    
-    
-  //   for (const actionConfig of actions) {
-  //     const action = await this.retrieveActionTemplate(actionConfig.action_id)
-  //     if (!action) continue
-      
-  //     // Merge parameters
-  //     const mergedParams = {
-  //       ...context.params,
-  //       ...(await expressionEvaluator.resolvePlaceholders(actionConfig.parameters || {}, {...context, outputs: Object.fromEntries(results)}))
-  //     }
-      
-      
-  
 
-  //     // Execute action
-  //     const result = await this.executeAction(action, {
-  //       ...context,
-  //       params: mergedParams,
-  //       outputs: Object.fromEntries(results)
-  //     })
-      
-  //     logs.push({handle: action?.handle, ...result})
-  //     results.set(action?.handle || action?.id, {result, ...{
-  //       ...context,
-  //       params: mergedParams,
-  //       outputs: Object.fromEntries(results)
-  //     }})
-        
-  //   }
-    
-  //   return { success: true, results: Object.fromEntries(results)}
-    
-  // }
-  
-  
-
-  // ========== HELPER METHODS ==========
 
   /**
    * Evaluate conditions
@@ -778,156 +704,6 @@ private async executeScript(config: any, context: any): Promise<any> {
     return template[0]
   }
 
-  /**
-   * Execute workflow with dependencies
-   */
-  async executeWorkflowWithDependencies(
-    workflowId: string,
-    parameters: Record<string, any> = {},
-    session: any = {}
-  ): Promise<any> {
-    // Get all actions for this workflow
-    const actions = await this.listActionTemplates({
-      workflow_id: { $eq: workflowId }
-    })
-
-    if (!actions.length) {
-      throw new Error(`No actions found for workflow ${workflowId}`)
-    }
-
-    // Sort by dependencies
-    const sortedActions = this.sortActionsByDependencies(actions)
-    
-    // Execute in order
-    const results = new Map<string, any>()
-    
-    for (const action of sortedActions) {
-      // Check dependencies
-      if (!this.checkDependencies(action, results)) {
-        await this.createExecutions({
-          workflow_id: action.id,
-          // execution_id: this.executionId!,
-          status: 'skipped',
-          error_message: 'Dependencies not satisfied'
-        })
-        continue
-      }
-
-      // Execute action
-      const result = await this.executeAction(action, {
-        ...session,
-        params: parameters,
-        previousOutputs: Object.fromEntries(results)
-      })
-      
-      results.set(action.id, result)
-    }
-
-    return {
-      workflowId,
-      results: Object.fromEntries(results),
-      executionId: this.executionId!
-    }
-  }
-
-  /**
-   * Sort actions by dependencies
-   */
-  private sortActionsByDependencies(actions: ActionTemplateType[]): ActionTemplateType[] {
-    const graph = new Map<string, string[]>()
-    const indegree = new Map<string, number>()
-    const actionMap = new Map<string, ActionTemplateType>()
-
-    // Initialize
-    actions.forEach(action => {
-      graph.set(action.id, [])
-      indegree.set(action.id, 0)
-      actionMap.set(action.id, action)
-    })
-
-    // Build graph
-    actions.forEach(action => {
-      if (action.dependencies && Array.isArray(action.dependencies)) {
-        action.dependencies.forEach(depId => {
-          if (graph.has(depId)) {
-            graph.get(depId)!.push(action.id)
-            indegree.set(action.id, indegree.get(action.id)! + 1)
-          }
-        })
-      }
-    })
-
-    // Topological sort
-    const queue = Array.from(indegree.entries())
-      .filter(([_, degree]) => degree === 0)
-      .map(([id]) => id)
-
-    const sorted: ActionTemplateType[] = []
-
-    while (queue.length > 0) {
-      const currentId = queue.shift()!
-      sorted.push(actionMap.get(currentId)!)
-
-      graph.get(currentId)?.forEach(neighborId => {
-        indegree.set(neighborId, indegree.get(neighborId)! - 1)
-        if (indegree.get(neighborId) === 0) {
-          queue.push(neighborId)
-        }
-      })
-    }
-
-    return sorted
-  }
-
-  /**
-   * Check if action dependencies are satisfied
-   */
-  private checkDependencies(action: ActionTemplateType, results: Map<string, any>): boolean {
-    if (!action.dependencies || !Array.isArray(action.dependencies)) {
-      return true
-    }
-
-    return action.dependencies.every(depId => {
-      const result = results.get(depId)
-      return result && !result.error
-    })
-  }
-  
-    private buildStandardResponse(
-      data: any,
-      exitOnError: boolean = false,
-      metadata?: any
-    ): StandardResponse {
-      const isError = data?.success === false || data instanceof Error
-      
-      return {
-        success: !isError,
-        code: isError ? (data.code || 500) : 200,
-        message: isError ? data.message : "Action completed successfully",
-        data: isError ? null : data,
-        exit: isError && exitOnError,
-        metadata: {
-          timestamp: new Date().toISOString(),
-          ...metadata
-        }
-      }
-    }
-  
-    private buildSuccessResponse(
-      data: any,
-      message: string = "Success",
-      additionalData?: any
-    ): StandardResponse {
-      return {
-        success: true,
-        code: 200,
-        message,
-        data: data,
-        exit: false,
-        metadata: { timestamp: new Date().toISOString(), ...additionalData }
-      }
-    }
-  
     private buildErrorResponse(
       error: Error | any,
       status_code: number = 400,
@@ -949,6 +725,70 @@ private async executeScript(config: any, context: any): Promise<any> {
     }
   
 
+private buildWorkflowData(actions: Record<string, any>) {
+  const steps = Object.entries(actions).map(([key, value]) => ({
+    key,
+    ...value
+  }))
+
+  steps.sort((a, b) => a.index - b.index)
+
+  const buildNested = (index: number): any => {
+    if (index >= steps.length) return undefined
+
+    const step = steps[index]
+
+    const node: any = {
+      uuid: generateEntityId(undefined, "step"),
+      action: step.key,
+      noCompensation: true,
+      input: step
+    }
+
+    const next = buildNested(index + 1)
+
+    if (next) {
+      node.next = next
+    }
+
+    return node
+  }
+
+  return {
+    _v: 0,
+    runId: generateEntityId(undefined, "run"),
+    state: "pending",
+    steps: {},
+    modelId: "dynamic-workflow",
+
+    options: {
+      name: "dynamic-workflow",
+      store: true,
+      idempotent: false,
+      retentionTime: 259200
+    },
+
+    metadata: {
+      sourcePath: "ai-generated",
+      eventGroupId: generateEntityId(undefined, "event"),
+      preventReleaseEvents: false
+    },
+
+    startedAt: Date.now(),
+
+    definition: buildNested(0),
+
+    transactionId: generateEntityId(undefined, "tx"),
+
+    hasAsyncSteps: false,
+    hasFailedSteps: false,
+    hasSkippedSteps: false,
+    hasWaitingSteps: false,
+    hasRevertedSteps: false,
+    hasSkippedOnFailureSteps: false
+  }
+}
+
   /**
    * Health check
    */
@@ -968,72 +808,6 @@ private async executeScript(config: any, context: any): Promise<any> {
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-// ========== TYPE UTILITIES ==========
-
-/**
- * Utility type to extract service method signatures
- */
-// export type ActionEngineServiceMethods = Pick<
-//   ActionEngineService,
-//   | 'execute'
-//   | 'getExecutionStatus'
-//   | 'executeWorkflowWithDependencies'
-//   | 'healthCheck'
-//   | 'retrieveActionTemplate'
-//   | 'listActionTemplates'
-//   | 'createActionTemplates'
-//   | 'updateActionTemplate'
-//   | 'deleteActionTemplate'
-//   | 'retrieveExecution'
-//   | 'listExecutions'
-//   | 'createExecutions'
-//   | 'updateExecutions'
-//   | 'deleteExecution'
-//   | 'retrieveActionExecution'
-//   | 'listActionExecutions'
-//   | 'createActionExecutions'
-//   | 'updateActionExecutions'
-//   | 'deleteActionExecution'
-// >
-
-/**
- * Type for API route handlers using the service
- */
- 
- 
  
 export type ActionEngineApiContext = {
   actionEngineService: ActionEngineService

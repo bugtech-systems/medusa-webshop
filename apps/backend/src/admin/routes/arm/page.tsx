@@ -25,62 +25,62 @@ export default function Home() {
   const scrollBottom = () => bottomRef.current?.scrollIntoView({ behavior: "smooth" })
 
   // Send message and stream AI response
-  const sendMessage = async (text: string, model: any) => {
-    if (!text.trim()) return
+const sendMessage = async (text: string, model: any) => {
+  if (!text.trim()) return
 
-    const userMessage: Message = { role: "user", content: text }
-    setMessages((prev) => [...prev, userMessage, { role: "assistant", content: "" }])
-    setLoading(true)
+  const userMessage: Message = { role: "user", content: text }
 
-    try {
+  setMessages((prev) => [
+    ...prev,
+    userMessage,
+    { role: "assistant", content: "" }
+  ])
 
-       const res = await fetch("/actions/chat-ai-conversation/execute", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-        },
-        body: JSON.stringify({parameters: {content: text, model}})
-      })
- // Optional: navigate to conversation if new
-    //  let res = await chatAi({
-    //     parameters: {
-    //       content: text,
-    //       model,
-    //       // conversation_id: conversationId
-    //     }
-    //   } as any)
+  setLoading(true)
 
-      if (!res.body) return
-      const reader = res.body.getReader()
-      const decoder = new TextDecoder()
-      let assistantText = ""
+  try {
+    const res = await fetch("/actions/chat-ai-conversation/execute", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ parameters: { content: text, model } })
+    })
 
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
-        const chunk = decoder.decode(value)
-        assistantText += chunk
+    const json = await res.json()
 
-        setMessages((prev) => {
-          const copy = [...prev]
-          copy[copy.length - 1] = { role: "assistant", content: assistantText }
-          return copy
-        })
-        scrollBottom()
+    const assistantText = json.data   // 👈 the field you want
+
+    setMessages((prev) => {
+      const copy = [...prev]
+      copy[copy.length - 1] = {
+        role: "assistant",
+        content: assistantText
       }
-    } catch (err) {
-      console.error(err)
-      setMessages((prev) => {
-        const copy = [...prev]
-        copy[copy.length - 1] = { role: "assistant", content: "⚠️ Something went wrong..." }
-        return copy
-      })
-    } finally {
-      setLoading(false)
-      scrollBottom()
-    }
-  }
+      return copy
+    })
 
+  } catch (err) {
+    console.error(err)
+
+    setMessages((prev) => {
+      const copy = [...prev]
+      copy[copy.length - 1] = {
+        role: "assistant",
+        content: "⚠️ Something went wrong..."
+      }
+      return copy
+    })
+
+  } finally {
+    setLoading(false)
+    scrollBottom()
+  }
+}
+
+
+
+console.log(messages, 'MESSAGES')
   return (
     <SidebarProvider>
       <main className="relative min-h-screen flex flex-col items-center justify-center bg-gray-50">

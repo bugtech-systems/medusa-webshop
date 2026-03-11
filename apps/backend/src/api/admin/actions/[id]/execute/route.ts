@@ -1,8 +1,10 @@
 // src/api/store/executions/route.ts (Store API)
 import { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
 import { ACTION_ENGINE_MODULE } from "../../../../../modules/action-engine"
-import { parseTemplateData, removeEmptyObjects, refineObjectByFields } from "../../../../../utils/helpers";
-import { parseActionInput, validateActionInput } from "../../../../../utils/validators";
+import { AI_MODULE } from "../../../../../modules/ai"
+
+import {  refineObjectByFields } from "../../../../../utils/helpers";
+import { validateActionInput } from "../../../../../utils/validators";
 
 // POST - Create new action template
 export async function POST(
@@ -12,8 +14,11 @@ export async function POST(
   try {
     const id = req.params.id;
     const body = req.body as any;
-    const actionEngine = req.scope.resolve(ACTION_ENGINE_MODULE) as any;
-    
+    const actionEngine = req.scope.resolve(ACTION_ENGINE_MODULE) as any
+    const aiService = req.scope.resolve(AI_MODULE) as any
+
+
+
     if(!id){
      return res.status(401).json({
       success: false,
@@ -56,6 +61,7 @@ export async function POST(
     
     let payload = {} as any;
     let errors = [] as any;
+    let context = {} as any;
     // Ensure timestamps
     const now = new Date()
     templateData.updated_at = now
@@ -83,9 +89,21 @@ if (errors.length > 0) {
     }
   // console.log("Ready to execute:", payload, oldTemplate.parameters, refineObjectByFields(payload, oldTemplate.parameters || []))
     
-    let template = await actionEngine.execute(oldTemplate?.id, payload, { headers: body.headers, context: body.context,   ...body.context, timeout: body.timeout});
+    context = { headers: body.headers, ...body.context, timeout: body.timeout};
+  console.log(body, payload, 'MODELL11')
+
+    if(oldTemplate.type == 'AI_ACTION' || oldTemplate.type == 'WORKFLOW'){
+let model = await aiService.getModel(body.model || 'alayon-ai');
+console.log(model, 'MODELL')
+
+        context['model'] = model;
+    }
+
+    console.log(oldTemplate, context, 'dexx')
+
+    let template = await actionEngine.execute(oldTemplate?.id, payload, context);
     
-    
+
     return res.json(template)
 
   } catch (error: any) {
@@ -98,29 +116,58 @@ if (errors.length > 0) {
   }
 }
 
+
+
 export async function GET(
   req: MedusaRequest,
   res: MedusaResponse
 ) {
   try {
 
-    const templateId = req.params.id;
-    
-    const actionEngine = req.scope.resolve(ACTION_ENGINE_MODULE) as any;
-    
-    
-    
-    let template = await actionEngine.getActionTemplate(templateId);
-    
-    let parsedTemplate = parseTemplateData(template);
-     
-     
+    const id = req.params.id;
+    const body = req.body as any;
+    const actionEngine = req.scope.resolve(ACTION_ENGINE_MODULE) as any
+   
+   
+   
 
-
-    return res.json({
-      success: true,
-      data: parsedTemplate
+    if(!id){
+     return res.status(401).json({
+      success: false,
+      error: "Id is required"
     })
+    
+    }
+    
+    let oldTemps = await actionEngine.listActionTemplates({  $or: [
+        {
+          id: {
+            $eq: id,
+          },
+        },
+        {
+          handle: {
+            $eq: id,
+          },
+        },
+      ]});
+      
+      let oldTemplate = oldTemps[0]
+      
+      
+        if(!oldTemplate){
+     return res.status(401).json({
+      success: false,
+      error: "Template not exist"
+    })
+    
+    }
+     
+    let template = await actionEngine.execute(oldTemplate?.id, {}, { headers: body.headers, ...body.context, timeout: body.timeout});
+
+
+    return res.json(template)
+
 
   } catch (error: any) {
     console.log(error, 'ERROR')
