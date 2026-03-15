@@ -75,20 +75,7 @@ export default defineConfig({
         ],
       },
     },
-    [Modules.FILE]: {
-      resolve: "@medusajs/medusa/file",
-      options: {
-        providers: [
-          {
-            resolve: "@medusajs/medusa/file-local",
-            id: "local",
-            options: {
-              backend_url: 'https://large-roof-enlarge.medusajs.app/uploads'
-            },
-          },
-        ],
-      },
-    },
+
     [SALESFORCE_AUTH]: {
       resolve: "./modules/salesforce",
       options: {
