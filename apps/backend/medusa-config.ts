@@ -83,7 +83,7 @@ export default defineConfig({
             resolve: "@medusajs/medusa/file-local",
             id: "local",
             options: {
-              backend_url: 'https://large-roof-enlarge.medusajs.app/static'
+              backend_url: 'https://large-roof-enlarge.medusajs.app/uploads'
             },
           },
         ],

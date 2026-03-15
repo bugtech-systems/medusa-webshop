@@ -24,6 +24,7 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
+  
   images: {
     remotePatterns: [
       {
@@ -68,6 +69,7 @@ const nextConfig = {
       //     ]
       //   : []),
     ],
+    unoptimized: true
   },
 }
 
