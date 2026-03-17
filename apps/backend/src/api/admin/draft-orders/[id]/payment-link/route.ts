@@ -19,7 +19,7 @@ const { id } = req.params
     // 1️⃣ Retrieve the draft order with items
     const draftOrder = await draftOrderService.retrieveOrder(id, {
       relations: ["items"],
-    })
+    }) as any
   const queryEntity = req.scope.resolve(ContainerRegistrationKeys.QUERY)
 
   const { data: orders } = await queryEntity.graph({
@@ -64,7 +64,7 @@ const { id } = req.params
 
 
     // 4️⃣ Generate Stripe Checkout Session
-    const stripe = new Stripe(process.env.STRIPE_API_KEY!, { apiVersion: "2023-10-16" })
+    const stripe = new Stripe(process.env.STRIPE_API_KEY!)
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
       payment_method_types: ["card"],
