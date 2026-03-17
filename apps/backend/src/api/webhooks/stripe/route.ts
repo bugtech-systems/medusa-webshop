@@ -2,7 +2,7 @@ import { MedusaRequest, MedusaResponse } from "@medusajs/framework";
 import Stripe from "stripe";
 import { Modules } from "@medusajs/framework/utils";
 
-const stripe = new Stripe(process.env.STRIPE_API_KEY!);
+const stripe = new Stripe(process.env.STRIPE_API_KEY!, { apiVersion: "2025-09-30.clover" });
 
 export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
   const sig = req.headers["stripe-signature"] as string;

@@ -64,7 +64,7 @@ const { id } = req.params
 
 
     // 4️⃣ Generate Stripe Checkout Session
-    const stripe = new Stripe(process.env.STRIPE_API_KEY!)
+    const stripe = new Stripe(process.env.STRIPE_API_KEY!, { apiVersion: "2025-09-30.clover" })
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
       payment_method_types: ["card"],
