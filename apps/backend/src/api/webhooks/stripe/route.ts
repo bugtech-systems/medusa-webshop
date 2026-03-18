@@ -12,7 +12,7 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
   // try {
 
  event = req.rawBody;
-    console.log(event, req.rawBody, "STRIPE REQ")
+    console.log(event, req.rawBody, req.body, "STRIPE REQ")
 
   //   event = stripe.webhooks.constructEvent(
   //     req.rawBody,
