@@ -9,21 +9,21 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
 
   let event: Stripe.Event;
 
-  try {
+  // try {
 
-    console.log(req, "STRIPE REQ")
+ event = req.rawBody;
+    console.log(event, req.rawBody, "STRIPE REQ")
 
-
-    event = stripe.webhooks.constructEvent(
-      req.rawBody,
-      sig,
-      process.env.STRIPE_WEBHOOK_SECRET!
-    );
-    console.log(event, "STRIPE EVENT")
-  } catch (err: any) {
-    console.error("❌ Stripe webhook signature verification failed.", err.message);
-    return res.status(400).send(`Webhook Error: ${err.message}`);
-  }
+  //   event = stripe.webhooks.constructEvent(
+  //     req.rawBody,
+  //     sig,
+  //     process.env.STRIPE_WEBHOOK_SECRET!
+  //   );
+  //   console.log(event, "STRIPE EVENT")
+  // } catch (err: any) {
+  //   console.error("❌ Stripe webhook signature verification failed.", err.message);
+  //   return res.status(400).send(`Webhook Error: ${err.message}`);
+  // }
 
   const paymentModuleService = req.scope.resolve(Modules.PAYMENT) as any;
 
@@ -53,7 +53,6 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
         const paymentIntent = event.data.object as Stripe.PaymentIntent;
 
         console.log("✅ Payment succeeded:", paymentIntent.id);
-
         // Optional: mark payment captured if needed
         await paymentModuleService.capturePayment({
           payment_id: paymentIntent.metadata.payment_id,
