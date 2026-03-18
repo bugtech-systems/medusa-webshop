@@ -2,7 +2,7 @@ import { MedusaRequest, MedusaResponse } from "@medusajs/framework";
 import Stripe from "stripe";
 import { Modules } from "@medusajs/framework/utils";
 
-const stripe = new Stripe(process.env.STRIPE_API_KEY!, { apiVersion: "2025-09-30.clover" });
+const stripe = new Stripe(process.env.STRIPE_API_KEY!, { apiVersion: "2023-10-16" as any });
 
 export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
   const sig = req.headers["stripe-signature"] as string;
@@ -10,6 +10,10 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
   let event: Stripe.Event;
 
   try {
+
+    console.log(req, "STRIPE REQ")
+
+
     event = stripe.webhooks.constructEvent(
       req.rawBody,
       sig,
