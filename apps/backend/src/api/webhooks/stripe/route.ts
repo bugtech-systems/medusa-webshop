@@ -11,7 +11,7 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
 
   // try {
 
- event = req.rawBody;
+ event = req.body as any;
     console.log(event, req.rawBody, req.body, "STRIPE REQ")
 
   //   event = stripe.webhooks.constructEvent(
