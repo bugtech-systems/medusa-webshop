@@ -47,7 +47,17 @@ export default defineConfig({
       },
     },
     [APPROVAL_MODULE]: { resolve: "./modules/approval" },
-    [AI_MODULE]: { resolve: "./modules/ai" },
+    [AI_MODULE]: { resolve: "./modules/ai",
+       options: { 
+          connection_url: process.env.DATABASE_URL,
+          max_connections: 20,
+          idle_timeout_ms: 30000,
+          connection_timeout_ms: 5000,
+          ssl: process.env.NODE_ENV === 'production'
+      
+
+      },
+     },
     [COMPANY_MODULE]: { resolve: "./modules/company" },
     [QUOTE_MODULE]: { resolve: "./modules/quote" },
     [DYNAMIC_QUERY_MODULE]: { resolve: "./modules/dynamic-query" },

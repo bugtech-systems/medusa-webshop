@@ -467,17 +467,17 @@ export const ExecuteActionDrawer = ({
 
   const { mutateAsync: executeAction, isPending } = useExecuteAction(action.id) as any;
   const { data: history = [], refetch: refetchHistory } = useActionExecutionHistory(action.id)
-  const { data: logEvents } = useActionExecutionLogs(executionId)
+  // const { data: logEvents } = useActionExecutionLogs(executionId)
 
   /* ============================================================
      Live Logs
   ============================================================ */
 
-  useEffect(() => {
-    if (logEvents?.length) {
-      setLogs((prev) => [...prev, ...logEvents])
-    }
-  }, [logEvents])
+  // useEffect(() => {
+  //   if (logEvents?.length) {
+  //     setLogs((prev) => [...prev, ...logEvents])
+  //   }
+  // }, [logEvents])
 
   /* ============================================================
      Handle Open State
@@ -515,10 +515,15 @@ export const ExecuteActionDrawer = ({
       setLogs([])
       setExecutionResult(null)
 
-      const parsed = { ...values }
+      const parsed = { ...values };
+      const sessionId = localStorage.getItem('session_id');
       let params = action.parameters ?? [] as any;
       // Parse JSON fields
       params?.forEach((p) => {
+        if(p.defaultValue && !parsed[p.name].trim()){
+                parsed[p.name] = p.defaultValue;           
+        }
+
         if ((p.type === "json" || p.type === 'array') && typeof parsed[p.name] === "string" && parsed[p.name].trim()) {
           try {
             parsed[p.name] = JSON.parse(parsed[p.name])
@@ -531,7 +536,7 @@ export const ExecuteActionDrawer = ({
       
 
 
-  
+     console.log(parsed, 'PARSED')
       
       setLastParams(parsed)
       let newLogs = [];
@@ -539,6 +544,7 @@ export const ExecuteActionDrawer = ({
 
       const res = await executeAction({
         parameters: parsed,
+        sessionId,
         headers: values.headers,
         context: values.context,
         timeout: values.timeout,
@@ -554,7 +560,11 @@ export const ExecuteActionDrawer = ({
         execution_time: res.execution_time,
         headers: res.headers,
       })
-      
+
+      if(res?.sessionId){
+          localStorage.setItem('session_id', res.sessionId);
+      }
+
       if(res?.outputs){
           newLogs = Object.entries(res.outputs).map(([key, value]) => {
             return {data: value, action: key}
@@ -563,7 +573,7 @@ export const ExecuteActionDrawer = ({
       }
       
       
-
+      console.log(res, 'RESPONSE')
       refetchHistory()
       
       // Auto-navigate to result tab
@@ -881,7 +891,7 @@ export const ExecuteActionDrawer = ({
               </div>
 
               {/* Timeout with validation */}
-              <div className="space-y-4">
+              {/* <div className="space-y-4">
                 <Label>Timeout (milliseconds)</Label>
                 <Controller
                   name="timeout"
@@ -909,7 +919,7 @@ export const ExecuteActionDrawer = ({
                     </div>
                   )}
                 />
-              </div>
+              </div> */}
             </div>
           )}
         </div>

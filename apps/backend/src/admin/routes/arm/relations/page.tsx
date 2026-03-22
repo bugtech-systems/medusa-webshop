@@ -11,7 +11,7 @@ import { useExecuteAction } from "../../../hooks/api/actions"
 import { toast } from "@medusajs/ui"
 import { Position } from "@xyflow/react"
 
-
+ 
 
 const ActionFlowsPage = () => {
   const [selectedWorkflowId, setSelectedWorkflowId] = useState<string | null>(null)
@@ -195,32 +195,6 @@ const ActionFlowsPage = () => {
     
         if(!success) return;
     
-    
-    
-            // Create edge from source to new node
-    const newEdge: ConnectionEdge = {
-      id: `edge-${sourceNodeId}-${data.id}`,
-      source: sourceNodeId,
-      target: data.id,
-      type: 'smoothstep',
-        markerEnd: {
-          type: MarkerType.ArrowClosed,
-          color: '#4b5563',
-          width: 12,
-          height: 12,
-        },
-        style: { 
-          stroke: '#4b5563', 
-          strokeWidth: 2,
-        },
-        data: {
-          style: 'solid',
-        },
-      
-    }
-    
-        setWorkflowEdges(prev => [...prev, newEdge])
-
 
 
     
@@ -251,15 +225,17 @@ const ActionFlowsPage = () => {
     // Handle adding new action from button
   const handleAddConnection = async (connection: any) => {
       let { id, target, source, ...metadata} = connection;
-      await createConnection({
+   let {success, data} = await createConnection({
         parameters: {
         source:  connection.source,
         target: connection.target,
         metadata
         }
       })
-      
-      
+
+      if(!success) return;
+
+      return data
   }
   
   const handleDeleteNode = async (n) => {

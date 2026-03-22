@@ -11,7 +11,7 @@ export async function generateEmbedding(input: string): Promise<number[]> {
     }
   )
 
-  return data.embeddings
+  return data.embeddings[0]
 }
 
 /**
@@ -79,13 +79,6 @@ export async function chatCompletion({
     }),
   })
 
-  console.log({
-      model,
-      messages,
-      options,
-      stream: false,
-      format
-    }, 'CHAT BODY')
   return response.json()
 }
 
@@ -114,9 +107,7 @@ export async function generateCompletion({
   
 
   const ollamaResponse = await response.json();
-console.log({
-  prompt,
-}, prompt, ollamaResponse, 'OLLAAP')
+
   // 🟢 Parse the model's JSON string into an object
   try {
     ollamaResponse.response = JSON.parse(ollamaResponse.response);

@@ -150,90 +150,161 @@ export function removeNullKeys(obj) {
   return obj;
 }
 
-export const refineObjectByFields = (obj, fields = []) => {
-  if (!obj || typeof obj !== 'object') {
-    return obj;
-  }
-
-  const refinedObj = {} as any;
-  
-  fields.forEach((field: any) => {
-    const { name, type, nullable, required } = field as any;
-    
-    // Skip if field doesn't exist in object
-    if (!(name in obj)) {
-      return;
-    }
-    
-    const value = obj[name];
-    
-    // Handle null/undefined values
-    if (value === null || value === undefined) {
-      if (nullable && !required) {
-        // If nullable and not required, remove the field
-        delete refinedObj[name];
-      }
-      return;
-    }
-    
-    // Handle empty values for nullable fields
-    if (nullable) {
-      if (type === 'string' && value === '') {
-        delete refinedObj[name];
-        return;
-      }
-      
-      if (type === 'json' && (typeof value === 'object' && Object.keys(value).length === 0)) {
-        delete refinedObj[name];
-        return;
-      }
-      
-      if (type === 'json' && typeof value === 'string' && value.trim() === '') {
-        delete refinedObj[name];
-        return;
-      }
-    }
-    
-    // Parse string to object for json type fields
-    if (type === 'json' && typeof value === 'string') {
-      try {
-        if(value == ''){
-        obj[name] = {};
-        } else {
-        obj[name] = JSON.parse(value);
-        }
-      } catch (error) {
-        console.warn(`Failed to parse JSON for field "${name}":`, error);
-        // Keep original string value if parsing fails
-      }
-    }
-    
-    // Handle nested objects recursively if the field type is 'json' and value is an object
-    if (type === 'json' && typeof obj[name] === 'object' && obj[name] !== null) {
-      // Check if there are nested field definitions (assuming fields might be nested)
-      // This part can be customized based on how nested fields are structured
-      if (field.fields) {
-        refinedObj[name] = refineObjectByFields(obj[name], field.fields);
-      }
-    }
-
-    if (type === 'array' && typeof obj[name] === 'object' && obj[name] !== null) {
-      // Check if there are nested field definitions (assuming fields might be nested)
-      // This part can be customized based on how nested fields are structured
-        refinedObj[name] = value
-    }
-
-    if (type === 'string' && obj[name] !== null) {
-      // Check if there are nested field definitions (assuming fields might be nested)
-      // This part can be customized based on how nested fields are structured
-        refinedObj[name] = value
-    }
-
-    console.log(type, obj[name], typeof obj[name], 'fIeld type')
-  });
-  
-  return refinedObj;
+type Field = {
+  name: string;
+  type: 'string' | 'number' | 'boolean' | 'json' | 'array';
+  nullable?: boolean;
+  required?: boolean;
+  fields?: Field[]; // for nested objects
 };
+
+export const refineObjectByFields = (obj: any, fields: Field[] = []) => {
+  if (!obj || typeof obj !== 'object') return obj;
+
+  const refined: any = {};
+
+  const parseValue = (value: any, field: Field) => {
+    const { type } = field;
+
+    if (value === null || value === undefined) return value;
+
+    try {
+      switch (type) {
+        case 'number':
+          return typeof value === 'number' ? value : Number(value);
+
+        case 'boolean':
+          if (typeof value === 'boolean') return value;
+          if (value === 'true' || value === '1') return true;
+          if (value === 'false' || value === '0') return false;
+          return Boolean(value);
+
+        case 'json':
+          if (typeof value === 'object') return value;
+          if (typeof value === 'string' && value.trim() !== '') {
+            return JSON.parse(value);
+          }
+          return {};
+
+        case 'array':
+          if (Array.isArray(value)) return value;
+          if (typeof value === 'string' && value.trim() !== '') {
+            return JSON.parse(value);
+          }
+          return [];
+
+        case 'string':
+        default:
+          return String(value);
+      }
+    } catch (e) {
+      console.warn(`Failed parsing field "${field.name}"`, e);
+      return value;
+    }
+  };
+
+  const getDefaultValue = (field: Field) => {
+    switch (field.type) {
+      case 'array':
+        return [];
+      case 'json':
+        return {};
+      case 'number':
+        return 0;
+      case 'boolean':
+        return false;
+      case 'string':
+      default:
+        return '';
+    }
+  };
+
+  fields.forEach((field) => {
+    const { name, nullable, required } = field;
+
+    let value = obj[name];
+
+    // Handle missing field
+    if (value === undefined) {
+      if (!nullable) {
+        refined[name] = getDefaultValue(field);
+      }
+      return;
+    }
+
+    // Handle null
+    if (value === null) {
+      if (nullable) {
+        refined[name] = null;
+      } else {
+        refined[name] = getDefaultValue(field);
+      }
+      return;
+    }
+
+    // Parse value
+    value = parseValue(value, field);
+
+    // Remove empty nullable values
+    if (nullable) {
+      const isEmpty =
+        value === '' ||
+        value === null ||
+        (Array.isArray(value) && value.length === 0) ||
+        (typeof value === 'object' &&
+          !Array.isArray(value) &&
+          Object.keys(value).length === 0);
+
+      if (isEmpty && !required) {
+        return;
+      }
+    }
+
+    // Handle nested objects
+    if (field.type === 'json' && field.fields && typeof value === 'object') {
+      refined[name] = refineObjectByFields(value, field.fields);
+      return;
+    }
+
+    // Handle array of nested objects
+    if (field.type === 'array' && field.fields && Array.isArray(value)) {
+      refined[name] = value.map((item) =>
+        typeof item === 'object'
+          ? refineObjectByFields(item, field.fields!)
+          : item
+      );
+      return;
+    }
+
+    refined[name] = value;
+  });
+
+  return refined;
+};
+
+export const refineContent = (content) => {
+    // Handle string input
+    if (typeof content === 'string') {
+        try {
+            const parsed = JSON.parse(content);
+            // Return parsed value only if it's an object (including arrays) and not null
+            if (parsed !== null && typeof parsed === 'object') {
+                return parsed;
+            }
+        } catch (e) {
+            // JSON parsing failed, continue to return the original string
+        }
+        return content;
+    }
+
+    // Handle object input (excluding null)
+    if (typeof content === 'object' && content !== null) {
+        return content;
+    }
+
+    // Fallback: return the value unchanged (numbers, booleans, undefined, etc.)
+    return content;
+}
 
 
 

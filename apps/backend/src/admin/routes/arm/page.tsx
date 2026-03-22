@@ -8,7 +8,7 @@ import { SidebarProvider } from "../../lib/context/sidebar-context"
 import { AiAssistent } from "@medusajs/icons"
 import clsx from "clsx"
 import { motion, AnimatePresence } from "framer-motion"
-import { useExecuteAction } from "../../hooks/api/actions"
+import { useExecuteAction, useExecution } from "../../hooks/api/actions"
 
 type Message = {
   role: "user" | "assistant"
@@ -16,7 +16,10 @@ type Message = {
 }
 
 export default function Home() {
-  const { mutateAsync: chatAi, isPending } = useExecuteAction("chat-ai-conversation")
+  const { mutateAsync: chatAi, isPending } = useExecuteAction("chat-ai-conversation");
+  const { mutateAsync: getChats, isPending: isLoading } = useExecuteAction("get-conversation-messages")
+
+  const [sessionId, setSessionId] = useState(null);
   const [messages, setMessages] = useState<Message[]>([])
   const [loading, setLoading] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
@@ -27,7 +30,7 @@ export default function Home() {
   // Send message and stream AI response
 const sendMessage = async (text: string, model: any) => {
   if (!text.trim()) return
-
+  const session_id = localStorage.getItem('session_id');
   const userMessage: Message = { role: "user", content: text }
 
   setMessages((prev) => [
@@ -39,18 +42,25 @@ const sendMessage = async (text: string, model: any) => {
   setLoading(true)
 
   try {
-    const res = await fetch("/actions/chat-ai-conversation/execute", {
+
+    const res = await fetch("/actions/chat-action-selector-prompt/execute", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ parameters: { content: text, model } })
+      body: JSON.stringify({ parameters: { message: text, model, session_id } })
     })
 
     const json = await res.json()
 
-    const assistantText = json.data   // 👈 the field you want
-
+    const assistantText = json.data.message   // 👈 the field you want
+    
+    if(!session_id && json.data.session_id){
+      localStorage.setItem('session_id', json.data.session_id)
+      setSessionId(json.data.session_id)
+    }
+    
+    console.log(session_id, json, 'CHAT RESPONSE')
     setMessages((prev) => {
       const copy = [...prev]
       copy[copy.length - 1] = {
@@ -78,29 +88,31 @@ const sendMessage = async (text: string, model: any) => {
   }
 }
 
+const handleMessages = async (id) => {
+let {data} = await getChats({parameters: {id}});
+setMessages(data);
+// console.log(conversation, id, 'MESASAGESs');
+}
 
+useEffect(() => {
+let session_id = localStorage.getItem("session_id") as any;
+if(session_id){
+  setSessionId(session_id);
+  handleMessages(session_id);
+}
+}, [])
 
 console.log(messages, 'MESSAGES')
   return (
     <SidebarProvider>
-      <main className="relative min-h-screen flex flex-col items-center justify-center bg-gray-50">
+      <main className="relative min-h-screen flex flex-col items-center justify-start bg-gray-50">
         {/* Title */}
-        <div className="mb-10 flex items-center gap-2 text-xl font-semibold">
-          <div className="relative h-9 w-9 overflow-hidden rounded-full">
-            <img
-              src="/static/alayon.jpg"
-              alt="Logo"
-              fill
-              className="object-contain"
-              priority
-            />
-          </div>
-          How can I help you?
-        </div>
+
 
         {/* Chat Window */}
-        <div className="w-full max-w-2xl flex flex-col gap-3 p-4 bg-white rounded-lg shadow-lg h-[70vh] overflow-y-auto">
-          <AnimatePresence initial={false}>
+        <div className="w-full max-w-2xl flex flex-col gap-3 p-4 bg-white rounded-lg shadow-lg h-[60vh] overflow-y-auto">
+          {messages.length ? (
+           <AnimatePresence initial={false}>
             {messages.map((m, i) => (
               <motion.div
                 key={i}
@@ -122,12 +134,20 @@ console.log(messages, 'MESSAGES')
               </motion.div>
             ))}
           </AnimatePresence>
+
+          ) : 
+          
+      <div className="flex items-center justify-center gap-2 text-xl font-semibold h-full">
+          How can I help you?
+        </div>
+          }
+      
           <div ref={bottomRef} />
         </div>
 
         {/* Chat Input */}
         <div className="w-full max-w-2xl mt-4">
-          <ChatInput onSend={sendMessage} isPending={isPending} />
+          <ChatInput onSend={sendMessage} isPending={isPending} sessionId={sessionId} setSessionId={setSessionId}/>
         </div>
       </main>
     </SidebarProvider>

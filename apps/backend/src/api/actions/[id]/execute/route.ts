@@ -4,7 +4,8 @@ import { ACTION_ENGINE_MODULE } from "../../../../modules/action-engine"
 import { AI_MODULE } from "../../../../modules/ai"
 
 import {  refineObjectByFields } from "../../../../utils/helpers";
-import { validateActionInput } from "../../../../utils/validators";
+import { validateActionInput, validateAndRefineParameters } from "../../../../utils/validators";
+import AiClassService from "../../../../modules/ai/ai-service";
 
 // POST - Create new action template
 export async function POST(
@@ -14,10 +15,12 @@ export async function POST(
   try {
     const id = req.params.id;
     const body = req.body as any;
-    const actionEngine = req.scope.resolve(ACTION_ENGINE_MODULE) as any
+    const actionService = req.scope.resolve(ACTION_ENGINE_MODULE) as any
     const aiService = req.scope.resolve(AI_MODULE) as any
+    let actionEngine = new AiClassService({actionService, aiService})
 
 
+    console.log(req.body, 'ACTION BODY')
 
     if(!id){
      return res.status(401).json({
@@ -27,7 +30,7 @@ export async function POST(
     
     }
     
-    let oldTemps = await actionEngine.listActionTemplates({  $or: [
+    let oldTemps = await actionService.listActionTemplates({  $or: [
         {
           id: {
             $eq: id,
@@ -66,11 +69,11 @@ export async function POST(
     const now = new Date()
     templateData.updated_at = now
 
+    let validInput =  validateAndRefineParameters({...body, ...body.parameters}, oldTemplate.parameters || []);
     
-
     if(oldTemplate.parameters && oldTemplate.parameters.length){
-      errors = validateActionInput(oldTemplate.parameters || [], templateData)
-    }
+      errors = validInput.errors;
+     }
 
 if (errors.length > 0) {
   console.log("Validation failed:", errors)
@@ -85,23 +88,18 @@ if (errors.length > 0) {
 
 
     if(oldTemplate.parameters){
-     payload  = refineObjectByFields(body.parameters, oldTemplate.parameters || [])
+        payload = validInput.refinedData;
     }
   // console.log("Ready to execute:", payload, oldTemplate.parameters, refineObjectByFields(payload, oldTemplate.parameters || []))
     
     context = { headers: body.headers, ...body.context, timeout: body.timeout};
   console.log(body, payload, 'MODELL11')
 
-    if(oldTemplate.type == 'AI_ACTION' || oldTemplate.type == 'WORKFLOW'){
-let model = await aiService.getModel(payload.model || 'alayon-ai');
-console.log(model, 'MODELL')
+    
 
-        context['model'] = model;
-    }
-
-    console.log(oldTemplate, context, 'dexx')
-
-    let template = await actionEngine.execute(oldTemplate?.id, payload, context);
+    let sessionId = payload.session_id || body.sessionId || body.session_id;
+   
+    let template = await actionEngine.execute(oldTemplate?.id, {...body.parameters, ...payload}, sessionId);
     
 
     return res.json(template)

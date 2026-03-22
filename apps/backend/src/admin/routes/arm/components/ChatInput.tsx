@@ -1,7 +1,17 @@
 "use client"
 
-import { useState, KeyboardEvent } from "react"
-import { ArrowUp, Paperclip } from "lucide-react"
+import { useState, KeyboardEvent, useEffect } from "react"
+import { ArrowUp, Paperclip, Settings } from "lucide-react"
+import { useExecuteAction, useExecution } from "../../../hooks/api/actions"
+import {
+  Input,
+  Button,
+  Label,
+  Text,
+  Select,
+  IconButton,
+  Drawer,
+} from "@medusajs/ui";
 
 interface Props {
   conversationId?: string
@@ -29,17 +39,25 @@ const serviceModels = [
   }
 ]
 
-export default function ChatInput({ isPending, onSend }: any) {
+export default function ChatInput({ isPending, onSend, sessionId, setSessionId }: any) {
+    const { data: baseModelsData, refetch: fetchBaseModels } = useExecution('get-local-ollama-models')
+    const { data: actionRelations, mutateAsync: fetchActionRelations } = useExecuteAction('get-relation-workflows')
+  
+  const [selectedModel, setSelectedModel] = useState("action-selector");
+  const [selectedAction, setSelectedAction] = useState("start-node");
+
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const [content, setContent] = useState("")
   const [service, setService] = useState<string | null>(null)
+  
 
+  
 
   const handleSend = async () => {
     if (!content.trim()) return
 
     try {
-      const model = service ? serviceModels.find((a) => a.id === service)?.model : "alayon-ai"
-      if (onSend) onSend(content.trim(), model)
+      if (onSend) onSend(content.trim(), selectedModel)
 
       // Clear input locally
       setContent("")
@@ -72,7 +90,36 @@ export default function ChatInput({ isPending, onSend }: any) {
     }
   }
 
+  const handleSessionId = (e) => {
+      localStorage.setItem("session_id", e.target.value)
+      setSessionId(e.target.value)
+  }
+
+  const handleActionRelations = async (id) => {
+        let {data: actions} = await fetchActionRelations({parameters: { id: {"$notnull": true} }})
+    console.log(actions)
+      }
+
+
+
+
+  useEffect(() => {
+     
+
+
+      fetchBaseModels();
+      handleActionRelations(selectedAction)
+
+  }, [fetchActionRelations, fetchBaseModels])
+      console.log(baseModelsData, actionRelations, 'BASE MODELS')
+  
+  
+
   return (
+    <>
+    
+    
+    
     <div className="w-full rounded-2xl border bg-white shadow-md px-4 py-3">
       <input
         value={content}
@@ -111,6 +158,14 @@ export default function ChatInput({ isPending, onSend }: any) {
           >
             <Paperclip size={16} />
           </button>
+                    <button
+            type="button"
+            className="p-2 rounded-full hover:bg-neutral-100"
+            onClick={() => setDrawerOpen(true)}
+            disabled={isPending}
+          >
+            <Settings size={16} />
+          </button>
         </div>
 
         <button
@@ -123,5 +178,53 @@ export default function ChatInput({ isPending, onSend }: any) {
         </button>
       </div>
     </div>
+      <Drawer open={drawerOpen} onOpenChange={setDrawerOpen}>
+          <Drawer.Content>
+            <Drawer.Header>
+              <h2 className="text-lg font-semibold">Chat Session Config</h2>
+            </Drawer.Header>
+
+            <Drawer.Body className="flex flex-col gap-y-4 max-h-[70vh] overflow-auto">
+              <div>
+                <Label htmlFor="session-id">Session ID</Label>
+                <Input
+                  id="session-id"
+                  placeholder="Enter session ID"
+                  value={sessionId || ""}
+                  onChange={(e) => handleSessionId(e)}
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="ai-model">AI Model</Label>
+                <Select
+                  value={selectedModel}
+                  onValueChange={(value) => setSelectedModel(value)}
+                >
+                     <Select.Trigger>
+                                    <Select.Value placeholder="Select status" />
+                                  </Select.Trigger>
+                          <Select.Content>
+                                  
+                  {baseModelsData?.models ? baseModelsData?.models?.map((m: any, i) => (
+                    <Select.Item key={i} value={String(m.name).split(":")[0]}>
+                      {m.name}
+                    </Select.Item>
+                  )) : <></>}
+                  </Select.Content>
+                </Select>
+              </div>
+
+           
+            </Drawer.Body>
+
+            <Drawer.Footer className="flex justify-end gap-2">
+              <Button variant="secondary" onClick={() => setDrawerOpen(false)}>
+                Close
+              </Button>
+            </Drawer.Footer>
+          </Drawer.Content>
+        </Drawer>
+    </>
   )
 }

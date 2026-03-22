@@ -227,7 +227,7 @@ export const ActionDrawer: React.FC<ActionDrawerProps> = ({ open, onClose, onSub
       <Drawer.Content>
         <Drawer.Header>
           <Drawer.Title>
-            {isEditing ? 'Configure Action' : 'Configure New Action'}
+            {isEditing ? `Configure Action ${formData.id}` : 'Configure New Action'}
           </Drawer.Title>
         </Drawer.Header>
         

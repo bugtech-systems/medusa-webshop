@@ -55,7 +55,7 @@ import { ActionDrawer } from './action-relation-form';
 
 // Types
 export interface ActionNodeData {
-  id: string
+  id?: string
   label: string
   type: string
   status: string
@@ -806,7 +806,7 @@ const WorkflowEditor: React.FC<WorkflowEditorProps> = ({
 
     const confirmed = await prompt({
       title: 'Delete connection',
-      description: 'Are you sure you want to delete this connection?',
+      description: `Are you sure you want to delete this connection? ${edgeId}`,
       confirmText: 'Delete',
       cancelText: 'Cancel',
     });
@@ -969,17 +969,6 @@ const WorkflowEditor: React.FC<WorkflowEditorProps> = ({
     }
   }, [handleEdgeDelete, prompt, readOnly]);
 
-  // Handle save
-  const handleSave = useCallback(() => {
-    onSave(nodes, edges);
-  }, [nodes, edges, onSave]);
-
-  // Handle discard
-  const handleDiscard = useCallback(() => {
-    setNodes(externalNodes);
-    setEdges(externalEdges);
-  }, [externalNodes, externalEdges]);
-
   // Handle add action
   const handleAddAction = useCallback(() => {
     const center = screenToFlowPosition({
@@ -1066,7 +1055,7 @@ const WorkflowEditor: React.FC<WorkflowEditorProps> = ({
     } else if (pendingConnection) {
       const newNodeId = `node_${Date.now()}`;
       const newNode: ActionNode = {
-        id: newNodeId,
+        // id: newNodeId,
         type: 'actionNode',
         position: pendingConnection.position,
         parentId: pendingConnection.parentId,
@@ -1089,11 +1078,17 @@ const WorkflowEditor: React.FC<WorkflowEditorProps> = ({
         actionData
       ) as any;
 
-      const updatedNodes = [...nodes, newNode];
+      
+      const updatedNodes = [...nodes, {...newNode, id: newAct.id}];
       setNodes(updatedNodes);
       parentOnNodesChange(updatedNodes);
 
-      const newEdge: ConnectionEdge = {
+
+
+
+console.log(newAct, 'NEW ACTTION')
+
+const newEdge: ConnectionEdge = {
         id: `edge_${pendingConnection.fromNode}_${newAct?.id || newNodeId}_${Date.now()}`,
         source: pendingConnection.fromNode,
         target: newAct?.id || newNodeId,
@@ -1112,18 +1107,30 @@ const WorkflowEditor: React.FC<WorkflowEditorProps> = ({
           style: 'solid',
         },
       };
+     
 
-      const updatedEdges = [...edges, newEdge];
-      setEdges(updatedEdges);
-      parentOnEdgesChange(updatedEdges);
-      onEdgeConnect(newEdge);
+   let createdConnection = await onEdgeConnect(newEdge);
+
+      console.log(createdConnection, 'CREATED EDGE CONNECT')
+
+    setEdges((eds) => {
+      const newEdges = addEdge(newEdge, eds);
+      parentOnEdgesChange(newEdges);
+      return newEdges;
+    });
+
+
+
+      // const updatedEdges = [...edges, newEdge];
+      // setEdges(updatedEdges);
+      // parentOnEdgesChange(updatedEdges);
     }
     
     closeDrawer();
     setSelectedAction(null);
     setIsEditing(false);
     setPendingConnection(null);
-    
+    setConnectionLine({ start: null, end: null });
     setTimeout(() => {
       fitView({ padding: 0.2 });
     }, 100);

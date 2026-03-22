@@ -99,7 +99,6 @@ console.log(model, 'MODELL')
         context['model'] = model;
     }
 
-    console.log(oldTemplate, context, 'dexx')
 
     let template = await actionEngine.execute(oldTemplate?.id, payload, context);
     

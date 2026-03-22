@@ -1,5 +1,6 @@
 import { embed, generate } from "./ollama"
-import { searchSimilar } from "./vectorSearch"
+import { searchProducts, searchSimilar } from "./db"
+
 
 export async function ask(question: string) {
   // 1. Embed question

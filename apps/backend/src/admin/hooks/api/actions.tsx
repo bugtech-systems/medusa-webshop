@@ -68,7 +68,7 @@ export const useAction = (
 
   const fetchAction = async () =>
     sdk.client.fetch<AdminActionResponse>(
-      `/admin/actions/${actionId}${filterQuery ? `?${filterQuery}` : ""}`,
+      `/actions/${actionId}${filterQuery ? `?${filterQuery}` : ""}`,
       {
         method: "GET",
       }
@@ -505,7 +505,7 @@ export const useExecuteAction = (
       
       // Execute the action
       const response = await sdk.client.fetch<AdminExecuteActionResponse>(
-        `/admin/actions/${actionId}/execute`,
+        `/actions/${actionId}/execute`,
         {
           method: "POST",
           headers: {
@@ -573,7 +573,7 @@ export const useExecution = (
       }, {} as Record<string, string>)
     ).toString() : "";
     
-    const url = `/admin/actions/${actionId}/execute${filterQuery ? `?${filterQuery}` : ''}`;
+    const url = `/actions/${actionId}/execute${filterQuery ? `?${filterQuery}` : ''}`;
     
     const response = await sdk.client.fetch<AdminExecuteActionResponse>(
       url,
@@ -593,7 +593,7 @@ export const useExecution = (
   };
 
   return useQuery({
-    queryKey: actionsQueryKey.list(actionId, query),
+    queryKey: actionsQueryKey.list(actionId),
     queryFn: fetchReports,
     staleTime: CACHE_CONFIG.DEFAULT_TTL, // Consider data stale after TTL
     gcTime: CACHE_CONFIG.DEFAULT_TTL * 2, // Keep in cache twice as long as stale time
@@ -708,7 +708,7 @@ export const useActionExecutionHistory = (
     queryKey: ["actionExecutionHistory", actionId],
     queryFn: async () =>
       sdk.client.fetch<AdminActionExecutionHistoryItem[]>(
-        `/admin/actions/${actionId}/history`,
+        `/actions/${actionId}/history`,
         {
           method: "GET",
         }
@@ -723,7 +723,7 @@ export const useActionExecutionLogs = (executionId?: string) => {
   useEffect(() => {
     if (!executionId) return
 
-    const evtSource = new EventSource(`/admin/actions/${executionId}/logs`)
+    const evtSource = new EventSource(`/actions/${executionId}/logs`)
 
     evtSource.onmessage = (e) => {
       try {

@@ -18,10 +18,10 @@ const Quotes = () => {
   );
 };
 
-// export const config = defineRouteConfig({
-//   label: "Quotes",
-//   icon: DocumentText,
-//   nested: "/orders"
-// });
+export const config = defineRouteConfig({
+  label: "Quotes",
+  icon: DocumentText,
+  nested: "/orders"
+});
 
 export default Quotes;

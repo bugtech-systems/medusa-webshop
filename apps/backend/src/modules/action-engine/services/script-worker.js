@@ -42,7 +42,7 @@ module.exports = async function (task = {}) {
   }
 
   const safeParams = params ?? {}
-console.log("[Worker] Received params:", JSON.stringify(safeParams))
+// console.log("[Worker] Received params:", JSON.stringify(safeParams))
 console.time("[Worker] Execution time")
   const sandbox = createSandbox()
   const context = vm.createContext(sandbox)

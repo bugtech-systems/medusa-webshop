@@ -2,22 +2,23 @@
 import { 
   generateEntityId,
   MedusaService,
-} from "@medusajs/framework/utils"
+  InjectManager,
+} from "@medusajs/framework/utils" 
 import { 
   InferTypeOf, 
-  DAL,
-  Logger
+  Logger,
+  MedusaContainer
 } from "@medusajs/framework/types"
 import { ActionTemplate, Execution, ActionRelation, ActionConnection, ActionView } from "./models"
 import * as expressionEvaluator from "./expressionEvaluator"
 import axios from "axios"
-import { chatCompletion, generateCompletion, generateEmbedding, streamChatCompletion } from "../../utils/ollama"
 import { DbOperationService } from "./services/database-action-service"
-import { ActionConfig, Condition, ExecutionStatus, HealthCheckResult, QueryBuilderResult, QueryConfig, StandardResponse, WhereCondition } from "./types"
-import { parseActionInput, validateActionInput } from "../../utils/validators"
-import { parseFieldsString, refineObjectByFields, removeEmptyObjects, removeNullKeys } from "../../utils/helpers"
-
-
+import { ActionConfig } from "./types"
+import { parseActionInput, StepActionError, validateAndRefineParameters } from "../../utils/validators"
+import { parseFieldsString, removeEmptyObjects, removeNullKeys } from "../../utils/helpers"
+import { evaluateConditions, handleExecutionError } from "../../utils/action-engine-utils"
+import Redis from "ioredis"
+import { chatCompletion } from "../../utils/ollama"
 
 // Define types
 type ActionTemplateType = InferTypeOf<typeof ActionTemplate>
@@ -26,23 +27,23 @@ type ActionExecutionType = InferTypeOf<typeof ActionRelation>
 type ActionConnectionType = InferTypeOf<typeof ActionConnection>
 type ActionViewType = InferTypeOf<typeof ActionView>
 
-
-
+// Session context interface
+interface SessionContext {
+  id: string;
+  data: Record<string, any>;
+  createdAt: Date;
+  updatedAt: Date;
+}
 
 // ========== PUBLIC TYPE DECLARATIONS ==========
 
 export interface ActionEngineServiceTypes {
-  // Entity types
   ActionTemplate: ActionTemplateType
   Execution: ExecutionType
   ActionExecution: ActionExecutionType
   ActionConnection: ActionConnectionType
   ActionView: ActionViewType
-  // Method return types
   execute: ReturnType<ActionEngineService['execute']>
-  getExecutionStatus: ReturnType<ActionEngineService['getExecutionStatus']>
-  healthCheck: ReturnType<ActionEngineService['healthCheck']>
-  // Repository methods (inherited from MedusaService)
   retrieveActionTemplate: ReturnType<ActionEngineService['retrieveActionTemplate']>
   listActionTemplates: ReturnType<ActionEngineService['listActionTemplates']>
   createActionTemplate: ReturnType<ActionEngineService['createActionTemplates']>
@@ -52,15 +53,11 @@ export interface ActionEngineServiceTypes {
   listExecutions: ReturnType<ActionEngineService['listExecutions']>
   createExecutions: ReturnType<ActionEngineService['createExecutions']>
   updateExecutions: ReturnType<ActionEngineService['updateExecutions']>
-  deleteExecution: ReturnType<ActionEngineService['deleteExecutions']>
   retrieveActionRelation: ReturnType<ActionEngineService['retrieveActionRelation']>
   listActionRelations: ReturnType<ActionEngineService['listActionRelations']>
   createActionRelations: ReturnType<ActionEngineService['createActionRelations']>
   updateActionRelations: ReturnType<ActionEngineService['updateActionRelations']>
-  deleteActionRelation: ReturnType<ActionEngineService['deleteActionRelations']>
 }
-
-
 
 // ========== SERVICE CLASS ==========
 
@@ -71,21 +68,15 @@ export default class ActionEngineService extends MedusaService({
   ActionTemplate, 
   ActionView
 }) {
-  // Medusa services
-  private readonly logger_: Logger
-  
-  // Loader-registered resources
-  private postgresPool?: any
-  private dbService: DbOperationService
-  protected workerPool_: any;
-  private aiModuleService_: any
-  // Execution context
-  private executionId: string | null = null
-  private executionContext = {
-    previousOutputs: new Map<string, any>(),
-    globalVariables: new Map<string, any>(),
-    executionData: {} as Record<string, any>
-  }
+  readonly logger_: Logger
+  readonly container: MedusaContainer
+  postgresPool?: any
+  dbService: DbOperationService
+  workerPool_: any;
+  private customEventBus?: any
+
+  redisClient: Redis
+  readonly SESSION_TTL = 3600
 
   constructor(
     container: any,
@@ -93,228 +84,233 @@ export default class ActionEngineService extends MedusaService({
   ) {
     super(container)
     
-    // Get logger from Medusa container
+    this.container = container
     this.logger_ = container.logger
     this.dbService = new DbOperationService(container.postgresPool)
-    this.workerPool_ = container.workerPool;
-    // Get loader-registered services (use optional chaining)
+    this.workerPool_ = container.workerPool
     this.postgresPool = container.postgresPool
-    // this.aiModuleService_ = container.aiModuleService
+    this.customEventBus = container.eventBus // Custom event bus from loader
+
+    this.redisClient = new Redis({
+      host: process.env.REDIS_HOST || 'localhost',
+      port: parseInt(process.env.REDIS_PORT || '6379'),
+      password: process.env.REDIS_PASSWORD,
+      db: parseInt(process.env.REDIS_DB || '0'),
+      keyPrefix: 'action-engine:session:',
+      retryStrategy: (times) => Math.min(times * 50, 2000)
+    });
+
+    this.redisClient.on('error', (err) => {
+      this.logger_.error('Redis connection error:', err);
+    });
 
     this.logger_.info("✅ ActionEngineService initialized")
-    console.log(Object.keys(container))
-
   }
-  // ========== CORE ACTION ENGINE METHODS ==========
 
-  /**
-   * Main execution method
-   */
+
+  // ========== SESSION MANAGEMENT ==========
+
+  async setSession(sessionId: string, data: Record<string, any>, ttl?: number): Promise<void> {
+    try {
+      const session: SessionContext = {
+        id: sessionId,
+        data,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
+
+      await this.redisClient.setex(
+        sessionId, 
+        ttl || this.SESSION_TTL, 
+        JSON.stringify(session)
+      );
+    } catch (error: any) {
+      throw new Error(`Session storage failed: ${error.message}`);
+    }
+  }
+
+  async getSession(sessionId: string): Promise<Record<string, any> | null> {
+    try {
+      const sessionData = await this.redisClient.get(sessionId);
+      if (!sessionData) return null;
+
+      const session: SessionContext = JSON.parse(sessionData);
+      await this.redisClient.expire(sessionId, this.SESSION_TTL);
+      return session.data;
+    } catch (error: any) {
+      this.logger_.error(`Failed to retrieve session ${sessionId}:`, error);
+      return null;
+    }
+  }
+
+  async updateSession(sessionId: string, data: Record<string, any>): Promise<void> {
+    const existingData = await this.getSession(sessionId);
+    if (!existingData) throw new Error(`Session ${sessionId} not found`);
+    await this.setSession(sessionId, { ...existingData, ...data });
+  }
+
+  async deleteSession(sessionId: string): Promise<void> {
+    await this.redisClient.del(sessionId);
+  }
+
+  async sessionExists(sessionId: string): Promise<boolean> {
+    return (await this.redisClient.exists(sessionId)) === 1;
+  }
+
+    /**
+     * Emit events through available channels
+     */
+  async emitEvent(eventType: string, data: any): Promise<void> {
+      // 1. Use custom event bus from loader
+      if (this.customEventBus) {
+        try {
+          this.customEventBus.emit(eventType, data)
+          this.logger_.debug(`Event emitted via custom event bus: ${eventType}`)
+        } catch (error) {
+          this.logger_.warn(`Failed to emit via custom event bus: ${error}`)
+        }
+      }
+      
+      // 3. Log as fallback
+      this.logger_.info(`Event: ${eventType}`)
+    }
+  
+  // ========== CORE METHODS ==========
+
+  @InjectManager()
   async execute(
     templateId: string, 
     parameters: Record<string, any> = {}, 
-    sessionContext: any = {}
+    sessionId?: string
   ): Promise<any> {
     const startTime = Date.now()
-    // this.executionId = this.generateExecutionId()
+    let executionId = generateEntityId(undefined, "exec")
     
     try {
-      // Get template using Medusa repository
-      const template = await this.retrieveActionTemplate(templateId) as any;
-      if (!template) {
-        throw new Error(`Action template ${templateId} not found`)
+      let sessionData: Record<string, any> = {};
+      if (sessionId) {
+        const existingSession = await this.getSession(sessionId);
+        if (existingSession) {
+          sessionData = existingSession;
+        } else {
+          sessionData = { id: sessionId, createdAt: new Date().toISOString(), context: {} };
+          await this.setSession(sessionId, sessionData);
+        }
       }
 
-      // Create execution record
-      const execution = await this.createExecutions({
+      const template = await this.retrieveActionTemplate(templateId) as any;
+      if (!template) throw new Error(`Action template ${templateId} not found`)
+
+      await this.createExecutions({
+        id: executionId,
         workflow_id: template.id,
         status: 'running',
         started_at: new Date(),
         input_data: parameters,
-        metadata: {
-          templateId,
-          templateName: template.name
-        }
+        metadata: { templateId, templateName: template.name, sessionId: sessionId || null }
       })
       
-      
-      
-      // Build context
-      const context = {
-        params: parameters,
-        outputs: {},
-        ...sessionContext
+      const context = { params: parameters, outputs: {}, session: sessionData, executionId }
+
+      let result;
+      let output_template = template.output_template;
+      let context_template = template.context_template;
+
+      if(template.type === 'WORKFLOW'){
+        result = await this.executeWorkflow(template?.config, context);
+      } else {
+        let execResult = await this.executeAction(template, context);
+        result = { context: context.session, data: execResult }
       }
-
-
-    this.executionId = execution.id
-
-
-      // // Emit execution started event
-      // await this.emitEvent('executionStarted', {
-      //   executionId: this.executionId,
-      //   templateId,
-      //   startedAt: new Date()
-      // })
-
-let result;
-
-let output_template = template.output_template;
-let context_template = template.context_template;
-    if(template.type == 'WORKFLOW'){
-     result = await this.executeWorkflow(template?.config, context);
-    } else {
-     let execResult = await this.executeAction(template, context);
-     result = { context: context.context, data: execResult }
-    }
-    
-       if(output_template){
-        let templatedOutput = (await expressionEvaluator.resolvePlaceholders(
-          template.output_template, 
-          {...context, result: result.data},
-        ))
-          result = templatedOutput;
+      
+      if(output_template){
+        result = await expressionEvaluator.resolvePlaceholders(output_template, {...context, result: result.data});
       }
       
       if(context_template){
-        let contextOutput = (await expressionEvaluator.resolvePlaceholders(
-          template.context_template, 
-          {...context, result: result.data }
-        ))
-        context.context = contextOutput;
+        let contextOutput = await expressionEvaluator.resolvePlaceholders(context_template, {...context, result: result.data });
+        
+        if (sessionId && contextOutput) {
+          await this.updateSession(sessionId, { context: { ...sessionData.context, ...contextOutput } });
+        }
+        context.session = contextOutput;
       }
-     
-    
 
-
-      // let result = await this.executeAction(template, context)
-
-
-      // Update execution record
       await this.updateExecutions({
-        id: this.executionId, 
+        id: executionId, 
         status: 'completed',
         completed_at: new Date(),
         duration_ms: Date.now() - startTime,
         output_data: result
       })
 
-      // // Emit completion event
-      // await this.emitEvent('executionCompleted', {
-      //   executionId: this.executionId,
-      //   duration: Date.now() - startTime,
-      //   success: true
-      // })
-
       return {
         success: true,
         status: 'success',
         status_code: 200,
-        executionId: this.executionId,
+        executionId,
+        sessionId,
         execution_time: Date.now() - startTime,
         ...result,
       }
 
     } catch (error: any) {
-      await this.handleExecutionError(error, startTime)
-      throw error
+      try {
+        await this.updateExecutions({
+          id: executionId,
+          status: 'failed',
+          completed_at: new Date(),
+          duration_ms: Date.now() - startTime,
+          // error_data: { message: error.message, stack: error.stack }
+        });
+      } catch (updateError) {
+        this.logger_.error('Failed to update execution with error:', updateError);
+      }
+      // await handleExecutionError(error, startTime);
+      throw error;
     }
   }
 
-
-
-
-  /**
-   * Execute individual action
-   */
-  private async executeAction(template: ActionTemplateType, context: any): Promise<any> {
-    // Check conditions
-    
-    
-    
-    
-    
-    
-    
+  async executeAction(template: ActionTemplateType, context: any): Promise<any> {
     if (template.conditions) {
-      const resolvedConditions = await expressionEvaluator.resolvePlaceholders(
-        template.conditions,
-        context
-      )
-      
-
-      if (!this.evaluateConditions(resolvedConditions, context)) {
+      const resolvedConditions = await expressionEvaluator.resolvePlaceholders(template.conditions, context);
+      if (!evaluateConditions(resolvedConditions, context)) {
         return { skip: resolvedConditions.exit, status: "skipped", reason: "conditions_not_met" }
       }
     }
 
-    // Resolve configuration
-    const config = await expressionEvaluator.evaluatePlaceholders(
-      removeNullKeys(template.config),
-      context
-    )
+    const config = await expressionEvaluator.evaluatePlaceholders(removeNullKeys(template.config), context);
 
-    console.log(context,' EXECUTE CONTEXT')
-    // let cleanConfig = removeNullKeys(config);
-
-    // Execute based on type
     switch (template.type) {
-      case 'DB_OPERATION':
-        return await this.executeDatabaseOperation(config)
-      case 'API_CALL':
-        return await this.callAPI(config, context)
-      case 'AI_ACTION':
-        return await this.callAI(config, context)
-      case 'WORKFLOW':
-        return await this.executeWorkflow(removeNullKeys(template.config), context)
-      case 'SCRIPT':
-        return await this.executeScript(config, context)
-      default:
-        return { success: false, status: 'error', message: `Unsupported action type: ${template.type}`}
+      case 'DB_OPERATION': return await this.executeDatabaseOperation(config);
+      case 'API_CALL': return await this.callAPI(config, context);
+      case 'AI_ACTION': return await this.callAI(config, context);
+      case 'WORKFLOW': return await this.executeWorkflow(removeNullKeys(template.config), context);
+      case 'SCRIPT': return await this.executeScript(config, context);
+      default: return { success: false, status: 'error', message: `Unsupported action type: ${template.type}`}
     }
   }
 
+  async executeDatabaseOperation(config: any): Promise<any> {
+    let queryConfig = {debug: true, limit: 10, ...config}
+    if(queryConfig.fields){
+      queryConfig.fields = typeof queryConfig.fields == 'string' ? parseFieldsString(queryConfig.fields) : ["*"]
+    }
+    if (!this.postgresPool) return { success: false, status: 'error', message: "Database pool not available." }
 
 
+    console.log(queryConfig, 'QUERY CONFIG')
 
-
-  // Main refined database operation function
-private async executeDatabaseOperation(config: any): Promise<any> {
-
-let queryConfig = {debug: true, limit: 10, ...config}
-  
-  if(queryConfig.fields){
-    queryConfig.fields = typeof queryConfig.fields == 'string' ? parseFieldsString(queryConfig.fields) : ["*"]
+    try {
+      return await this.dbService.execute(queryConfig);
+    } catch(err) {
+      return { success: false, status: 'error', message: `Database operation failed: ${queryConfig.operation}`}
+    }
   }
-  
-  if (!this.postgresPool) {
-    return { success: false, status: 'error', message: "Database pool not available. Check your postgres-loader."}
 
-  }
-
-
-
-    
-  try {
-    
-      const dbResult = await this.dbService.execute(queryConfig);
-    return dbResult
-   } catch(err) {
-   console.log(err)
-    return { success: false, status: 'error', message: `Something went wrong - database operation: ${queryConfig.operation}`}
-   } finally {
-    // client.release()
-  }
-}
-
-
-  /**
-   * API call handler
-   */
-  private async callAPI(config: ActionConfig, context: any): Promise<any> {
+  async callAPI(config: ActionConfig, context: any): Promise<any> {
     const { method, url, headers: configHeaders, body } = config;
     const { headers, timeout = 300000} = context
-    
 
     try {
       const response = await axios({
@@ -324,11 +320,10 @@ let queryConfig = {debug: true, limit: 10, ...config}
         headers: {...headers, ...configHeaders},
         timeout
       })
-      
       return response.data
     } catch (error: any) {
       this.logger_.error(`API call failed: ${url}`, error)
-        return this.buildErrorResponse(error, 500, `API call failed: ${error.message}`)
+      return this.buildErrorResponse(error, 500, `API call failed: ${error.message}`)
     }
   }
 
@@ -336,13 +331,13 @@ let queryConfig = {debug: true, limit: 10, ...config}
    * AI call handler
    */
   private async callAI(config: ActionConfig, context: any): Promise<any> {
-    this.logger_.info(`Executing AI call ${JSON.stringify(config)}`)
+    this.logger_.info(`Executing AI call Config ${JSON.stringify(config)}`)
+    // this.logger_.info(`Executing AI call Context ${JSON.stringify(context)}`)
     
     try {
     
-    console.log(context, 'AI CONTEXT')
     let systemInstruction = await expressionEvaluator.evaluatePlaceholders(
-      context.model.metadata.template || context.model.system,
+      context.model?.metadata?.template || context.model?.system,
       context
     )
 
@@ -356,9 +351,8 @@ let queryConfig = {debug: true, limit: 10, ...config}
     ]
 
 
-    console.log(messages, 'MESSAGES')
-    
-    let chatResult = await chatCompletion({messages, model: config.model, options: context.model.config})
+    console.log({messages, model: config.model, options: context.model?.config}, 'CHAT AI ACTION ENGINE')
+    let chatResult = await chatCompletion({messages, model: config.model, options: context.model?.config})
     // let result = await generateCompletion({prompt: config.message || config.prompt, ...config, options: context.model.config})
     
     
@@ -379,89 +373,35 @@ let queryConfig = {debug: true, limit: 10, ...config}
     }
   }
 
-  /**
-   * Script execution handler
-   */
-// private async executeScript(config: any, context: any): Promise<any> {
-//   return new Promise((resolve, reject) => {
-//     const worker = new Worker(
-//       path.resolve(__dirname, "services", "script-worker.js"),
-//       {
-//         workerData: {
-//           code: config.code,
-//           params: context,
-//           callStack: [context.executionId ?? "root"],
-//         },
-//       }
-//     )
 
-//     worker.once("message", (msg) => {
-//       worker.terminate()
-
-//       if (msg?.error) {
-//         return reject(new Error(msg.error))
-//       }
-
-//       resolve(msg?.result)
-//     })
-
-//     worker.once("error", (err) => {
-//       worker.terminate()
-//       reject(err)
-//     })
-
-//     worker.once("exit", (code) => {
-//       if (code !== 0) {
-//         reject(new Error(`Worker stopped with exit code ${code}`))
-//       }
-//     })
-//   })
-// }
-
-private async executeScript(config: any, context: any): Promise<any> {
-  try {
-    console.log(config, context,'EXECUTING SCRIPT')
-
-    const result = await this.workerPool_.run({
-      code: config.code,
-      params: context
-    })
-
-    return result
-  } catch (err: any) {
-    throw new Error(`ExecutionError: ${err.message}`)
+  async executeScript(config: any, context: any): Promise<any> {
+    try {
+      return await this.workerPool_.run({ code: config.code, params: context })
+    } catch (err: any) {
+      throw new Error(`ExecutionError: ${err.message}`)
+    }
   }
-}
 
-
-  /**
-   * Workflow execution handler
-   */
-   private async executeWorkflow(config: any, context: any): Promise<any> {
-    this.logger_.info(`Executing workflow ${config}`);
-    
+  async executeWorkflow(config: any, context: any): Promise<any> {
     let success = true;
-    let payload;
     let variables = {}
     let oldParams = {...context.params};
     let finalResult;
-    let handle;
-    let errors;
     let index = 0;
     const actions = config.actions || [];
     const workflowResults: Record<string, any> = {};
     
     for (const actionConfig of actions) {
-     let conf = (await expressionEvaluator.resolvePlaceholders(
-          actionConfig.action_id || {}, 
-          {context: variables, outputs: workflowResults }
-        ))
-
+      let conf = await expressionEvaluator.resolvePlaceholders(
+        actionConfig.action_id || {}, 
+        {context: variables, outputs: workflowResults }
+      );
 
       const action = await this.getActionTemplate(conf);
       if (!action) continue;
+      
       let params = actionConfig.parameters;
-            // Merge parameters
+      
       const mergedParams = {
         ...oldParams,
         ...(await expressionEvaluator.resolvePlaceholders(
@@ -470,61 +410,6 @@ private async executeScript(config: any, context: any): Promise<any> {
         ))
       };
 
-
-      // if(action.parameters){
-      // action.parameters.map(param => {
-      //     let value = null as any
-          
-      //     if(!params[param.name]) {
-      //       if(param.defaultValue){
-      //         value = param.defaultValue
-      //       } else {
-      //         return            
-      //       }
-      //     };
-          
-      //     if(param.type == 'json'){
-      //       value = JSON.parse(params[param.name]);
-      //     } else if(param.type == 'number'){
-      //       value = Number(params[param.name]);
-      //     } else {
-      //       value = params[param.name]
-      //     }
-      
-      //     validatedParameters[param.name] = value
-      // })      
-      // }
-      
-            
-
-          
-   
-
-      
-      
-
-      
-
-          if(action.parameters){
-           payload  = parseActionInput(action.parameters || [], mergedParams)
-          }
-          
-          
-      /* 
-          if(action.parameters && action.parameters.length){
-            errors = validateActionInput(action.parameters || [], mergedParams)
-          } */
-          
-          
-        // if (errors.length > 0) {
-        //             break;
-
-        // } 
-      
-
-      
-      
-      // Execute action
       const result = await this.executeAction({...action, ...actionConfig}, {
         ...context,
         context: variables,
@@ -532,286 +417,102 @@ private async executeScript(config: any, context: any): Promise<any> {
         outputs: workflowResults
       });
       
-      
       let outputKey = action.output_as ? action.output_as : (action.handle || action.id);
       let output = result;
       let output_template = removeEmptyObjects(actionConfig).output_template ?? action.output_template;
       let context_template = removeEmptyObjects(actionConfig).context_template ?? action.context_template;
       
-
-     if(output?.skip){
-        continue;      
-      }
+      if(output?.skip) continue;
 
       if(output_template){
-        let templatedOutput = (await expressionEvaluator.resolvePlaceholders(
+        output = await expressionEvaluator.resolvePlaceholders(
           output_template, 
           {...context, ...oldParams, context: variables, outputs: workflowResults, result }
-        ))
-          output = templatedOutput;
+        );
       }
       
       if(context_template){
-        let contextOutput = (await expressionEvaluator.resolvePlaceholders(
+        let contextOutput = await expressionEvaluator.resolvePlaceholders(
           context_template, 
           {...context, ...oldParams, context: variables, outputs: workflowResults, result: output }
-        ))        
-          variables = {...variables, ...contextOutput};
+        );        
+        variables = {...variables, ...contextOutput};
+        
+        if (context.session) {
+          context.session = {...context.session, ...contextOutput};
+        }
       }
       
- 
       workflowResults[outputKey] = {index: index + 1, parameters: mergedParams, context: variables, result: output};
-      
-      // Store result
       
       finalResult = output;
       success = result?.success;
       oldParams = {...oldParams, ...mergedParams}
-      handle = action?.name;
-      // Check if we should exit the workflow
-      if (result?.exit || result?.status === 'error') {
-        break;
-      }
       
+      if (result?.exit || result?.status === 'error') break;
+      
+      index++;
     }
-    
 
-  let workflowData = this.buildWorkflowData(workflowResults)    
-
-console.log(workflowData, 'WORKFLOWW')
     return {
       success,
       status_code: success ? 200 : 400,
       data: finalResult,
-      handle,
-      ...(errors ? errors : {}),
       outputs: workflowResults,
       context: variables,
       completedActions: Object.keys(workflowResults).length,
-      workflowData  
+    };
+  }
 
+  async getActionTemplate(actionId: string): Promise<any> {
+    if(!actionId) return null
+    let template = await this.listActionTemplates({  
+      $or: [ { id: { $eq: actionId } }, { handle: { $eq: actionId } } ]
+    })
+    return template.length ? template[0] : null
+  }
+
+    async stepAction(templateId: string, input: Record<string, any>, session: any): Promise<any> {
+    let templates = await this.listActionTemplates({  
+      $or: [ { id: { $eq: templateId } }, { handle: { $eq: templateId } } ]
+    });
+      
+    let template = templates[0] as any;
+    
+    let validationResult = validateAndRefineParameters(input, template?.parameters);
+
+    if (!validationResult.valid) {
+      throw new StepActionError(`Validation failed: ${validationResult.errors.join(', ')}`);
+    }
+    
+
+
+
+    let response = await this.executeAction(template, {
+      params: validationResult.refinedData, 
+      context: session.context
+    });
+
+    return {
+      input,
+      template,
+      response,
+      session,
+      validationResult,
+      timestamp: new Date().toISOString()
     };
   }
 
 
-
-  /**
-   * Evaluate conditions
-   */
-  private evaluateConditions(conditions: Condition, context: any): boolean {
-    if (!conditions || typeof conditions !== "object") return true
-    
-    if (conditions.and) {
-      return conditions.and.every((c: Condition) => this.evaluateConditions(c, context))
-    }
-    
-    if (conditions.or) {
-      return conditions.or.some((c: Condition) => this.evaluateConditions(c, context))
-    }
-
-    if (conditions.field && conditions.operator) {
-      const fieldValue = expressionEvaluator.getNestedValue(context, conditions.field)
-      const compareValue = conditions.value
-
-
-      switch (conditions.operator) {
-        case "eq": return fieldValue == compareValue
-        case "neq": return fieldValue != compareValue
-        case "gt": return fieldValue > compareValue
-        case "gte": return fieldValue >= compareValue
-        case "lt": return fieldValue < compareValue
-        case "lte": return fieldValue <= compareValue
-        case "in": return Array.isArray(compareValue) && compareValue.includes(fieldValue)
-        case "like": return String(fieldValue).toLowerCase().includes(String(compareValue).toLowerCase())
-        case "exists": return fieldValue !== undefined && fieldValue !== null && fieldValue !== ''
-        case "not_exists": return fieldValue === undefined || fieldValue === null || fieldValue === ''
-        default: return false
-      }
-    }
-    
-    return true
-  }
-
-  /**
-   * Handle execution errors
-   */
-  private async handleExecutionError(error: any, startTime: number): Promise<void> {
-    if (this.executionId) {
-      await this.updateExecutions({
-        id: this.executionId,
-        status: 'failed',
-        completed_at: new Date(),
-        duration_ms: Date.now() - startTime,
-        error_message: error.message
-      })
-      
-      // await this.emitEvent('executionFailed', {
-      //   executionId: this.executionId,
-      //   error: error.message,
-      //   duration: Date.now() - startTime
-      // })
-    }
-    
-    this.logger_.error("Action execution failed:", error)
-  }
-
-
-  // ========== PUBLIC API METHODS ==========
-
-  /**
-   * Get execution status
-   */
-  async getExecutionStatus(executionId: string): Promise<ExecutionStatus | any> {
-    const execution = await this.retrieveExecution(executionId)
-    
-    if (!execution) {
-      throw new Error(`Execution ${executionId} not found`)
-    }
-
-    // Get action executions
-    const actionExecutions = await this.listExecutions({
-      id: { $eq: executionId }
-    })
-
-    return {
-      ...execution,
-      actions: actionExecutions,
-      progress: execution.status === 'running' 
-        ? actionExecutions.filter(a => a.status === 'completed').length / actionExecutions.length
-        : 1
-    }
-  }
-  
-  async getActionTemplate(actionId: string): Promise<any> {
-        if(!actionId) return null
-        let template = await this.listActionTemplates({  $or: [
-        {
-          id: {
-            $eq: actionId,
-          },
-        },
-        {
-          handle: {
-            $eq: actionId,
-          },
-        },
-      ]})
-    
-    if(!template.length){
-      return null
-    }
-
-    return template[0]
-  }
-
-    private buildErrorResponse(
-      error: Error | any,
-      status_code: number = 400,
-      message?: string
-    ): any {
-      return {
-        success: false,
-        status_code,
-        error,
-        status: 'error',
-        message: message || error.message || "Unknown error",
-        data: null,
-        exit: true,
-        metadata: {
-          timestamp: new Date().toISOString(),
-          errorType: error.constructor?.name
-        }
-      }
-    }
-  
-
-private buildWorkflowData(actions: Record<string, any>) {
-  const steps = Object.entries(actions).map(([key, value]) => ({
-    key,
-    ...value
-  }))
-
-  steps.sort((a, b) => a.index - b.index)
-
-  const buildNested = (index: number): any => {
-    if (index >= steps.length) return undefined
-
-    const step = steps[index]
-
-    const node: any = {
-      uuid: generateEntityId(undefined, "step"),
-      action: step.key,
-      noCompensation: true,
-      input: step
-    }
-
-    const next = buildNested(index + 1)
-
-    if (next) {
-      node.next = next
-    }
-
-    return node
-  }
-
-  return {
-    _v: 0,
-    runId: generateEntityId(undefined, "run"),
-    state: "pending",
-    steps: {},
-    modelId: "dynamic-workflow",
-
-    options: {
-      name: "dynamic-workflow",
-      store: true,
-      idempotent: false,
-      retentionTime: 259200
-    },
-
-    metadata: {
-      sourcePath: "ai-generated",
-      eventGroupId: generateEntityId(undefined, "event"),
-      preventReleaseEvents: false
-    },
-
-    startedAt: Date.now(),
-
-    definition: buildNested(0),
-
-    transactionId: generateEntityId(undefined, "tx"),
-
-    hasAsyncSteps: false,
-    hasFailedSteps: false,
-    hasSkippedSteps: false,
-    hasWaitingSteps: false,
-    hasRevertedSteps: false,
-    hasSkippedOnFailureSteps: false
-  }
-}
-
-  /**
-   * Health check
-   */
-  async healthCheck(): Promise<HealthCheckResult> {
-    const services = {
-      logger: !!this.logger_,
-      postgresPool: !!this.postgresPool,
-    }
-    
-    return {
-      healthy: Object.values(services).every(Boolean),
-      services,
-      timestamp: new Date().toISOString()
+  async onApplicationShutdown(): Promise<void> {
+    if (this.redisClient) {
+      await this.redisClient.quit();
     }
   }
 }
 
-
-
- 
 export type ActionEngineApiContext = {
   actionEngineService: ActionEngineService
 }
 
-// Export all types for use in API routes
 export * as ActionEngineTypes from './types'

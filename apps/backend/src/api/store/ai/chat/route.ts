@@ -5,6 +5,8 @@ interface ChatRequestBody {
   session_id: string
   message: string
   language?: string
+  model?: string
+  context?: string
 }
 
 interface ChatResponseBody {
@@ -19,12 +21,11 @@ export const POST = async (
 ) => {
   const aiService = req.scope.resolve("aiModuleService") as any
   
-  const { session_id, message, language } = req.body
+  const { session_id, message, language, model = 'action-selector', context } = req.body
 
 
-console.log(req.body, 'REQQQ')
 
-  if (!session_id || !message) {
+  if (!message) {
     return res.status(400).json({ error: "session_id and message are required" })
   }
 
@@ -50,16 +51,12 @@ console.log(req.body, 'REQQQ')
     
     
 
-  let aiResponse =  await aiService.streamChat({ session_id, user_message: message, language, onToken })
-    // Return the AI response
-    const response: any = {
-      session_id,
-      user_message: message,
-      assistant_response: assistantResponse,
-      aiResponse
-    }
+    console.log(req.body, "REQ BODY")
 
-    res.json(response)
+  let aiResponse =  await aiService.chat({ session_id, message, language, model_id: model, onToken: false, context })
+    // Return the AI response
+
+    res.json(aiResponse)
   } catch (err) {
     console.error("[AI CHAT ENDPOINT] Error:", err)
     res.status(500).json({ error: "AI response failed" })
