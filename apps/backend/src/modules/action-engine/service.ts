@@ -16,7 +16,7 @@ import { DbOperationService } from "./services/database-action-service"
 import { ActionConfig } from "./types"
 import { parseActionInput, StepActionError, validateAndRefineParameters } from "../../utils/validators"
 import { parseFieldsString, removeEmptyObjects, removeNullKeys } from "../../utils/helpers"
-import { evaluateConditions, handleExecutionError } from "../../utils/action-engine-utils"
+import { buildErrorResponse, evaluateConditions, handleExecutionError } from "../../utils/action-engine-utils"
 import Redis from "ioredis"
 import { chatCompletion } from "../../utils/ollama"
 
@@ -145,8 +145,8 @@ export default class ActionEngineService extends MedusaService({
 
   async updateSession(sessionId: string, data: Record<string, any>): Promise<void> {
     const existingData = await this.getSession(sessionId);
-    if (!existingData) throw new Error(`Session ${sessionId} not found`);
-    await this.setSession(sessionId, { ...existingData, ...data });
+    // if (!existingData) throw new Error(`Session ${sessionId} not found`);
+    await this.setSession(sessionId, { ...(existingData ?? {}), ...data });
   }
 
   async deleteSession(sessionId: string): Promise<void> {
@@ -173,10 +173,9 @@ export default class ActionEngineService extends MedusaService({
       
       // 3. Log as fallback
       this.logger_.info(`Event: ${eventType}`)
-    }
+  }
   
   // ========== CORE METHODS ==========
-
   @InjectManager()
   async execute(
     templateId: string, 
@@ -323,7 +322,7 @@ export default class ActionEngineService extends MedusaService({
       return response.data
     } catch (error: any) {
       this.logger_.error(`API call failed: ${url}`, error)
-      return this.buildErrorResponse(error, 500, `API call failed: ${error.message}`)
+      return buildErrorResponse(error, 500, `API call failed: ${error.message}`)
     }
   }
 
@@ -472,7 +471,7 @@ export default class ActionEngineService extends MedusaService({
     return template.length ? template[0] : null
   }
 
-    async stepAction(templateId: string, input: Record<string, any>, session: any): Promise<any> {
+  async stepAction(templateId: string, input: Record<string, any>, session: any): Promise<any> {
     let templates = await this.listActionTemplates({  
       $or: [ { id: { $eq: templateId } }, { handle: { $eq: templateId } } ]
     });
@@ -484,23 +483,40 @@ export default class ActionEngineService extends MedusaService({
     if (!validationResult.valid) {
       throw new StepActionError(`Validation failed: ${validationResult.errors.join(', ')}`);
     }
-    
-
-
 
     let response = await this.executeAction(template, {
+      session,
       params: validationResult.refinedData, 
-      context: session.context
+      context: session?.context
     });
 
-    return {
-      input,
-      template,
-      response,
-      session,
-      validationResult,
-      timestamp: new Date().toISOString()
-    };
+      // let contextOutput = session.context;
+      let output = response;
+      let output_template =  template.output_template;
+      let context_template = template.context_template;
+      
+
+      if(output_template && Object.keys(output_template).length){
+        output = await expressionEvaluator.resolvePlaceholders(
+          output_template, 
+          {...session, params: input, result: response, outputs: response?.outputs ?? {}}
+        );
+      }
+      
+      // if(context_template && Object.keys(context_template).length){
+      //   contextOutput = await expressionEvaluator.resolvePlaceholders(
+      //     context_template, 
+      //     {...session, params: input}
+      //   );        
+      //     session = {...session, context: contextOutput};
+      // }
+      
+  //  await this.actionService.updateSession(session.id, session);
+
+
+
+    console.log(response, output, 'STEP RESPONSE')
+    return output;
   }
 
 

@@ -1,0 +1,36 @@
+/* src/admin/styles/custom-overrides.css */
+
+/* Hide default summary */
+[data-testid="order-summary"] {
+  display: none !important;
+}
+
+/* Hide header section */
+[data-testid="order-show-header"] {
+  display: none !important;
+}
+
+/* Hide payments section */
+[data-testid="order-payments"] {
+  display: none !important;
+}
+
+/* Hide fulfillment */
+[data-testid="order-fulfillments"] {
+  display: none !important;
+}
+
+/* Hide timeline */
+[data-testid="order-activity"] {
+  display: none !important;
+}
+
+/* Hide customer info */
+[data-testid="order-customer"] {
+  display: none !important;
+}
+
+/* Hide JSON dump */
+[data-testid="order-json"] {
+  display: none !important;
+}

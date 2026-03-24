@@ -20,7 +20,6 @@ export default async function Checkout() {
   const customer = await retrieveCustomer()
 
 
-  console.log(cart, 'CART')
   return (
 
   <PaymentWrapper cart={cart}>

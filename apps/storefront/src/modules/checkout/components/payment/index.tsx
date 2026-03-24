@@ -10,7 +10,6 @@ import PaymentContainer, { StripeCardContainer } from "@modules/checkout/compone
 import { StripeContext } from "@modules/checkout/components/payment-wrapper"
 // import Button from "@modules/common/components/button"
 import Divider from "@modules/common/components/divider"
-import { CardElement } from "@stripe/react-stripe-js"
 import { StripeCardElementOptions } from "@stripe/stripe-js"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { useCallback, useContext, useEffect, useMemo, useState } from "react"

@@ -11,7 +11,6 @@ const CheckoutSummary = async ({ cart }: { cart: any }) => {
   const customer = await getCustomer()
   const spendLimitExceeded = checkSpendingLimit(cart, customer)
 
-console.log(cart, 'caaar')
 
   return (
     <Container className="sticky top-2 h-fit w-full flex flex-col small:mt-10">

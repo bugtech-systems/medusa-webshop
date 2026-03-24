@@ -1,4 +1,5 @@
 import { Pool } from 'pg';
+import { randomBytes } from 'crypto';
 
 export interface JoinConfig {
   type: 'INNER' | 'LEFT' | 'RIGHT' | 'FULL';
@@ -31,6 +32,8 @@ export interface QueryConfig {
     update?: string[];
     where?: Record<string, any>;
   };
+  skipIdGeneration?: boolean; // Allow skipping ID generation for custom IDs
+  idPrefix?: string; // Custom prefix for ID generation
 
   // Raw SQL execution
   sql?: string;
@@ -40,6 +43,50 @@ export interface QueryConfig {
 export class DbOperationService {
   private pool: Pool;
   private reservedKeywords = new Set(['order', 'user', 'group', 'select', 'insert', 'update', 'delete', 'table', 'where', 'from', 'to', 'as', 'on', 'by', 'with', 'like', 'between', 'in', 'is', 'null', 'not', 'and', 'or', 'case', 'when', 'then', 'else', 'end', 'exists', 'all', 'any', 'some', 'distinct', 'limit', 'offset', 'fetch', 'for', 'if', 'primary', 'key', 'foreign', 'references', 'constraint', 'check', 'default', 'index', 'view', 'sequence', 'trigger', 'procedure', 'function', 'grant', 'revoke']);
+
+  // Map table names to Medusa ID prefixes
+  private tablePrefixMap: Map<string, string> = new Map([
+    ['order', 'order_'],
+    ['orders', 'order_'],
+    ['product', 'prod_'],
+    ['products', 'prod_'],
+    ['product_variant', 'var_'],
+    ['product_variants', 'var_'],
+    ['product_collection', 'pcol_'],
+    ['product_collections', 'pcol_'],
+    ['customer', 'cus_'],
+    ['customers', 'cus_'],
+    ['payment', 'pay_'],
+    ['payments', 'pay_'],
+    ['payment_session', 'payses_'],
+    ['payment_sessions', 'payses_'],
+    ['shipping_method', 'ship_'],
+    ['shipping_methods', 'ship_'],
+    ['region', 'reg_'],
+    ['regions', 'reg_'],
+    ['cart', 'cart_'],
+    ['carts', 'cart_'],
+    ['claim', 'claim_'],
+    ['claims', 'claim_'],
+    ['return', 'ret_'],
+    ['returns', 'ret_'],
+    ['swap', 'swap_'],
+    ['swaps', 'swap_'],
+    ['fulfillment', 'ful_'],
+    ['fulfillments', 'ful_'],
+    ['order_item', 'item_'],
+    ['order_items', 'item_'],
+    ['order_line_item', 'line_'],
+    ['order_line_items', 'line_'],
+    ['inventory_item', 'inv_'],
+    ['inventory_items', 'inv_'],
+    ['stock_location', 'sloc_'],
+    ['stock_locations', 'sloc_'],
+    ['price_list', 'plist_'],
+    ['price_lists', 'plist_'],
+    ['sales_channel', 'sc_'],
+    ['sales_channels', 'sc_']
+  ]);
 
   constructor(pool: Pool) {
     this.pool = pool;
@@ -57,16 +104,16 @@ export class DbOperationService {
       const { sql, params } = this.buildQuery(config);
       const result = await client.query(sql, params);
       let formattedResult = result.rows as any;
-           // For read operations with joins, transform the result to nested structure
+      
+      // For read operations with joins, transform the result to nested structure
       if (config.operation === 'read' && config.joins && config.joins.length > 0) {
         formattedResult = this.transformJoinResult(formattedResult, config);
       }
      
       return formattedResult;
     } catch (error) {
-    console.log(error, 'ERRORR')
-    return { success: false, status: 'error', message: `Database operation failed: ${error.message}`}
-      /* throw new Error(`Database operation failed: ${error.message}`); */
+      console.log(error, 'ERRORR');
+      return { success: false, status: 'error', message: `Database operation failed: ${error.message}` };
     } finally {
       client.release();
     }
@@ -76,20 +123,17 @@ export class DbOperationService {
     const client = await this.pool.connect();
     try {
       const result = await client.query(sql, params);
-      return result.rows; // Return rows by default; adjust as needed
+      return result.rows;
     } finally {
       client.release();
     }
   }
 
   private buildQuery(config: QueryConfig): { sql: string; params: any[] } {
-      // Ensure returning is set for mutations
+    // Ensure returning is set for mutations
     if (['create', 'update', 'upsert', 'batch_create'].includes(config.operation || '') && !config.returning) {
       config.returning = '*'; // Default to returning all columns
     }
-  
-  
-  
   
     switch (config.operation) {
       case 'read': return this.buildSelect(config);
@@ -108,7 +152,6 @@ export class DbOperationService {
   private buildSelect(config: QueryConfig): { sql: string; params: any[] } {
     const params: any[] = [];
     let paramIndex = 1;
-
 
     // Build fields with aliases for nested structure
     const fields = this.buildFieldsWithAliases(config.table, config.fields || '*', config.joins);
@@ -153,7 +196,6 @@ export class DbOperationService {
       params.push(offset);
       paramIndex++;
     }
-
 
     return { sql, params };
   }
@@ -205,7 +247,12 @@ export class DbOperationService {
   private buildInsert(config: QueryConfig): { sql: string; params: any[] } {
     const data = Array.isArray(config.data) ? config.data[0] : config.data;
     const sanitized = this.sanitizeData(data);
-    if (!sanitized.id) sanitized.id = this.generateId(config.table!);
+    
+    // Generate ID if not provided and not skipping generation
+    if (!sanitized.id && !config.skipIdGeneration) {
+      const prefix = config.idPrefix || this.getTablePrefix(config.table!);
+      sanitized.id = this.generateMedusaId(prefix);
+    }
 
     const columns = Object.keys(sanitized).map(c => this.quoteIdentifier(c));
     const values = Object.values(sanitized);
@@ -242,7 +289,7 @@ export class DbOperationService {
   // ----- UPDATE -----
   private buildUpdate(config: QueryConfig): { sql: string; params: any[] } {
     const data = this.sanitizeData(config.data as Record<string, any>);
-    delete data.id;
+    delete data.id; // Don't update ID field
 
     const params = Object.values(data);
     const setClause = Object.keys(data).map((key, i) =>
@@ -333,7 +380,13 @@ export class DbOperationService {
 
     dataArray.forEach((row, rowIndex) => {
       const sanitized = this.sanitizeData(row);
-      if (!sanitized.id) sanitized.id = this.generateId(config.table!);
+      
+      // Generate ID if not provided and not skipping generation
+      if (!sanitized.id && !config.skipIdGeneration) {
+        const prefix = config.idPrefix || this.getTablePrefix(config.table!);
+        sanitized.id = this.generateMedusaId(prefix);
+      }
+      
       const rowValues = Object.values(sanitized);
       const placeholders = rowValues.map((_, i) => `$${allValues.length + i + 1}`).join(', ');
       rowPlaceholders.push(`(${placeholders})`);
@@ -346,74 +399,74 @@ export class DbOperationService {
   }
 
   // ----- WHERE BUILDER (Advanced) -----
-private buildWhere(condition: any, params: any[], startIndex: number): string {
-  if (condition === null || condition === undefined) return '';
+  private buildWhere(condition: any, params: any[], startIndex: number): string {
+    if (condition === null || condition === undefined) return '';
 
-  // Helper to recursively process conditions
-  const process = (cond: any, offset: number): { clause: string; paramCount: number } => {
-    // Simple key-value object: { field: value } or { field: { $op: value } }
-    if (typeof cond === 'object' && !Array.isArray(cond) && !cond.$and && !cond.$or && !cond.and && !cond.or) {
-      const entries = Object.entries(cond);
-      let clauseParts: string[] = [];
-      let addedParams = 0;
-      for (const [key, val] of entries) {
-        const result = this.parseConditionWithOffset(key, val, params, offset + addedParams);
-        clauseParts.push(result.clause);
-        addedParams += result.paramCount;
-      }
-      return { clause: clauseParts.join(' AND '), paramCount: addedParams };
-    }
-
-    // Logical groups: $and, $or, and, or
-    const andGroup = cond.$and || cond.and;
-    const orGroup = cond.$or || cond.or;
-    if (andGroup || orGroup) {
-      const logical = andGroup ? 'AND' : 'OR';
-      const group = andGroup || orGroup;
-      if (!Array.isArray(group)) throw new Error('Logical group must be an array');
-
-      let subClauses: string[] = [];
-      let totalParams = 0;
-      for (const subCond of group) {
-        const result = process(subCond, offset + totalParams);
-        subClauses.push(result.clause);
-        totalParams += result.paramCount;
-      }
-      return {
-        clause: `(${subClauses.join(` ${logical} `)})`,
-        paramCount: totalParams
-      };
-    }
-
-    // Legacy array format: [{ field, operator, value }]
-    if (Array.isArray(cond)) {
-      let clauseParts: string[] = [];
-      let addedParams = 0;
-      for (const item of cond) {
-        if (item.conditions) {
-          const nested = process(item.conditions, offset + addedParams);
-          clauseParts.push(`(${nested.clause})`);
-          addedParams += nested.paramCount;
-        } else {
-          const result = this.parseConditionWithOffset(
-            item.field,
-            { [item.operator]: item.value },
-            params,
-            offset + addedParams
-          );
+    // Helper to recursively process conditions
+    const process = (cond: any, offset: number): { clause: string; paramCount: number } => {
+      // Simple key-value object: { field: value } or { field: { $op: value } }
+      if (typeof cond === 'object' && !Array.isArray(cond) && !cond.$and && !cond.$or && !cond.and && !cond.or) {
+        const entries = Object.entries(cond);
+        let clauseParts: string[] = [];
+        let addedParams = 0;
+        for (const [key, val] of entries) {
+          const result = this.parseConditionWithOffset(key, val, params, offset + addedParams);
           clauseParts.push(result.clause);
           addedParams += result.paramCount;
         }
+        return { clause: clauseParts.join(' AND '), paramCount: addedParams };
       }
-      return { clause: clauseParts.join(' AND '), paramCount: addedParams };
-    }
 
-    throw new Error('Invalid where format');
-  };
+      // Logical groups: $and, $or, and, or
+      const andGroup = cond.$and || cond.and;
+      const orGroup = cond.$or || cond.or;
+      if (andGroup || orGroup) {
+        const logical = andGroup ? 'AND' : 'OR';
+        const group = andGroup || orGroup;
+        if (!Array.isArray(group)) throw new Error('Logical group must be an array');
 
-  const result = process(condition, startIndex - 1); // startIndex is 1-based, convert to 0-based offset
-  return result.clause;
-}
+        let subClauses: string[] = [];
+        let totalParams = 0;
+        for (const subCond of group) {
+          const result = process(subCond, offset + totalParams);
+          subClauses.push(result.clause);
+          totalParams += result.paramCount;
+        }
+        return {
+          clause: `(${subClauses.join(` ${logical} `)})`,
+          paramCount: totalParams
+        };
+      }
+
+      // Legacy array format: [{ field, operator, value }]
+      if (Array.isArray(cond)) {
+        let clauseParts: string[] = [];
+        let addedParams = 0;
+        for (const item of cond) {
+          if (item.conditions) {
+            const nested = process(item.conditions, offset + addedParams);
+            clauseParts.push(`(${nested.clause})`);
+            addedParams += nested.paramCount;
+          } else {
+            const result = this.parseConditionWithOffset(
+              item.field,
+              { [item.operator]: item.value },
+              params,
+              offset + addedParams
+            );
+            clauseParts.push(result.clause);
+            addedParams += result.paramCount;
+          }
+        }
+        return { clause: clauseParts.join(' AND '), paramCount: addedParams };
+      }
+
+      throw new Error('Invalid where format');
+    };
+
+    const result = process(condition, startIndex - 1); // startIndex is 1-based, convert to 0-based offset
+    return result.clause;
+  }
 
   /**
    * Build fields with special aliases to enable nested object reconstruction
@@ -483,7 +536,6 @@ private buildWhere(condition: any, params: any[], startIndex: number): string {
     });
   }
   
-   
   /**
    * Override buildFieldsWithAliases to ensure proper field aliasing
    */
@@ -569,59 +621,57 @@ private buildWhere(condition: any, params: any[], startIndex: number): string {
     return withoutAs.split(/\s+/)[0];
   }
 
+  // Enhanced parseCondition that returns both clause and number of parameters added
+  private parseConditionWithOffset(
+    field: string,
+    operatorValue: any,
+    params: any[],
+    offset: number // 0-based offset into params array
+  ): { clause: string; paramCount: number } {
+    const quotedField = this.quoteIdentifier(field);
+    let operator: string;
+    let value: any;
 
-// Enhanced parseCondition that returns both clause and number of parameters added
-private parseConditionWithOffset(
-  field: string,
-  operatorValue: any,
-  params: any[],
-  offset: number // 0-based offset into params array
-): { clause: string; paramCount: number } {
-  const quotedField = this.quoteIdentifier(field);
-  let operator: string;
-  let value: any;
-
-  if (typeof operatorValue === 'object' && operatorValue !== null && !Array.isArray(operatorValue)) {
-    const op = Object.keys(operatorValue)[0];
-    value = operatorValue[op];
-    operator = this.mapOperator(op);
-  } else {
-    operator = '=';
-    value = operatorValue;
-  }
-
-  // Handle NULL operators
-  if (value === undefined) {
-    if (operator === 'IS NULL' || operator === 'IS NOT NULL') {
-      return { clause: `${quotedField} ${operator}`, paramCount: 0 };
+    if (typeof operatorValue === 'object' && operatorValue !== null && !Array.isArray(operatorValue)) {
+      const op = Object.keys(operatorValue)[0];
+      value = operatorValue[op];
+      operator = this.mapOperator(op);
+    } else {
+      operator = '=';
+      value = operatorValue;
     }
-    throw new Error(`Value required for operator ${operator}`);
+
+    // Handle NULL operators
+    if (value === undefined) {
+      if (operator === 'IS NULL' || operator === 'IS NOT NULL') {
+        return { clause: `${quotedField} ${operator}`, paramCount: 0 };
+      }
+      throw new Error(`Value required for operator ${operator}`);
+    }
+
+    let clause: string;
+    let paramCount: number;
+
+    if (operator === 'IN' || operator === 'NOT IN') {
+      if (!Array.isArray(value)) value = [value];
+      const placeholders = value.map((_, i) => `$${offset + i + 1}`).join(', ');
+      clause = `${quotedField} ${operator} (${placeholders})`;
+      paramCount = value.length;
+      params.push(...value);
+    } else if (operator === 'BETWEEN') {
+      if (!Array.isArray(value) || value.length !== 2) throw new Error('BETWEEN requires [low, high]');
+      clause = `${quotedField} BETWEEN $${offset + 1} AND $${offset + 2}`;
+      paramCount = 2;
+      params.push(value[0], value[1]);
+    } else {
+      clause = `${quotedField} ${operator} $${offset + 1}`;
+      paramCount = 1;
+      params.push(value);
+    }
+
+    return { clause, paramCount };
   }
 
-  let clause: string;
-  let paramCount: number;
-
-  if (operator === 'IN' || operator === 'NOT IN') {
-    if (!Array.isArray(value)) value = [value];
-    const placeholders = value.map((_, i) => `$${offset + i + 1}`).join(', ');
-    clause = `${quotedField} ${operator} (${placeholders})`;
-    paramCount = value.length;
-    params.push(...value);
-  } else if (operator === 'BETWEEN') {
-    if (!Array.isArray(value) || value.length !== 2) throw new Error('BETWEEN requires [low, high]');
-    clause = `${quotedField} BETWEEN $${offset + 1} AND $${offset + 2}`;
-    paramCount = 2;
-    params.push(value[0], value[1]);
-  } else {
-    clause = `${quotedField} ${operator} $${offset + 1}`;
-    paramCount = 1;
-    params.push(value);
-  }
-
-  return { clause, paramCount };
-}
-
-  
   private mapOperator(op: string): string {
     const map: Record<string, string> = {
       '$eq': '=',
@@ -673,8 +723,13 @@ private parseConditionWithOffset(
       if (value === undefined) continue;
       if (value instanceof Date) {
         sanitized[key] = value.toISOString();
-      } else if (typeof value === 'object' && !(value instanceof Buffer)) {
-        sanitized[key] = JSON.stringify(value);
+      } else if (typeof value === 'object' && value !== null && !(value instanceof Buffer)) {
+        // Don't stringify if it's already a string or needs to be kept as JSONB
+        if (!(value instanceof Array) && typeof value !== 'string') {
+          sanitized[key] = JSON.stringify(value);
+        } else {
+          sanitized[key] = value;
+        }
       } else {
         sanitized[key] = value;
       }
@@ -682,8 +737,83 @@ private parseConditionWithOffset(
     return sanitized;
   }
 
-  private generateId(table: string): string {
-    return `${table}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  /**
+   * Generate Medusa-style ID with timestamp and random bytes
+   * Format: {prefix}01KMDV7A9VST261B366XR72EQP
+   */
+  private generateMedusaId(prefix: string = ''): string {
+    // Base32 characters (RFC 4648)
+    const base32Chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+    
+    // Get current timestamp in milliseconds
+    const timestamp = Date.now();
+    
+    // Convert timestamp to base32 (12 characters)
+    let timePart = '';
+    let remaining = timestamp;
+    for (let i = 0; i < 12; i++) {
+      timePart = base32Chars[remaining & 31] + timePart;
+      remaining = Math.floor(remaining / 32);
+    }
+    // Pad with zeros if needed
+    timePart = timePart.padStart(12, 'A');
+    
+    // Generate 12 bytes of random data (16 characters in base32)
+    const randomBytes = this.generateRandomBase32(16);
+    
+    // Combine: prefix + timePart + randomPart
+    return `${prefix}${timePart}${randomBytes}`;
   }
- 
+
+  /**
+   * Generate random base32 string of specified length
+   */
+  private generateRandomBase32(length: number): string {
+    const base32Chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+    let result = '';
+    const bytes = randomBytes(Math.ceil(length * 5 / 8));
+    
+    let bitBuffer = 0;
+    let bitCount = 0;
+    
+    for (let i = 0; i < bytes.length; i++) {
+      bitBuffer = (bitBuffer << 8) | bytes[i];
+      bitCount += 8;
+      
+      while (bitCount >= 5 && result.length < length) {
+        const index = (bitBuffer >> (bitCount - 5)) & 31;
+        result += base32Chars[index];
+        bitCount -= 5;
+      }
+    }
+    
+    // Pad if necessary
+    if (result.length < length && bitCount > 0) {
+      const index = (bitBuffer << (5 - bitCount)) & 31;
+      result += base32Chars[index];
+    }
+    
+    return result.padEnd(length, 'A');
+  }
+
+  /**
+   * Get the Medusa ID prefix for a table
+   */
+  private getTablePrefix(table: string): string {
+    const normalizedTable = table.toLowerCase();
+    
+    // Check for exact match
+    if (this.tablePrefixMap.has(normalizedTable)) {
+      return this.tablePrefixMap.get(normalizedTable)!;
+    }
+    
+    // Check for singular/plural variations
+    const singular = normalizedTable.replace(/s$/, '');
+    if (this.tablePrefixMap.has(singular)) {
+      return this.tablePrefixMap.get(singular)!;
+    }
+    
+    // Default prefix based on table name
+    return `${normalizedTable.slice(0, 4)}_`;
+  }
 }

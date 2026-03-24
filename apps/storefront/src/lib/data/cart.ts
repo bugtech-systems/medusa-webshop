@@ -336,6 +336,9 @@ export async function initiatePaymentSession(
     ...(await getAuthHeaders()),
   }
 
+
+console.log(data, 'DATAA PAYMENT SESSION')
+
   return sdk.store.payment
     .initiatePaymentSession(cart, data, {}, headers)
     .then(async (resp) => {
@@ -354,6 +357,7 @@ export async function authorizePayment(id: any, session: any) {
   const next = {
     ...(await getCacheOptions("carts")),
   }
+console.log(id, session, 'AUTHORIZE PAYMENT SESSION')
 
   return await sdk.client.fetch<{
     shipping_options: HttpTypes.StoreCartShippingOption[]
@@ -673,4 +677,53 @@ export async function emptyCart() {
 
   const cartCacheTag = await getCacheTag("carts")
   revalidateTag(cartCacheTag)
+}
+
+export async function addStripePaymentSession(orderId: string) {
+  // const order = await retrieveDraftOrder(orderId) as any;
+
+  const headers = {
+    ...(await getAuthHeaders()),
+  }
+
+  const next = {
+    ...(await getCacheOptions("payment-link")),
+  }
+
+  return await sdk.client
+    .fetch<any>(`/store/payment-link`, {
+      method: "POST",
+      body: {order_id: orderId},
+      headers
+      // next,
+      // cache: "force-cache",
+    })
+    // .then(() => order)
+    .catch((err) => medusaError(err))
+}
+
+
+
+export const retrieveDraftOrder = async (id: string) => {
+  const headers = {
+    ...(await getAuthHeaders()),
+  }
+
+  const next = {
+    ...(await getCacheOptions("orders")),
+  }
+
+  return sdk.client
+    .fetch<HttpTypes.StoreOrderResponse>(`/store/orders/${id}`, {
+      method: "GET",
+      query: {
+        fields:
+          "*payment_collections.payments,*items,*promotions,*items.metadata,*items.variant,*items.product",
+      },
+      headers,
+      next,
+      cache: "force-cache",
+    })
+    .then(({ order }) => order)
+    .catch((err) => medusaError(err))
 }

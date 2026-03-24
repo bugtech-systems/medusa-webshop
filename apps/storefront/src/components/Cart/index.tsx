@@ -11,7 +11,6 @@ import { clearCart } from "@lib/data/cart";
 const Cart = ({cart, customer} : any) => {
 
 
-console.log(cart, customer, 'CART D')
 
 
 

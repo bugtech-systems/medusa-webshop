@@ -33,7 +33,6 @@ export default async function CheckoutForm({
   
   
 
-    console.log(cart, shippingMethods, paymentMethods,'CART')
 
   return (
     <div>

@@ -1,0 +1,7 @@
+.order-details-page {
+  display: none !important;
+}
+
+button[aria-label="CopyPaymentLink code snippet"] {
+  display: none !important;
+}

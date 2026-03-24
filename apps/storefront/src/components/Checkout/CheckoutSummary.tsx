@@ -7,7 +7,6 @@ export default function CheckoutSummary({cart}: any) {
 
     let cartItems = cart?.items;
     let currencyCode = cart?.currency_code
-    console.log(cart, 'CART')
 
   return (
     <>

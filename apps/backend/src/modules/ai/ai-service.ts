@@ -371,17 +371,17 @@ export default class AiClassService {
     });
 
       // let contextOutput = session.context;
-      // let output = response;
-      // let output_template =  template.output_template;
-      // let context_template = template.context_template;
+      let output = response;
+      let output_template =  template.output_template;
+      let context_template = template.context_template;
       
 
-      // if(output_template && Object.keys(output_template).length){
-      //   output = await expressionEvaluator.resolvePlaceholders(
-      //     output_template, 
-      //     {...session, params: input}
-      //   );
-      // }
+      if(output_template && Object.keys(output_template).length){
+        output = await expressionEvaluator.resolvePlaceholders(
+          output_template, 
+          {...session, params: input, result: response}
+        );
+      }
       
       // if(context_template && Object.keys(context_template).length){
       //   contextOutput = await expressionEvaluator.resolvePlaceholders(
@@ -396,7 +396,7 @@ export default class AiClassService {
 
 
     console.log(response, 'STEP RESPONSE')
-    return response;
+    return output;
   }
 
 

@@ -518,20 +518,20 @@ export const ExecuteActionDrawer = ({
       const parsed = { ...values };
       const sessionId = localStorage.getItem('session_id');
       let params = action.parameters ?? [] as any;
-      // Parse JSON fields
-      params?.forEach((p) => {
-        if(p.defaultValue && !parsed[p.name].trim()){
-                parsed[p.name] = p.defaultValue;           
-        }
+      // // Parse JSON fields
+      // params?.forEach((p) => {
+      //   if(p.defaultValue && !parsed[p.name].trim()){
+      //           parsed[p.name] = p.defaultValue;           
+      //   }
 
-        if ((p.type === "json" || p.type === 'array') && typeof parsed[p.name] === "string" && parsed[p.name].trim()) {
-          try {
-            parsed[p.name] = JSON.parse(parsed[p.name])
-          } catch (e) {
-            throw new Error(`Invalid JSON in ${p.name}: ${e}`)
-          }
-        }
-      })
+      //   if ((p.type === "json" || p.type === 'array') && typeof parsed[p.name] === "string" && parsed[p.name].trim()) {
+      //     try {
+      //       parsed[p.name] = JSON.parse(parsed[p.name])
+      //     } catch (e) {
+      //       throw new Error(`Invalid JSON in ${p.name}: ${e}`)
+      //     }
+      //   }
+      // })
       
       
 

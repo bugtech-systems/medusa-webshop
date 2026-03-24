@@ -12,6 +12,6 @@
     "noEmit": true,
     "jsx": "react-jsx",
   },
-  "include": ["."],
+  "include": [".","src/**/*"],
   "exclude": ["**/*.spec.js"]
 }
