@@ -1,6 +1,5 @@
 "use client"
 
-import { Text } from "@medusajs/ui"
 
 import PaymentButton from "../payment-button"
 import { ExclamationCircle } from "@medusajs/icons"

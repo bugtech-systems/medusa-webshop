@@ -7,10 +7,9 @@ import { CheckCircleSolid, CreditCard } from "@medusajs/icons"
 import { Button, Container, Heading, Text, clx } from "@medusajs/ui"
 import ErrorMessage from "@modules/checkout/components/error-message"
 import PaymentContainer, { StripeCardContainer } from "@modules/checkout/components/payment-container"
-import { StripeContext } from "@modules/checkout/components/payment-wrapper"
+// import { StripeContext } from "@modules/checkout/components/payment-wrapper"
 // import Button from "@modules/common/components/button"
 import Divider from "@modules/common/components/divider"
-import { CardElement } from "@stripe/react-stripe-js"
 import { StripeCardElementOptions } from "@stripe/stripe-js"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { useCallback, useContext, useEffect, useMemo, useState } from "react"
@@ -26,6 +25,9 @@ const Payment = ({
     (paymentSession: any) => paymentSession.status === "pending"
   )
 
+
+  console.log(activeSession, 'ACTIVE SESSION')
+
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [cardBrand, setCardBrand] = useState<string | null>(null)
@@ -40,8 +42,7 @@ const Payment = ({
 
   const isOpen = searchParams.get("step") === "payment"
 
-  const isStripe = isStripeFunc(activeSession?.provider_id)
-  const stripeReady = useContext(StripeContext)
+
 
   const paidByGiftcard =
     cart?.gift_cards && cart?.gift_cards?.length > 0 && cart?.total === 0
@@ -67,7 +68,7 @@ const Payment = ({
   }, [])
   
 
-  console.log(isStripe, stripeReady, 'STRIPING')
+  // console.log(isStripe, stripeReady, 'STRIPING')
   
     const setPaymentMethod = async (method: string) => {
       setError(null)
@@ -133,7 +134,7 @@ const Payment = ({
 
 
 
-  console.log(isOpen, paymentReady, paidByGiftcard, 'IS PAY REAADY')
+  // console.log(isOpen, paymentReady, paidByGiftcard, 'IS PAY REAADY')
 
   return (
     <Container>

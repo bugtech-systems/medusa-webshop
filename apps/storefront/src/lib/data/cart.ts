@@ -676,51 +676,5 @@ export async function emptyCart() {
   revalidateTag(cartCacheTag)
 }
 
-export async function addStripePaymentSession(orderId: string) {
-  // const order = await retrieveDraftOrder(orderId) as any;
-
-  const headers = {
-    ...(await getAuthHeaders()),
-  }
-
-  const next = {
-    ...(await getCacheOptions("payment-link")),
-  }
-
-  return await sdk.client
-    .fetch<any>(`/store/payment-link`, {
-      method: "POST",
-      body: {order_id: orderId},
-      headers
-      // next,
-      // cache: "force-cache",
-    })
-    // .then(() => order)
-    .catch((err) => medusaError(err))
-}
 
 
-
-export const retrieveDraftOrder = async (id: string) => {
-  const headers = {
-    ...(await getAuthHeaders()),
-  }
-
-  const next = {
-    ...(await getCacheOptions("orders")),
-  }
-
-  return sdk.client
-    .fetch<HttpTypes.StoreOrderResponse>(`/store/orders/${id}`, {
-      method: "GET",
-      query: {
-        fields:
-          "*payment_collections.payments,*items,*promotions,*items.metadata,*items.variant,*items.product",
-      },
-      headers,
-      next,
-      cache: "force-cache",
-    })
-    .then(({ order }) => order)
-    .catch((err) => medusaError(err))
-}

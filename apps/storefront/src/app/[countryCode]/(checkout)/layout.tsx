@@ -1,7 +1,6 @@
 import Footer from "@/components/Footer"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import Image from "next/image"
-import "styles/globals.css"
 
 export default function CheckoutLayout({
   children,

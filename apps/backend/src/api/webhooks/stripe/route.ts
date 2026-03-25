@@ -73,18 +73,7 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
 
           session = sessionData;
           console.log(sessionData, JSON.stringify(paymentCollection), 'NEW SESSION')
-           
-        }
-
-
-
-
-
-
-
-        
-
-        let authorizedPayment = await paymentService.authorizePaymentSession(
+                  let authorizedPayment = await paymentService.authorizePaymentSession(
                session_id,
             {
                 stripe_payment_intent: paymentIntent.id,
@@ -95,7 +84,19 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
 
 
 
-                console.log(session, authorizedPayment, 'OLD SESSION')
+                console.log(session, authorizedPayment, 'OLD SESSION') 
+
+        }
+
+
+
+
+
+
+
+        
+
+
 
         /**
          * ✅ NO AUTHORIZE
