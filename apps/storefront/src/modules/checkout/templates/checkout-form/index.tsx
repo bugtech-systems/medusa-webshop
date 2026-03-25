@@ -57,9 +57,8 @@ export default async function CheckoutForm({
 
        {shippingMethods.length != 0 &&  <Shipping cart={cart} availableShippingMethods={shippingMethods} />}
 
-         {/* <Payment cart={cart} availablePaymentMethods={paymentMethods} /> */}
+         <Payment cart={cart} availablePaymentMethods={paymentMethods} /> 
 
-        {/* <ContactDetails cart={cart} customer={customer} /> */}
       </div>
     </div>
   )

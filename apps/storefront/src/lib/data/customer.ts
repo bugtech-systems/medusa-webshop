@@ -53,7 +53,7 @@ export const retrieveCustomer =
       .fetch<{ customer: any }>(`/store/customers/me`, {
         method: "GET",
         query: {
-          // fields: "*orders",
+          fields: "+orders.*",
         },
         headers,
         next,

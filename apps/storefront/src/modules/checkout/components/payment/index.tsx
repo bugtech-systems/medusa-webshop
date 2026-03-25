@@ -131,7 +131,7 @@ const Payment = ({
 
 
 
-  console.log(isOpen, paymentReady, paidByGiftcard, 'IS PAY REAADY')
+  console.log(isOpen, paymentReady, paidByGiftcard, selectedPaymentMethod, stripeReady, 'IS PAY REAADY')
 
   return (
     <Container>
