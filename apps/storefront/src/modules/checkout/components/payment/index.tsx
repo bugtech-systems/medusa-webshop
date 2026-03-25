@@ -10,6 +10,7 @@ import PaymentContainer, { StripeCardContainer } from "@modules/checkout/compone
 import { StripeContext } from "@modules/checkout/components/payment-wrapper"
 // import Button from "@modules/common/components/button"
 import Divider from "@modules/common/components/divider"
+import { CardElement } from "@stripe/react-stripe-js"
 import { StripeCardElementOptions } from "@stripe/stripe-js"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { useCallback, useContext, useEffect, useMemo, useState } from "react"
@@ -39,8 +40,8 @@ const Payment = ({
 
   const isOpen = searchParams.get("step") === "payment"
 
-  // const isStripe = isStripeFunc(activeSession?.provider_id)
-  // const stripeReady = useContext(StripeContext)
+  const isStripe = isStripeFunc(activeSession?.provider_id)
+  const stripeReady = useContext(StripeContext)
 
   const paidByGiftcard =
     cart?.gift_cards && cart?.gift_cards?.length > 0 && cart?.total === 0
@@ -65,6 +66,8 @@ const Payment = ({
     }
   }, [])
   
+
+  console.log(isStripe, stripeReady, 'STRIPING')
   
     const setPaymentMethod = async (method: string) => {
       setError(null)
@@ -129,6 +132,8 @@ const Payment = ({
   }, [isOpen])
 
 
+
+  console.log(isOpen, paymentReady, paidByGiftcard, 'IS PAY REAADY')
 
   return (
     <Container>

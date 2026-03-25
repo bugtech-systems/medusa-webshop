@@ -2,7 +2,6 @@
 
 import { Text } from "@medusajs/ui"
 
-import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import PaymentButton from "../payment-button"
 import { ExclamationCircle } from "@medusajs/icons"
 import Button from "@modules/common/components/button"

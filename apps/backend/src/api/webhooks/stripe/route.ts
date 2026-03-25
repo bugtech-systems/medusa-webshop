@@ -27,7 +27,7 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
         const session_id = paymentIntent.metadata?.session_id
 
         console.log(paymentIntent, 'EVENT DATAA')
-        if (!orderId) break
+        if (!orderId || !session_id) break
 
         /**
          * ✅ Fetch order
@@ -143,7 +143,7 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
          * ✅ Complete order
          */
         if (order.status === "draft") {
-          await orderService.completeDraftOrder(orderId)
+          // await orderService.completeDraftOrder(orderId)
 
           logger.info("Order completed", { orderId })
         }
@@ -181,55 +181,53 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
   }
 }
 
-export const PATCH = async (req: MedusaRequest, res: MedusaResponse) => {
-  const logger = req.scope.resolve("logger") as any
-  const params = req.query;
-  const body = req.body as any;
-  const actionService: any = req.scope.resolve("actionEngine");
-  const orderService: any = req.scope.resolve(Modules.ORDER)
-  const paymentService: any = req.scope.resolve(Modules.PAYMENT)
-  const query = req.scope.resolve("query")
+// export const PATCH = async (req: MedusaRequest, res: MedusaResponse) => {
+//   const logger = req.scope.resolve("logger") as any
+//   const params = req.query;
+//   const body = req.body as any;
+//   const actionService: any = req.scope.resolve("actionEngine");
+//   const orderService: any = req.scope.resolve(Modules.ORDER)
+//   const paymentService: any = req.scope.resolve(Modules.PAYMENT)
+//   const query = req.scope.resolve("query")
 
-  let event: Stripe.Event
-  let session_id = params?.session_id
-  let payment_id = params?.payment_id
-  let payment_collection_id = params?.paycol_id;
+//   let event: Stripe.Event
+//   let session_id = params?.session_id
+//   let payment_id = params?.payment_id
+//   let payment_collection_id = params?.paycol_id;
   
 
-  try {
-    let result;
+//   try {
+//     let result;
 
-        if (session_id && params.type == "authorize") {
-          result = await paymentService.authorizePaymentSession(
-               session_id,
-            {
-                stripe_payment_intent: body.payment_intent,
-                stripe_payment_method: body.payment_method,
-                // stripe_payment_intent_status: body.status,
-            }
-          )
-        }
+//         if (session_id && params.type == "authorize") {
+//           result = await paymentService.authorizePaymentSession(
+//                session_id,
+//             {
+//                 stripe_payment_intent: body.payment_intent,
+//                 stripe_payment_method: body.payment_method,
+//                 // stripe_payment_intent_status: body.status,
+//             }
+//           )
+//         }
 
-        if (session_id && params.type == "create-payment-session") {
-                      // Create payment session
-            result = await paymentService.createPaymentSession(
-              payment_collection_id,
-              {
-                provider_id: "pp_stripe_stripe",
-                amount: body.amount_total,
-                currency_code: body.currency,
-                data: {
-                  stripe_session_id: body.id,
-                  stripe_payment_intent: body.payment_intent,
-                  stripe_customer_details: body.customer_details,
-                  stripe_payment_method_types: body.payment_method_types,
-                  // event_type: body.type,
-                  order_id: body.orderId,
-                },
-              }
-            );
-
-
+//         if (session_id && params.type == "create-payment-session") {
+//                       // Create payment session
+//             result = await paymentService.createPaymentSession(
+//               payment_collection_id,
+//               {
+//                 provider_id: "pp_stripe_stripe",
+//                 amount: body.amount_total,
+//                 currency_code: body.currency,
+//                 data: {
+//                   stripe_session_id: body.id,
+//                   stripe_payment_intent: body.payment_intent,
+//                   stripe_customer_details: body.customer_details,
+//                   stripe_payment_method_types: body.payment_method_types,
+//                   // event_type: body.type,
+//                   order_id: body.orderId,
+//                 },
+//               }
+//             );
 
 
 
@@ -238,39 +236,41 @@ export const PATCH = async (req: MedusaRequest, res: MedusaResponse) => {
 
 
 
-        }
-
-        /**
-         * ✅ 6. CAPTURE PAYMENT
-         */
-        if (payment_id && params.type == "capture") {
-
-         result = await paymentService.capturePayment({payment_id})
-
-          logger.info("Payment captured", {
-            payment_id,
-          })
-        }
 
 
+//         }
 
-        /**
-         * ✅ Complete payment collection
-         */
-        // if (paymentCollection.status !== "completed") {
-        //   await paymentService.completePaymentCollections(
-        //     paymentCollection.id
-        //   )
+//         /**
+//          * ✅ 6. CAPTURE PAYMENT
+//          */
+//         if (payment_id && params.type == "capture") {
 
-        //   logger.info("Payment collection completed")
-        // }
-    return res.status(200).json({ params, result, received: true })
-  } catch (err: any) {
-    logger.error(err)
+//          result = await paymentService.capturePayment({payment_id})
 
-    return res.status(200).json({
-      received: true,
-      error: err.message,
-    })
-  }
-}
+//           logger.info("Payment captured", {
+//             payment_id,
+//           })
+//         }
+
+
+
+//         /**
+//          * ✅ Complete payment collection
+//          */
+//         // if (paymentCollection.status !== "completed") {
+//         //   await paymentService.completePaymentCollections(
+//         //     paymentCollection.id
+//         //   )
+
+//         //   logger.info("Payment collection completed")
+//         // }
+//     return res.status(200).json({ params, result, received: true })
+//   } catch (err: any) {
+//     logger.error(err)
+
+//     return res.status(200).json({
+//       received: true,
+//       error: err.message,
+//     })
+//   }
+// }
