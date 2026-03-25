@@ -91,14 +91,7 @@ export default class ActionEngineService extends MedusaService({
     this.postgresPool = container.postgresPool
     this.customEventBus = container.eventBus // Custom event bus from loader
     console.log(process.env, process.env.REDIS_URL, process.env.REDIS_HOST, 'REDIS ACTION INITIALIZED')
-    this.redisClient = new Redis({
-      host: process.env.REDIS_URL || 'localhost',
-      port: parseInt(process.env.REDIS_PORT || '6379'),
-      password: process.env.REDIS_PASSWORD,
-      db: parseInt(process.env.REDIS_DB || '0'),
-      keyPrefix: 'action-engine:session:',
-      retryStrategy: (times) => Math.min(times * 50, 2000)
-    });
+    this.redisClient = new Redis({ host: process.env.REDIS_URL });
 
     this.redisClient.on('error', (err) => {
       this.logger_.error('Redis connection error:', err);
