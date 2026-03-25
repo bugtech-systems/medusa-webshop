@@ -3,7 +3,7 @@ import { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
 import { ACTION_ENGINE_MODULE } from "../../../../modules/action-engine"
 import { AI_MODULE } from "../../../../modules/ai"
 import { languages } from "monaco-editor";
-import AiClassService from "@/modules/ai/ai-service";
+import AiClassService from "../../../../modules/ai/ai-service";
 
 
 // POST - Create new action template
