@@ -41,7 +41,7 @@ const StripeWrapper: React.FC<StripeWrapperProps> = ({
       "Stripe client secret is missing. Cannot initialize Stripe."
     )
   }
-
+console.log(options, stripePromise, 'PROMM')
   return (
     <StripeContext.Provider value={true}>
       <Elements options={options} stripe={stripePromise}>
