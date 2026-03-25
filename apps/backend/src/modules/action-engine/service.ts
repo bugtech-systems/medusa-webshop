@@ -78,27 +78,37 @@ export default class ActionEngineService extends MedusaService({
   redisClient: Redis
   readonly SESSION_TTL = 3600
 
-  constructor(
-    container: any,
-    options?: any
-  ) {
-    super(container)
-    
-    this.container = container
-    this.logger_ = container.logger
-    this.dbService = new DbOperationService(container.postgresPool)
-    this.workerPool_ = container.workerPool
-    this.postgresPool = container.postgresPool
-    this.customEventBus = container.eventBus // Custom event bus from loader
-    console.log(process.env, process.env.REDIS_URL, process.env.REDIS_HOST, 'REDIS ACTION INITIALIZED')
-    this.redisClient = new Redis({ host: process.env.REDIS_URL });
+constructor(container: any, options?: any) {
+  super(container)
 
-    this.redisClient.on('error', (err) => {
-      this.logger_.error('Redis connection error:', err);
-    });
+  this.container = container
+  this.logger_ = container.logger
+  this.dbService = new DbOperationService(container.postgresPool)
+  this.workerPool_ = container.workerPool
+  this.postgresPool = container.postgresPool
+  this.customEventBus = container.eventBus
 
-    this.logger_.info("✅ ActionEngineService initialized")
+  const redisUrl = process.env.REDIS_URL
+
+  if (!redisUrl) {
+    this.logger_.warn("⚠️ REDIS_URL is not set. Redis disabled.")
   }
+
+  this.redisClient = new Redis(redisUrl!, {
+    tls: redisUrl?.startsWith("rediss://") ? {} : undefined,
+    maxRetriesPerRequest: 3,
+  })
+
+  this.redisClient.on("connect", () => {
+    this.logger_.info("✅ Redis connected")
+  })
+
+  this.redisClient.on("error", (err) => {
+    this.logger_.error("❌ Redis connection error:", err)
+  })
+
+  this.logger_.info("✅ ActionEngineService initialized")
+}
 
 
   // ========== SESSION MANAGEMENT ==========
