@@ -180,7 +180,6 @@ export default class AiModuleService extends MedusaService({
         { role: "user", content: input.message }
       ];
 
-console.log(input, model, messages, 'CHAATY AI')
 
       /* -------------------------------
          STORE MESSAGES

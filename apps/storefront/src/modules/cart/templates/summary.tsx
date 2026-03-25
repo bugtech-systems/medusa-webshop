@@ -28,7 +28,6 @@ const Summary = ({ customer, spendLimitExceeded, shippingMethods = [] }: Summary
 
   const checkoutStep = getCheckoutStep({...cart, shippingMethods})
 
-    console.log(checkoutStep, 'CHECKOUT Step')  
   const checkoutPath = checkoutStep
     ? `/checkout?step=${checkoutStep}`
     : "/checkout"

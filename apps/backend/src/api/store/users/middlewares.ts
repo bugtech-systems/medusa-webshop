@@ -2,7 +2,6 @@ import { authenticate, MiddlewareRoute } from "@medusajs/framework";
 
 const isAllowed = (req, res, next) => {
   const { company_id, driver_id } = req?.auth_context?.app_metadata || {};
-console.log('AUTH CONTEXT', req?.auth_context, req.headers, req.auth_context)
   if (company_id || driver_id) {
     const user = {
       actor_type: company_id ? "company" : "driver",

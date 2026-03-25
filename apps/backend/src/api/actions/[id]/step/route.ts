@@ -39,7 +39,6 @@ export async function POST(
 
 
     let response = await actionEngine.stepAction(id, body, session)
-   console.log(response, 'STEP ROUTE RESPONSE')
     return res.json(response)
 
   } catch (error: any) {

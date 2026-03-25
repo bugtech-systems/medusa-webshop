@@ -143,7 +143,6 @@ let membership = customer?.membership ?? 'nonmember'
   }
   
   
-  console.log(product, 'PRODUCT')
 
   return (
       <div className="flex flex-col w-full justify-center" ref={actionsRef}>

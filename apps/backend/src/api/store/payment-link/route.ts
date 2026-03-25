@@ -32,7 +32,6 @@ try {
   }) as any
 
     let draftOrder = orders[0];
-    console.log(draftOrder, 'ORDER DATA')
       // 2️⃣ Create payment collection
     // const paymentCollection = await paymentService.createPaymentCollections({
     //   amount: draftOrder.total,
@@ -48,7 +47,6 @@ try {
     })
     // let lists = await paymentService.createPaymentSession(payment_id, {provider_id: 'pp-stripe-stripe'});
     // let store = await storeModule.retrieveStore(lists[0].id);
-        console.log(draftOrder, paymentSession, 'ORDER SESSION')
 
   res.status(200).json(paymentSession);
 }catch (err){

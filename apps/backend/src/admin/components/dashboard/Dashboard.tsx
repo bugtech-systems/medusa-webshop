@@ -1279,7 +1279,6 @@ const handleDragEnd = useCallback(() => {
     )
   }
 
-console.log(tabs, 'TABBS')
   return (
     <div className="h-full">
       <Toaster />

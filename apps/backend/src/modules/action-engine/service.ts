@@ -298,7 +298,6 @@ export default class ActionEngineService extends MedusaService({
     if (!this.postgresPool) return { success: false, status: 'error', message: "Database pool not available." }
 
 
-    console.log(queryConfig, 'QUERY CONFIG')
 
     try {
       return await this.dbService.execute(queryConfig);
@@ -350,7 +349,6 @@ export default class ActionEngineService extends MedusaService({
     ]
 
 
-    console.log({messages, model: config.model, options: context.model?.config}, 'CHAT AI ACTION ENGINE')
     let chatResult = await chatCompletion({messages, model: config.model, options: context.model?.config})
     // let result = await generateCompletion({prompt: config.message || config.prompt, ...config, options: context.model.config})
     
@@ -363,7 +361,6 @@ export default class ActionEngineService extends MedusaService({
     //   timestamp: new Date().toISOString(),
     // }
 
-    // console.log(result, chatResult, 'RESULLT')
           return JSON.parse(chatResult.message.content);
 
    } catch(err) {
@@ -515,7 +512,6 @@ export default class ActionEngineService extends MedusaService({
 
 
 
-    console.log(response, output, 'STEP RESPONSE')
     return output;
   }
 

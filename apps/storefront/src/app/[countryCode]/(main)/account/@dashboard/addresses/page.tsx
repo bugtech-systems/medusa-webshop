@@ -24,7 +24,6 @@ export default async function Addresses(props: {
   }
 
 
-console.log(countryCode, 'country')
   return (
     <div className="w-full" data-testid="addresses-page-wrapper">
       <div className="mb-8 flex flex-col gap-y-4">

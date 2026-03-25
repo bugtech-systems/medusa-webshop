@@ -175,14 +175,12 @@ const DynamicReportPage = () => {
         const reportRes = await fetch(`/admin/dashboards/reports/${id}`)
         if (!reportRes.ok) throw new Error("Failed to load report")
         const reportJson: ReportMetadata = await reportRes.json();
-      console.log(reportJson, 'REPORT JSON')
         setReport(reportJson)
 
         // 2. Fetch report data using the action_id from configuration
         if (reportJson.configuration?.action_id) {
           const dataRes = await fetch(`/admin/actions/${reportJson.configuration.action_id}/execute`, {method: "POST"})
          
-         console.log(dataRes, "DATA RES")
           if (!dataRes.ok) return setError("Failed to load report data")
           const dataJson = await dataRes.json()
           
@@ -265,7 +263,6 @@ const DynamicReportPage = () => {
 
   // Handle bulk actions
   const handleBulkAction = (selectedIds: string[]) => {
-    console.log('Bulk action on:', selectedIds)
     toast.success(`Selected ${selectedIds.length} items for bulk action`)
   }
 

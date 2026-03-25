@@ -179,7 +179,6 @@ const ActionFlowsPage = () => {
       }
     }
 
-  console.log(sourceNodeId, actionData, 'ON CREATE NODE')
 
     setWorkflowNodes(prev => [...prev, newNode])
     
@@ -239,12 +238,10 @@ const ActionFlowsPage = () => {
   }
   
   const handleDeleteNode = async (n) => {
-      console.log(n, 'DELETING NODE');
       await deleteRelation({parameters: {id: n}})
   }
   
  const handleDeleteConnection = async (n) => {
-      console.log(n, 'DELETE CONNECTION');
       await deleteConnection({parameters: {id: n}})
 
   }

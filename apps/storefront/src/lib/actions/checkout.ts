@@ -166,7 +166,6 @@ export async function placeOrder(prevState: any, data: FormData) {
     
     
      
-    console.log(cartPrep, cart, 'CARRRTTT')
       if(!cart?.payment_collection?.payment_sessions?.length){
         await addPaymentSession(cartId);
       }
@@ -189,7 +188,6 @@ export async function placeOrder(prevState: any, data: FormData) {
     
     
     
-    console.log(cart, 'CARTT')
     
     
 
@@ -198,7 +196,6 @@ export async function placeOrder(prevState: any, data: FormData) {
 
     // await setDeliveryId(delivery.id)
   } catch (error) {
-  console.log(error, 'ERRRRs')
     return { message: "Error placing order" };
   }
   redirect("/your-order");

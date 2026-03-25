@@ -20,7 +20,6 @@ export async function POST(
     let actionEngine = new AiClassService({actionService, aiService})
 
 
-    console.log(req.body, 'ACTION BODY')
 
     if(!id){
      return res.status(401).json({
@@ -93,7 +92,6 @@ if (errors.length > 0) {
   // console.log("Ready to execute:", payload, oldTemplate.parameters, refineObjectByFields(payload, oldTemplate.parameters || []))
     
     context = { headers: body.headers, ...body.context, timeout: body.timeout};
-  console.log(body, payload, 'MODELL11')
 
     
 

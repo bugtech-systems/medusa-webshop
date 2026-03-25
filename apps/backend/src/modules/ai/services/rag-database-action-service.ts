@@ -191,7 +191,6 @@ export class AiRagOperationService {
     const embeddingStr = JSON.stringify(embedding);
 
     
-    console.log(embedding.length, 'EMBED LEN')
     // Compute cosine similarity in SQL
     // (simplest version, assumes small tables; production should use pgvector or similar)
  const sql = `
@@ -203,7 +202,6 @@ export class AiRagOperationService {
 `;
 
 const result = await client.query(sql, [embeddingStr, 5]);
-console.log(result, 'RES')
     return result.rows;
   }
 

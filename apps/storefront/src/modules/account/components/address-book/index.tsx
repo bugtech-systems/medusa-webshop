@@ -12,7 +12,6 @@ type AddressBookProps = {
 
 const AddressBook: React.FC<AddressBookProps> = ({ customer, region, countryCode }) => {
   const { addresses } = customer
-  console.log(addresses)
   return (
     <div className="w-full">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 flex-1 mt-4">

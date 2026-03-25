@@ -31,7 +31,6 @@ export async function GET(req: NextRequest) {
   const data = await medusaRes.json()
   const token = data.token
 
-  console.log(token, 'TOKEENNING')
        setAuthToken(token)
        const customerCacheTag = await getCacheTag("customers")
        const cartCacheTag = await getCacheTag("carts")

@@ -10,11 +10,9 @@ const createSchema = z.object({
 });
 
 export async function POST(req: MedusaRequest, res: MedusaResponse) {
-  console.log(req.body, 'PRODUCT CREATEE')
 
   const validatedBody = createSchema.parse(req.body);
 
-  console.log(validatedBody, req.body, 'PRODUCT CREATEE')
 
   const { result: restaurantProducts } = await createCompanyProductsWorkflow(
     req.scope

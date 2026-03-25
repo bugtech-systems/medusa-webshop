@@ -60,7 +60,6 @@ const sendMessage = async (text: string, model: any) => {
       setSessionId(json.data.session_id)
     }
     
-    console.log(session_id, json, 'CHAT RESPONSE')
     setMessages((prev) => {
       const copy = [...prev]
       copy[copy.length - 1] = {
@@ -91,7 +90,6 @@ const sendMessage = async (text: string, model: any) => {
 const handleMessages = async (id) => {
 let {data} = await getChats({parameters: {id}});
 setMessages(data);
-// console.log(conversation, id, 'MESASAGESs');
 }
 
 useEffect(() => {
@@ -102,7 +100,6 @@ if(session_id){
 }
 }, [])
 
-console.log(messages, 'MESSAGES')
   return (
     <SidebarProvider>
       <main className="relative min-h-screen flex flex-col items-center justify-start bg-gray-50">

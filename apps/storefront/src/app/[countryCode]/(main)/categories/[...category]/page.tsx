@@ -77,10 +77,8 @@ export default async function CategoryPage(props: Props) {
 
   
   
-    let categories = await listCategories();
 
 
-console.log(categories, 'CAT PAGE')
 
   return (
 <>

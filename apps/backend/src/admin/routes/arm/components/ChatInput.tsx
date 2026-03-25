@@ -97,7 +97,6 @@ export default function ChatInput({ isPending, onSend, sessionId, setSessionId }
 
   const handleActionRelations = async (id) => {
         let {data: actions} = await fetchActionRelations({parameters: { id: {"$notnull": true} }})
-    console.log(actions)
       }
 
 
@@ -111,7 +110,6 @@ export default function ChatInput({ isPending, onSend, sessionId, setSessionId }
       handleActionRelations(selectedAction)
 
   }, [fetchActionRelations, fetchBaseModels])
-      console.log(baseModelsData, actionRelations, 'BASE MODELS')
   
   
 

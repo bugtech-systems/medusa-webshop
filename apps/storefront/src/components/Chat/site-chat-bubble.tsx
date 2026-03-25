@@ -84,7 +84,6 @@ export default function ChatBubble() {
   };
 
   // if (!selectedOrg?.chatEnabled) return null;
-console.log(selectedOrg, 'SELECTED ORG')
   return (
     <div className="fixed bottom-5 right-5 z-50">
       {open ? (

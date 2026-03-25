@@ -93,7 +93,6 @@ export default class SalesforceAuthService {
     })
     let authIdentity = existingIdentity
 
-console.log(authIdentity, 'auth identity')
 
     if (!authIdentity) {
 const [createdIdentity] = await authService.createAuthIdentities([

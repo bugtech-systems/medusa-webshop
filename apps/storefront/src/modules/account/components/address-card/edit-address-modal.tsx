@@ -60,7 +60,6 @@ const EditAddress: React.FC<EditAddressProps> = ({
   }
 
 
-console.log(region, 'REG', address)
   return (
     <>
       {/* Address Card */}

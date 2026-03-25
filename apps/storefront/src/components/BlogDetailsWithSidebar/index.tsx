@@ -29,7 +29,6 @@ const ProductDetailsPage: React.FC<ProductTemplateProps> = ({
 
 
 
-console.log(product, 'product2')
 
   return (
     <>

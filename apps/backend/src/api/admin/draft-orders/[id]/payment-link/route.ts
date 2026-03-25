@@ -4,7 +4,6 @@ import Stripe from "stripe";
 export async function GET(req: MedusaRequest, res: MedusaResponse) {
   const { id } = req.params;
   const query = req.scope.resolve("query");
-  const paymentService = req.scope.resolve("payment") as any;
   const logger = req.scope.resolve("logger") as any;
   const actionService: any = req.scope.resolve("actionEngine");
 

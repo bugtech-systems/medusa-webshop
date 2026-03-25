@@ -70,7 +70,6 @@ function StripeForm({ order }: any) {
     try {
       // 1. Create a payment session (Stripe) via Medusa store API
       const sessionResponse = await initiatePaymentSession(order, {provider_id: 'pp-stripe-stripe'});
-      console.log(sessionResponse, 'SESSION RESP')
     //   if (!sessionResponse.ok) throw new Error("Failed to create payment session")
     //   const { payment_session } = await sessionResponse.json()
       const clientSecret = sessionResponse.data.client_secret
@@ -89,7 +88,6 @@ function StripeForm({ order }: any) {
 
     //  let heads = await getCookieData();
 
-     console.log(paymentCollection, payment_session, 'hees')
 
       // 3. Authorize the payment session in Medusa
       const authResponse = await fetch(

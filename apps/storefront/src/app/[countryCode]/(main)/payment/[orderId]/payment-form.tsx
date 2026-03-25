@@ -69,7 +69,6 @@ function StripeForm({ order }) {
 
     //  let heads = await getCookieData();
 
-     console.log(paymentCollection, payment_session, 'hees')
 
       // 3. Authorize the payment session in Medusa
       const authResponse = await fetch(

@@ -34,7 +34,6 @@ const ensureApprovalType = async (
   }
 
   const approvalType = approval.type as unknown as ApprovalType;
-console.log(ApprovalType, approvalType, 'approv')
   if (approvalType !== ApprovalType.ADMIN) {
     res.status(403).json({ message: "Forbidden" });
     return;

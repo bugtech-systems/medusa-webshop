@@ -90,11 +90,9 @@ if (errors.length > 0) {
   // console.log("Ready to execute:", payload, oldTemplate.parameters, refineObjectByFields(payload, oldTemplate.parameters || []))
     
     context = { headers: body.headers, ...body.context, timeout: body.timeout};
-  console.log(body, payload, 'MODELL11')
 
     if(oldTemplate.type == 'AI_ACTION' || oldTemplate.type == 'WORKFLOW'){
 let model = await aiService.getModel(body.model || 'alayon-ai');
-console.log(model, 'MODELL')
 
         context['model'] = model;
     }

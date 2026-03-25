@@ -4,7 +4,6 @@ import { NextRequest, NextResponse } from "next/server"
 export async function POST(req: NextRequest) {
   const { login_token } = await req.json()
 
-    console.log(login_token, 'LOGIN TOKENN')
 
   if (!login_token) {
     return NextResponse.json({ error: "Missing token" }, { status: 400 })
@@ -41,7 +40,6 @@ export async function POST(req: NextRequest) {
 export async function GET(req: NextRequest) {
   const { login_token } = await req.json()
 
-    console.log(login_token, 'LOGIN TOKENN')
 
   if (!login_token) {
     return NextResponse.json({ error: "Missing token" }, { status: 400 })

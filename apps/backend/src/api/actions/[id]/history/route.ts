@@ -80,7 +80,6 @@ if (errors.length > 0) {
     if(oldTemplate.parameters){
      payload  = parseActionInput(oldTemplate.parameters || [], templateData)
     }
-  // console.log("Ready to execute:", payload)
     
     
     

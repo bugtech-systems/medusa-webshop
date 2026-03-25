@@ -547,9 +547,6 @@ export function cleanAndParseJSON(input) {
         // Trim whitespace
         cleaned = cleaned.trim();
 
-        // console.log("Raw input:\n", input);
-        // console.log("Cleaned input:\n", cleaned);
-
         return JSON.parse(cleaned);
     } catch (err) {
         console.error("Failed to clean or parse JSON:", err);

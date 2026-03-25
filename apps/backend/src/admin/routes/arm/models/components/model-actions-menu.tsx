@@ -96,7 +96,6 @@ export const ModelActionsMenu = ({ model }: ActionActionsMenuProps) => {
   
     const handleSendMessage = async (message: string, context: any) => {
     // Implement your actual AI model API call here
-    console.log('Sending message:', message, 'with context:', context)
     
     // Simulate API call
     await new Promise(resolve => setTimeout(resolve, 1000))

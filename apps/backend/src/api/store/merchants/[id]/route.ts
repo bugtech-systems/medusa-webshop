@@ -6,9 +6,8 @@ import { query } from "express";
 export async function GET(req: MedusaRequest, res: MedusaResponse) {
   const query = req.scope.resolve(ContainerRegistrationKeys.QUERY);
 
-  const { currency_code = "php", ...reqQuery } = req.query;
+  const { currency_code = "aud", ...reqQuery } = req.query;
 
-console.log(reqQuery, 'REQ QUERY')
 
   const companyId = req.params.id;
 

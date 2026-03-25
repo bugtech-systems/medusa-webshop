@@ -27,7 +27,6 @@ export default class WebhookManagerService {
     const listener = async ({ event: evt }: any) => {
       try {
         const payload = evt?.data
-        console.log(evt, "EVENT")
 
         await this.queueService.add(`webhook-${event}`, {
           url,

@@ -495,7 +495,6 @@ const MIMSVendorOrdersPage = () => {
 
   // Handle bulk actions
   const handleBulkAction = (selectedIds: string[]) => {
-    console.log('Bulk action on:', selectedIds)
     toast.success(`Selected ${selectedIds.length} orders for bulk action`)
   }
 

@@ -166,7 +166,6 @@ export function validateAndRefineParameters(
 ): ValidationResult {
   const errors: string[] = [];
   const refinedData: Record<string, any> = {};
-
   for (const field of fieldAttributes) {
     const value = params[field.name];
 
@@ -263,7 +262,6 @@ export function refineObject(
 
 // Parse value to specified type
 export function parseValueToType(value: any, type: string): any {
-  console.log(value, type, typeof value, 'PARSE VAL');
   
   if (value === null || value === undefined) {
     return value;
@@ -295,7 +293,6 @@ export function parseValueToType(value: any, type: string): any {
       
       // If it's a string, try to parse it
       if (typeof value === 'string') {
-        console.log('STRING VALUE', value);
         
         // Trim the string
         const trimmed = value.trim();

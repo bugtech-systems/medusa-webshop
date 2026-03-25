@@ -136,7 +136,6 @@ export async function clearCart(cartId?: string, fields?: string) {
      
 
     
-  console.log(cart, 'ACTIVE CART')
   
 
   
@@ -337,7 +336,6 @@ export async function initiatePaymentSession(
   }
 
 
-console.log(data, 'DATAA PAYMENT SESSION')
 
   return sdk.store.payment
     .initiatePaymentSession(cart, data, {}, headers)
@@ -357,7 +355,6 @@ export async function authorizePayment(id: any, session: any) {
   const next = {
     ...(await getCacheOptions("carts")),
   }
-console.log(id, session, 'AUTHORIZE PAYMENT SESSION')
 
   return await sdk.client.fetch<{
     shipping_options: HttpTypes.StoreCartShippingOption[]

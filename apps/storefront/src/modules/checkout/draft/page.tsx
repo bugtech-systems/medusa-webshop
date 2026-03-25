@@ -81,7 +81,6 @@ function StripeForm({ order }: any) {
 
       // 1. Create a payment session (Stripe) via Medusa store API
       const sessionResponse = await addStripePaymentSession(order.id);
-      console.log(sessionResponse, 'SESSION RESP')
     //   if (!sessionResponse.ok) throw new Error("Failed to create payment session")
     //   const { payment_session } = await sessionResponse.json()
 
@@ -119,12 +118,10 @@ function StripeForm({ order }: any) {
 
     // //  let heads = await getCookieData();
 
-     console.log(paymentCollection, paymentIntent, 'hees')
 
     //   // 3. Authorize the payment session in Medusa
       const authResponse = await authorizePayment(sessionResponse.payment_collection_id, sessionResponse.id)
     //   if (!authResponse.ok) throw new Error("Failed to authorize payment")
-      console.log(authResponse, 'AUTH RESP')
       // 4. Redirect to success page
       router.push(`/payment/success?order_id=${order.id}`)
     } catch (err: any) {

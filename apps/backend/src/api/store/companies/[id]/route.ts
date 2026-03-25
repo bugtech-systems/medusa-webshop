@@ -25,7 +25,6 @@ export const GET = async (
     { throwIfKeyNotFound: true }
   );
     
-  console.log(data, 'GET COMPANIES')  
     
   res.json({ company: data[0] });
 };

@@ -39,7 +39,6 @@ export async function PUT(
     // Check the method signature: if it expects a single update object, you may need:
     // const template = await actionEngine.updateActionTemplates(id, updateData);
     // But based on your code, it expects an array of updates.
-    console.log(updateData, 'UDPDATING!')
     
     const template = await actionEngine.updateActionTemplates(updateData);
 

@@ -13,7 +13,6 @@ export const webhookQueue = new Queue("webhook-queue", { connection })
 export const webhookWorker = new Worker(
   "webhook-queue",
   async (job) => {
-    console.log(job, "JOB DATA")
 
     const { url, payload } = job.data
 

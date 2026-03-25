@@ -38,7 +38,6 @@ export default async function CategoryTemplate({
     let categories = await listCategories();
 
 
-console.log(categories, 'CAT CAAT')
 
   return (
   <>

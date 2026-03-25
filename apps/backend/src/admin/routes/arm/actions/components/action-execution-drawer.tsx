@@ -94,7 +94,6 @@ const ParameterField = ({ param }: { param: ActionParameter }) => {
   const value = watch(param.name)
 
 
-  console.log(param, 'PARAMS')
   const renderField = () => {
     switch (param.type) {
       case "boolean":
@@ -536,7 +535,6 @@ export const ExecuteActionDrawer = ({
       
 
 
-     console.log(parsed, 'PARSED')
       
       setLastParams(parsed)
       let newLogs = [];
@@ -573,7 +571,6 @@ export const ExecuteActionDrawer = ({
       }
       
       
-      console.log(res, 'RESPONSE')
       refetchHistory()
       
       // Auto-navigate to result tab

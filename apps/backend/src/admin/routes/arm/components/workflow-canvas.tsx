@@ -1086,7 +1086,6 @@ const WorkflowEditor: React.FC<WorkflowEditorProps> = ({
 
 
 
-console.log(newAct, 'NEW ACTTION')
 
 const newEdge: ConnectionEdge = {
         id: `edge_${pendingConnection.fromNode}_${newAct?.id || newNodeId}_${Date.now()}`,
@@ -1111,7 +1110,6 @@ const newEdge: ConnectionEdge = {
 
    let createdConnection = await onEdgeConnect(newEdge);
 
-      console.log(createdConnection, 'CREATED EDGE CONNECT')
 
     setEdges((eds) => {
       const newEdges = addEdge(newEdge, eds);

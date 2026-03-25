@@ -21,10 +21,6 @@ export async function POST(
     data.created_at = now
     data.updated_at = now
 
-    
-    console.log(data, 'DATAAAA')
-    
-
     const template = await actionEngine.createActionTemplates(data)
 
     return res.json({

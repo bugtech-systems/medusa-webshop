@@ -126,14 +126,11 @@ export function formatPrice(
 
   let formatted = formatter.format(amount)
 
-// console.log(formatted, 'FORM1', divisor, mainUnitAmount, amount)
 
   // Add currency code if requested and not already included
   if (showCode && !formatted.includes(currency.code)) {
     formatted = `${formatted} ${currency.code}`
-    // console.log(formatted, 'FORM2')
   }
-// console.log(formatted, 'FORMA', currencyCode, currency)
   return formatted
 }
 

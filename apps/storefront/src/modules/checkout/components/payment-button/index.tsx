@@ -76,7 +76,6 @@ const StripePaymentButton = ({
   )
 
   const disabled = !stripe || !elements ? true : false
-console.log(stripe, elements, 'stripppy', submitting, notReady)
   const handlePayment = async () => {
     setSubmitting(true)
 
@@ -177,7 +176,6 @@ const ManualTestPaymentButton = ({ notReady }: { notReady: boolean }) => {
   }
 
 
-console.log(submitting, 'subbmitt')
 
   return (
     <>

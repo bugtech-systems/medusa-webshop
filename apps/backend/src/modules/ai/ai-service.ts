@@ -66,7 +66,6 @@ export default class AiClassService {
       }   
 
 
-      console.log(sessionId, sessionData, 'sessionss')
 
 
       const template = await this.actionService.retrieveActionTemplate(templateId) as any;
@@ -95,14 +94,12 @@ export default class AiClassService {
         outputs = result.outputs ?? outputs;
       } else {
         let execResult = await this.executeAction(template, context);
-        console.log(execResult, 'EXECUTION RESULT')
 
         result = { context, data: execResult }
       }
       
       if(output_template){
         result = await expressionEvaluator.resolvePlaceholders(output_template, {...context, outputs, result: result.data ?? result});
-        console.log(result, 'OUTPUT TEMPLATE')
       }
       
       if(context_template){
@@ -212,16 +209,6 @@ export default class AiClassService {
     try {
 
 
-      console.log(context, 'AI CONTENT', {
-        session_id: context.session?.id,
-        message: config.message || config.prompt,
-        language: config.language || 'en',
-        model_id: config.model,
-        use_rag: config.use_rag || false,
-        memory_limit: config.memory_limit || 5,
-        context: context.context
-      })
-
       // // Use the AI Module Service directly
       const result = await this.aiService.chat({
         session_id: context.session?.ai,
@@ -298,7 +285,6 @@ export default class AiClassService {
       let output = result;
       let output_template = removeEmptyObjects(actionConfig).output_template ?? action.output_template;
       let context_template = removeEmptyObjects(actionConfig).context_template ?? action.context_template;
-      console.log(output, result, output_template, context_template, 'OUTPUTS RESULT')
       if(output?.skip) continue;
 
       if(output_template && Object.keys(output_template).length){
@@ -332,7 +318,6 @@ export default class AiClassService {
     }
 
 
-    console.log(finalResult, 'FINAAL RESULT')
     return {
       success,
       status_code: success ? 200 : 400,
@@ -395,7 +380,6 @@ export default class AiClassService {
 
 
 
-    console.log(response, 'STEP RESPONSE')
     return output;
   }
 

@@ -119,7 +119,6 @@ const resolveListPrices = async () => {
 
     const existingPriceLists = await resolveListPrices();
     const existingRegion = await resolveRegion('aud');
-console.log('CURRENCY', existingRegion)
 
   const { data: productsData } = await query.graph({
     entity: "product",

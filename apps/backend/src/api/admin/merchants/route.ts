@@ -17,7 +17,6 @@ const schema = zod.object({
 export async function POST(req: MedusaRequest, res: MedusaResponse) {
   const validatedBody = schema.parse(req.body) as CreateCompanyDTO;
 
-console.log(validatedBody, 'VALIDATEDD')
 
 
   if (!validatedBody) {

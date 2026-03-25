@@ -35,7 +35,6 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
     //   success: true,
     //   payload,
     // })
-    console.log(payload, 'payload')
     let loginData = payload;
 
     if (!loginData || !loginData.actor_id) {

@@ -45,7 +45,6 @@ const PreviewAddToCart = ({
   }, [product.variants])
 
   const selectedVariant = useMemo(() => {
-  // console.log(item, 'ITEMM')
     if (!product.variants || product.variants.length === 0) {
       return
     }
@@ -64,7 +63,6 @@ const PreviewAddToCart = ({
   }, [product.variants, options])
 
   const handleAddToCart = async () => {
-  console.log(selectedVariant, 'VARIANT')
       if (!selectedVariant?.id) return null
 
     setIsAdding(true)

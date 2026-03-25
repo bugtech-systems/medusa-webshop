@@ -51,7 +51,6 @@ export const POST = async (
     
     
 
-    console.log(req.body, "REQ BODY")
 
   let aiResponse =  await aiService.chat({ session_id, message, language, model_id: model, onToken: false, context })
     // Return the AI response

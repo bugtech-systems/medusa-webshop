@@ -57,7 +57,6 @@ export async function POST(
     
     
     
-    console.log(data, 'model data')
     const aiModel = await aiModelService.updateAiModels({id, ...data})
     
     return res.json({

@@ -28,7 +28,6 @@ export default async function CheckoutPage({
   }
 
 
-console.log(cart, shippingMethods, paymentMethods, 'CART1')
 
 
 

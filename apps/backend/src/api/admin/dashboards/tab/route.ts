@@ -22,7 +22,6 @@ export async function POST(
     // Ensure timestamps
     
     
-    console.log(data, 'DATAAAA')
     
     if(updateValid && updateValid.length){
      await actionEngine.updateActionViews(updateValid)

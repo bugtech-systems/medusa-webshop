@@ -180,7 +180,6 @@ export class WorkflowAdapter {
     currentActionId: string,
     currentResult?: any
   ): WorkflowAction[] {
-    console.log(workflow, 'workflow')
   
     const currentAction = workflow.actions.find(a => a.id === currentActionId) as any;
     if (!currentAction || !currentAction.next || currentAction.next.length === 0) {

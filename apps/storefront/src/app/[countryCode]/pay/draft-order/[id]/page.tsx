@@ -20,7 +20,6 @@ export default async function DraftOrderPaymentPage(props: any) {
   const draftOrder = await retrieveDraftOrder(params.id) as any
 
 
-  console.log(draftOrder, 'DRAFT ORDER')
   if (!draftOrder) {
     return notFound()
   }

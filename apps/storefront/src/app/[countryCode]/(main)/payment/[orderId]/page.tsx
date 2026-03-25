@@ -12,7 +12,6 @@ interface PageProps {
 async function getOrder(orderId: string) {
   // Use Medusa's store API to fetch the order
   const response = await retrieveOrder(orderId);
-  console.log(response, 'RESPP')
   // if (!response.ok) return null
   // const { order } = await response.json()
   return response 

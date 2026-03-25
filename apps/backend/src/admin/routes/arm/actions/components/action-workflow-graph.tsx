@@ -210,7 +210,6 @@ const generateWorkflowDefinition = (
     source_action_id: edge.source,
     target_action_id: edge.target
   }))
-  // console.log(actions, 'ACTIONN')
   return { actions, connections }
 }
 
@@ -369,7 +368,6 @@ export const ActionWorkflowEditor = ({
     setNodes((nds) =>
       nds.map((node) => {
         if (node.id === updatedAction.id) {
-          // console.log(node, updatedAction, 'updating action')
           return {
             ...node,
             data: {
@@ -461,7 +459,6 @@ export const ActionWorkflowEditor = ({
   
   
   
-  // console.log(actions, 'ACRTTTS')
   
   
   return (
