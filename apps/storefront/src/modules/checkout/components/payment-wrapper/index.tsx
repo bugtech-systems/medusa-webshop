@@ -30,7 +30,7 @@ const PaymentWrapper: React.FC<PaymentWrapperProps> = ({ cart, children }) => {
   const paymentSession = cart.payment_collection?.payment_sessions?.find(
     (s) => s.status === "pending"
   )
-
+console.log(stripeKey, stripePromise, 'STRIPE PROMISE')
   if (
     isStripeLike(paymentSession?.provider_id) &&
     paymentSession &&
