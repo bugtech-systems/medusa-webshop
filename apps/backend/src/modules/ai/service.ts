@@ -1,4 +1,4 @@
-import { MedusaService } from "@medusajs/utils";
+import { generateEntityId, MedusaService } from "@medusajs/utils";
 import {
   AiMemory,
   AiModel,
@@ -29,6 +29,7 @@ type ChatInput = {
   model_id?: string;
   use_rag?: boolean;
   memory_limit?: number;
+  config?: any;
   onToken?: (token: string) => void;
   context?: any;
 };
@@ -121,7 +122,8 @@ export default class AiModuleService extends MedusaService({
      CONVERSATION MANAGEMENT
   ------------------------------- */
   async retrieveConversation(session_id: string) {
-    return this.retrieveAiConversationSession(session_id);
+
+    return await this.retrieveAiConversationSession(session_id);
   }
 
   async getConversationMessages(session_id: string) {
@@ -131,8 +133,12 @@ export default class AiModuleService extends MedusaService({
     });
   }
 
-  async createSession(input?: { customer_id?: string; cart_id?: string; language?: string }) {
-    return await this.createAiConversationSessions(input ?? {});
+  async createSession(input?: { id?: any , relation_id?: string; auth_id?: string; language?: string }) {
+    let session = await this.retrieveConversation(input?.id).catch(() => null)
+    if(!session){
+      session = await this.createAiConversationSessions(input ?? {});
+    }
+    return session
   }
 
   async addMessage(input: {
@@ -152,7 +158,7 @@ export default class AiModuleService extends MedusaService({
     try {
       const language = input.language ?? "en";
       const model = await this.getModel(input.model_id);
-
+      
       const history = await this.getConversationMessages(session?.id);
       const lastMessages = history.slice(-6).map((m: any) => ({
         role: m.role,
@@ -168,6 +174,7 @@ export default class AiModuleService extends MedusaService({
       }
 
       const contextText = memories.data.map((m: any) => m.content).join("\n---\n");
+    const pairId = generateEntityId(undefined, 'mess-pair')
 
       const systemInstruction = await expressionEvaluator.evaluatePlaceholders(
         model?.metadata?.template || model.system,
@@ -181,23 +188,24 @@ export default class AiModuleService extends MedusaService({
       ];
 
 
+
       /* -------------------------------
          STORE MESSAGES
       ------------------------------- */
       await this.addMessage({
-        session_id: session.id,
+        session_id: pairId,
         ai_conversation_session_id: session.id,
         role: "system",
         content: systemInstruction,
-        model_id: model.model_name
+        model_id: model.id
       });
 
       await this.addMessage({
-        session_id: session.id,
+        session_id: pairId,
         ai_conversation_session_id: session.id,
         role: "user",
         content: input.message,
-        model_id: model.model_name
+        model_id: model.id
       });
 
       let fullResponse: any;
@@ -215,17 +223,17 @@ export default class AiModuleService extends MedusaService({
         const resp = await chatCompletion({
           model: model?.model_name,
           messages,
-          options: model.config
+          options: input?.config ?? model.config
         });
         fullResponse = resp.message;
       }
 
       await this.addMessage({
-        session_id: session.id,
+        session_id: pairId,
         ai_conversation_session_id: session.id,
         role: "assistant",
         content: fullResponse.content,
-        model_id: model.model_name
+        model_id: model.id
       });
 
       return {

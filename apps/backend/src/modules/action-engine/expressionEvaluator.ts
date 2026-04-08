@@ -2,7 +2,9 @@
 // Expression Evaluator with Helpers and Array Mapping
 // --------------------------------------
 
+import { generateEntityId } from "@medusajs/framework/utils";
 import { generateAlphaNumeric, sanitizePhoneNumber } from "../../utils/helpers";
+import { toSql } from 'pgvector';
 
 // Safe getter function - UPDATED to return null for missing values
 function get(obj, path, defaultValue = null) {
@@ -107,10 +109,11 @@ const defaultFunctions = {
         // Doesn't look like JSON, return original
         return value;
     },
+    arrayNumber: (embedding) => embedding.map(Number),
     hasValue: str => str !== null && str !== undefined && str !== "",
     isNull: str => (str !== null && str !== undefined && str !== "") ? str : null,
     replaceDefault: (newVal, old) => (newVal !== null && newVal !== undefined && newVal !== "" && newVal !== '') ? newVal : old,
-
+    toSql: (data) => toSql(data),
     // date helpers
     dateFormat: date => date ? new Date(date).toLocaleDateString() : null,
     dateNow: () => new Date().toISOString().split("T")[0],

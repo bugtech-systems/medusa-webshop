@@ -11,14 +11,15 @@ export async function POST(
     let {widget, data} = req.body as any;
     let resObject;
     if(data?.data){
-  data = data?.data
+  data = data?.data?.data ?? data?.data ?? data
 }
 
 
 if(widget?.metadata?.type == 'table'){
   resObject = {config: widget?.configuration, data, type: widget.metadata.type }
 } else if(widget?.metadata?.type == 'stat'){
- resObject = {config: {...widget?.configuration, value: data.length}, data, type: widget.metadata.type }
+  let count = data.count ?? data.length
+ resObject = {config: {...widget?.configuration, value:count}, data, type: widget.metadata.type }
  } else {
 
   resObject = {config: widget?.configuration, data, type: widget?.metadata?.type }

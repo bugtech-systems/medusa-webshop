@@ -96,11 +96,11 @@ export const ActionActionsMenu = ({ action }: ActionActionsMenuProps) => {
      isOpen={open}
      handleOpen={setOpen}
   />
-      <ExecuteActionDrawer
+      {/* <ExecuteActionDrawer
              action={action}
              isOpen={openExec}
              handleOpen={setOpenExec}
-             / >
+             / > */}
       
       <DropdownMenu>
       <DropdownMenu.Trigger asChild>
@@ -110,10 +110,10 @@ export const ActionActionsMenu = ({ action }: ActionActionsMenuProps) => {
       </DropdownMenu.Trigger>
       <DropdownMenu.Content>
 
-        <DropdownMenu.Item disabled={isExecuting} onClick={() => setOpenExec(true)}>
-          <MediaPlay className="text-ui-fg-subtle mr-2" />
-          Execute
-        </DropdownMenu.Item>
+          {/* <DropdownMenu.Item disabled={isExecuting} onClick={() => setOpenExec(true)}>
+            <MediaPlay className="text-ui-fg-subtle mr-2" />
+            Execute
+          </DropdownMenu.Item> */}
         
         {/* ✅ Correct separator usage */}
         <DropdownMenu.Separator />

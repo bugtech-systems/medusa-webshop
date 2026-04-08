@@ -17,7 +17,7 @@ export async function POST(
     const body = req.body as any;
     const actionService = req.scope.resolve(ACTION_ENGINE_MODULE) as any
     const aiService = req.scope.resolve(AI_MODULE) as any
-    let actionEngine = new AiClassService({actionService, aiService, session_id: req.session_id || req.body.session_id});
+    let actionEngine = new AiClassService({actionService, aiService});
 
 
     if(!id){
@@ -27,9 +27,21 @@ export async function POST(
     })
     
     }
-
-
-      let oldTemplate = await actionService.getActionTemplate(id);
+    
+    let oldTemps = await actionService.listActionTemplates({  $or: [
+        {
+          id: {
+            $eq: id,
+          },
+        },
+        {
+          handle: {
+            $eq: id,
+          },
+        },
+      ]});
+      
+      let oldTemplate = oldTemps[0]
       
       
         if(!oldTemplate){
@@ -41,12 +53,19 @@ export async function POST(
     }
     
     
-
-    let session = await actionEngine.getSession();
-
+    
+    // Add audit metadata
+    let templateData = {
+      id,
+      ...(body.parameters ? body.parameters : {})
+    }
     
     let payload = {} as any;
     let errors = [] as any;
+    let context = {} as any;
+    // Ensure timestamps
+    const now = new Date()
+    templateData.updated_at = now
 
     let validInput =  validateAndRefineParameters({...body, ...body.parameters}, oldTemplate.parameters || []);
     
@@ -66,17 +85,21 @@ if (errors.length > 0) {
 } 
 
 
-console.log(session, 'SESSSHH')
+    if(oldTemplate.parameters){
+        payload = validInput.refinedData;
+    }
+  // console.log("Ready to execute:", payload, oldTemplate.parameters, refineObjectByFields(payload, oldTemplate.parameters || []))
+    
+    context = { headers: body.headers, ...body.context, timeout: body.timeout};
 
+    
 
-    payload = {...body, ...validInput.refinedData}
-    session = { ...session, session_id: session?.id, headers: body?.headers || req.headers, timeout: body.timeout, input: payload, params: payload};
+    let sessionId = req.sessionId || payload.session_id || body.sessionId || body.session_id;
    
-    let template = await actionEngine.execute(oldTemplate?.id, payload, session);
+    let template = await actionEngine.execute(oldTemplate?.id, {...body.parameters, ...payload}, {id: sessionId, context});
     
-    
-
-    return res.json({...template, session_id: session.id})
+     
+    return res.json({...template, sessionId: req.sessionId})
 
   } catch (error: any) {
   console.log(error, 'ERROR')

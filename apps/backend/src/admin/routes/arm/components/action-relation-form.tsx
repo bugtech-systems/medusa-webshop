@@ -47,6 +47,7 @@ export const ActionDrawer: React.FC<ActionDrawerProps> = ({ open, onClose, onSub
     action_id: '',
     label: '',
     type: '',
+    description: '',
     status: 'draft',
     metadata: {} as Record<string, any>,
   });
@@ -127,19 +128,18 @@ export const ActionDrawer: React.FC<ActionDrawerProps> = ({ open, onClose, onSub
       
       // Convert template metadata to config fields
       const templateMetadata = selectedAction.metadata || selectedAction.config || {};
-      const metadataFields = Object.entries(templateMetadata).map(([key, value]) => ({
-        key,
-        value: String(value),
-      }));
+      // const metadataFields = Object.entries(templateMetadata).map(([key, value]) => ({
+      //   key,
+      //   value: String(value),
+      // }));
       
-      setConfigFields(metadataFields);
+      // setConfigFields(metadataFields);
       
       setFormData({
         ...formData,
         action_id: selectedAction.id,
         label: actionLabel, // Auto-populate label
-        type: selectedAction.type || '',
-        metadata: { ...templateMetadata }, // Copy template metadata
+        type: selectedAction.type || ''
       });
     }
   };
@@ -149,6 +149,14 @@ export const ActionDrawer: React.FC<ActionDrawerProps> = ({ open, onClose, onSub
     setFormData({
       ...formData,
       label: e.target.value,
+    });
+  };
+
+    // Handle label change (allows editing)
+  const handleChanges = prop => (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormData({
+      ...formData,
+      [prop]: e.target.value,
     });
   };
 
@@ -237,7 +245,7 @@ export const ActionDrawer: React.FC<ActionDrawerProps> = ({ open, onClose, onSub
             {!isEditing && (
               <div>
                 <Label htmlFor="action_template" className="mb-2 block">
-                  Select Action Template
+                  Select Action Template [{formData.type && formData.type }]
                 </Label>
                 <Select
                   value={formData.action_id}
@@ -266,8 +274,10 @@ export const ActionDrawer: React.FC<ActionDrawerProps> = ({ open, onClose, onSub
               </div>
             )}
 
+
             {/* Hidden action_id field */}
             <input type="hidden" name="action_id" value={formData.action_id} />
+
 
             <div>
               <Label htmlFor="label" className="mb-2 block">
@@ -285,19 +295,18 @@ export const ActionDrawer: React.FC<ActionDrawerProps> = ({ open, onClose, onSub
               </Text>
             </div>
 
+  
             <div>
-              <Label htmlFor="type" className="mb-2 block">
-                Action Type
+              <Label htmlFor="description" className="mb-2 block">
+                Description
               </Label>
               <Input
-                id="type"
-                value={formData.type}
-                disabled
-                className="bg-gray-50"
+                id="description"
+                value={formData?.description}
+                onChange={handleChanges('description')}
+                placeholder="Enter Description"
+                required
               />
-              <Text className="text-xs text-gray-500 mt-1">
-                Action type is determined by the template
-              </Text>
             </div>
 
             <div>

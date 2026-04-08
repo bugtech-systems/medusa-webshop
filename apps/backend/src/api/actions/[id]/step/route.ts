@@ -8,8 +8,8 @@ import AiClassService from "../../../../modules/ai/ai-service";
 
 // POST - Create new action template
 export async function POST(
-  req: MedusaRequest,
-  res: MedusaResponse
+  req: MedusaRequest | any,
+  res: MedusaResponse 
 ) {
   try {
     const id = req.params.id;
@@ -17,29 +17,30 @@ export async function POST(
     const {session_id} = req.body as any;
     const actionService = req.scope.resolve(ACTION_ENGINE_MODULE) as any
     const aiService = req.scope.resolve(AI_MODULE) as any
+    let sessionId = req.session_id || session_id;
+    let actionEngine = new AiClassService({actionService, aiService, session_id: sessionId}) as any;
+
     let session: any;
-    if(!session_id){
-        session = await aiService.createSession({language: 'eng'});
-    } else {
-        session = await aiService.retrieveConversation(session_id);
-    }
 
-    if(!session){
-        session = await aiService.createSession({language: 'eng'});
-    }
+    session = await actionEngine.getSession();
 
-      if(session) {
-          await actionService.setSession(session.id, session)
-      }   
-
-
-   
-
-    let actionEngine = new AiClassService({actionService, aiService})
+    let template = await actionService.getActionTemplate(id);
+      if(!template){
+          return res.status(200).json({
+            success: false,
+            status_code: 200,
+            status: 'error',
+            error: "Action Not Found!",
+          })
+      }
+    
 
 
-    let response = await actionEngine.stepAction(id, body, session)
-    return res.json(response)
+    console.log(session, id, body, 'steping')
+    let response = await actionEngine.stepAction(id, {...body, ...body.parameters}, session)
+        console.log(session, id, body, response, 'steping Response')
+
+    return res.json(response?.data ?? response)
 
   } catch (error: any) {
   console.log(error, 'ERROR')

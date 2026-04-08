@@ -3,7 +3,7 @@ import dotenv from "dotenv";
 dotenv.config();
 const { Pool } = pkg;
 
-const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+export const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
 // Insert or update product embedding
 export async function upsertDocument(content, metadata, embedding) {

@@ -503,9 +503,7 @@ export const Dashboard: React.FC<DashboardProps> = ({}) => {
   ): React.CSSProperties => {
     const { colWidth } = gridMetrics
     
-    // If colWidth is invalid, return a placeholder style
-    if (colWidth <= 0) {
-      return {
+console.log({
         position: 'absolute',
         left: (customPosition || widget.position).x * 100,
         top: (customPosition || widget.position).y * 100,
@@ -515,11 +513,35 @@ export const Dashboard: React.FC<DashboardProps> = ({}) => {
         pointerEvents: 'none',
         backgroundColor: '#f0f0f0',
         borderRadius: '8px',
+      }, colWidth, widget, 'coldwid')
+
+    // If colWidth is invalid, return a placeholder style
+    if (colWidth <= 0) {
+      return {
+        position: 'absolute',
+        left: (customPosition || widget.position).x * 100,
+        top: (customPosition || widget.position).y * 100,
+        width: (customPosition || widget.position).w * 100,
+        maxHeight: (customPosition || widget.position).h * 100,
+        opacity: 0.5,
+        pointerEvents: 'none',
+        backgroundColor: '#f0f0f0',
+        borderRadius: '8px',
       }
     }
     
     const pos = customPosition || widget.position
-    
+    console.log({
+      position: 'absolute',
+      left: pos.x * (colWidth + gap),
+      top: pos.y * (rowHeight + gap),
+      width: pos.w * colWidth + (pos.w - 1) * gap,
+      height: pos.h * rowHeight + (pos.h - 1) * gap,
+      transition: isGhost ? 'all 0.1s ease-out' : 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+      pointerEvents: isGhost ? 'none' : undefined,
+      zIndex: isGhost ? 100 : undefined,
+    }, pos, 'poswwid')
+
     return {
       position: 'absolute',
       left: pos.x * (colWidth + gap),
@@ -1030,10 +1052,11 @@ const handleDragEnd = useCallback(() => {
               style={getWidgetStyle({ ...widget, position: displayPosition })}
               className={`absolute ${
                 draggingWidget?.widget.id === widget.id ? 'opacity-0' : ''
-              } ${isAffected ? 'ring-2 ring-ui-border-interactive ring-offset-2' : ''}`}
+              } ${isAffected ? 'ring-2 ring-ui-border-interactive ring-offset-2' : ''} `}
             >
               <DraggableWidget
                 widget={widget}
+                style={getWidgetStyle({ ...widget, position: displayPosition })}
                 onDelete={handleDeleteWidget}
                 onEdit={() => {
                   setEditingWidget(widget)

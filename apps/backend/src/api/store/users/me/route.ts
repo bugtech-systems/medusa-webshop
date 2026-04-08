@@ -9,10 +9,7 @@ export const GET = async (
   req: AuthenticatedMedusaRequest,
   res: MedusaResponse
 ) => {
-  const { user_id, actor_type } = req.user as {
-    user_id: string;
-    actor_type: "company" | "driver";
-  };
+  const { user_id, actor_type } = req.user as any;
 
   if (actor_type === "company") {
     const service = req.scope.resolve(COMPANY_MODULE);

@@ -1079,11 +1079,9 @@ const WorkflowEditor: React.FC<WorkflowEditorProps> = ({
       ) as any;
 
       
-      const updatedNodes = [...nodes, {...newNode, id: newAct.id}];
+      const updatedNodes = [...nodes, {...newNode, id: newAct?.id}];
       setNodes(updatedNodes);
       parentOnNodesChange(updatedNodes);
-
-
 
 
 

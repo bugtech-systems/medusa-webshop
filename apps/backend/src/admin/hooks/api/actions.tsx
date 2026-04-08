@@ -22,7 +22,7 @@ import {
   UseQueryOptions,
   QueryKey,
 } from "@tanstack/react-query"
-import { sdk } from "../../lib/client"
+import { sdk } from "../../lib/client";
 import { queryKeysFactory } from "../../lib/query-key-factory"
 import { useEffect, useState } from "react"
 
@@ -38,12 +38,14 @@ export const useActions = (
   >
 ) => {
   const filterQuery = new URLSearchParams(query).toString()
+      const session_id = localStorage.getItem('session_id');
 
   const fetchActions = async () =>
     sdk.client.fetch<AdminActionListResponse>(
       `/admin/actions${filterQuery ? `?${filterQuery}` : ""}`,
       {
         method: "GET",
+        headers: {session_id}
       }
     )
 
@@ -65,14 +67,19 @@ export const useAction = (
   >
 ) => {
   const filterQuery = new URLSearchParams(query).toString()
+      const session_id = localStorage.getItem('session_id');
 
-  const fetchAction = async () =>
-    sdk.client.fetch<AdminActionResponse>(
+  const fetchAction = async () => {
+    let token = await sdk.client.getToken(); 
+
+    return sdk.client.fetch<AdminActionResponse>(
       `/actions/${actionId}${filterQuery ? `?${filterQuery}` : ""}`,
       {
+        headers: {"Authorization": `Bearer ${token}`, session_id},
         method: "GET",
       }
     )
+  }
 
   return useQuery({
     queryKey: actionsQueryKey.detail(actionId),
@@ -485,119 +492,82 @@ export const useExecuteAction = (
   >
 ) => {
   const queryClient = useQueryClient();
+  const session_id = localStorage.getItem("session_id");
 
   return useMutation({
     mutationFn: async (execution?: any) => {
-      // Generate cache key
-      const paramsHash = execution ? generateParamsHash(execution) : '';
-      const cacheKey = CACHE_CONFIG.keys.actionExecution(actionId, paramsHash);
-      
-      // Check cache first for GET-like operations
-      if (!execution || Object.keys(execution).length === 0) {
-        const cachedData = actionCache.get(cacheKey);
-        if (cachedData) {
-          console.log(`[Cache HIT] Action execution: ${actionId}`);
-          return cachedData;
-        }
-      }
-      
-      console.log(`[Cache MISS] Action execution: ${actionId}`);
-      
-      // Execute the action
-      const response = await sdk.client.fetch<AdminExecuteActionResponse>(
+
+      return sdk.client.fetch<AdminExecuteActionResponse>(
         `/actions/${actionId}/execute`,
         {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
           body: execution,
+          headers: { session_id },
+          method: "POST",
         }
       );
-      
-      // Cache the response if it's a GET-like operation (no execution payload)
-      if (!execution || Object.keys(execution).length === 0) {
-        actionCache.set(cacheKey, response);
-      }
-      
-      return response;
     },
-    onSuccess: (data, variables, context) => {
-      // Invalidate cache for this action
-      actionCache.invalidateAction(actionId);
-      
-      // Invalidate React Query cache
+
+    onSuccess: (data: any, variables, context) => {
+      // ✅ Invalidate ONLY relevant queries
+      if(data?.session_id){
+      localStorage.setItem('session_id', data.session_id)
+      }
       queryClient.invalidateQueries({
-        queryKey: actionsQueryKey.detail(actionId),
+        queryKey: ["execution", actionId],
       });
-      
-      queryClient.invalidateQueries({
-        queryKey: ["actionExecutionHistory", actionId],
-      });
-      
+
       options?.onSuccess?.(data, variables, context);
     },
+
     ...options,
   });
 };
 
 // List executions with caching
 export const useExecution = (
-  actionId?: any,
-  query?: any,
+  actionId?: string,
+  query?: Record<string, any>,
   options?: any
 ) => {
-  const fetchReports = async () => {
-    if (!actionId) return null;
-    
-    // Generate cache key based on actionId and query params
-    const paramsHash = query ? generateParamsHash(query) : '';
-    const cacheKey = CACHE_CONFIG.keys.actionExecution(actionId, paramsHash);
-    
-    // Check cache
-    const cachedData = actionCache.get(cacheKey);
-    if (cachedData) {
-      console.log(`[Cache HIT] Execution list: ${actionId}`, query);
-      return cachedData;
-    }
-    
-    console.log(`[Cache MISS] Execution list: ${actionId}`, query);
-    
-    // Build query string
-    const filterQuery = query ? new URLSearchParams(
-      Object.entries(query).reduce((acc, [key, value]) => {
-        if (value !== undefined && value !== null && value !== "") {
-          acc[key] = String(value);
-        }
-        return acc;
-      }, {} as Record<string, string>)
-    ).toString() : "";
-    
-    const url = `/actions/${actionId}/execute${filterQuery ? `?${filterQuery}` : ''}`;
-    
-    const response = await sdk.client.fetch<AdminExecuteActionResponse>(
-      url,
-      {
+  return useQuery({
+    queryKey: ["execution", actionId, query], // ✅ includes query
+
+    queryFn: async () => {
+      if (!actionId) return null;
+
+      const session_id = localStorage.getItem("session_id");
+
+      const filterQuery = query
+        ? new URLSearchParams(
+            Object.entries(query).reduce((acc, [key, value]) => {
+              if (value !== undefined && value !== null && value !== "") {
+                acc[key] = String(value);
+              }
+              return acc;
+            }, {} as Record<string, string>)
+          ).toString()
+        : "";
+
+      const url = `/actions/${actionId}/execute${
+        filterQuery ? `?${filterQuery}` : ""
+      }`;
+
+      return sdk.client.fetch<AdminExecuteActionResponse>(url, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          session_id,
         },
-        body: query ? query : {},
-      }
-    );
-    
-    // Cache the response
-    actionCache.set(cacheKey, response);
-    
-    return response;
-  };
+        body: query ?? {},
+      });
+    },
 
-  return useQuery({
-    queryKey: actionsQueryKey.list(actionId),
-    queryFn: fetchReports,
-    staleTime: CACHE_CONFIG.DEFAULT_TTL, // Consider data stale after TTL
-    gcTime: CACHE_CONFIG.DEFAULT_TTL * 2, // Keep in cache twice as long as stale time
+    // ✅ Proper caching config
+    staleTime: 1000 * 60 * 5, // 5 mins
+    gcTime: 1000 * 60 * 10,   // 10 mins
+
     enabled: !!actionId,
+
     ...options,
   });
 };

@@ -21,6 +21,7 @@ import {
   PencilSquare,
   EllipsisHorizontal,
 } from '@medusajs/icons'
+import { useExecuteAction } from '../../../../hooks/api/actions'
 
 // Custom Icons
 const ArrowUpCircle = () => (
@@ -84,16 +85,17 @@ interface MessagePair {
   id: string
   userMessage: Message
   assistantMessage?: Message
+  systemMessage?: Message
 }
 
 interface AIParameters {
   temperature: number
-  num_predict: number
-  top_p: number
-  top_k: number
-  min_p: number
-  repeat_penalty: number
-  num_ctx: number
+  num_predict?: number
+  top_p?: number
+  top_k?: number
+  min_p?: number
+  repeat_penalty?: number
+  num_ctx?: number
 }
 
 interface AIContext {
@@ -113,15 +115,16 @@ interface AIModelTestDrawerProps {
   onMessageFeedback?: (messageId: string, feedback: 'like' | 'dislike') => void
   initialContext?: Partial<AIContext>
   initialParameters?: Partial<AIParameters>
+  model?: any
 }
 
 const defaultParameters: AIParameters = {
   temperature: 0.7,
-  num_predict: 2000,
+  // num_predict: 2000,
   top_p: 1.0,
   top_k: 40,
-//   min_p: 0.0,
-//   repeat_penalty: 1.0,
+  // min_p: 0.0,
+  repeat_penalty: 1.0,
   num_ctx: 2048,
 }
 
@@ -220,7 +223,7 @@ const JSONEditor = ({
 export const AIModelTestDrawer = ({
   open,
   onOpenChange,
-  models = defaultModels,
+  model,
   onSendMessage,
   onRegenerateMessage,
   onUpdateContext,
@@ -229,10 +232,20 @@ export const AIModelTestDrawer = ({
   initialContext = {},
   initialParameters = {},
 }: AIModelTestDrawerProps) => {
+    const { data: messagesData, mutateAsync: fetchMessages, isLoading: messagesLoading } = 
+      useExecuteAction('get-messages-by-model-id') as any
+    const {  mutateAsync: updateFeedback, isLoading: loadingFeedback } = 
+      useExecuteAction('update-message-feedback') as any
+      const {  mutateAsync: deletePair } = 
+      useExecuteAction('delete-message-pair') as any
+      const {  mutateAsync: deleteMessagesByModel } = 
+      useExecuteAction('delete-messages-by-model') as any
+
   const [activeTab, setActiveTab] = useState<'conversation' | 'context' | 'parameters'>('conversation')
   const [messagePairs, setMessagePairs] = useState<MessagePair[]>([])
   const [inputMessage, setInputMessage] = useState('')
   const [isSending, setIsSending] = useState(false)
+  const [showSystem, setShowSystem] = useState(false)
   const [isRegenerating, setIsRegenerating] = useState<string | null>(null)
   const [context, setContext] = useState<AIContext>({
     ...defaultContext,
@@ -244,16 +257,25 @@ export const AIModelTestDrawer = ({
   })
   const [editingMessage, setEditingMessage] = useState<Message | null>(null)
   const [showDeletePrompt, setShowDeletePrompt] = useState<string | null>(null)
-  
+  let session_id = localStorage.getItem("session_id");
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const editTextareaRef = useRef<HTMLTextAreaElement>(null)
   const parametersContainerRef = useRef<HTMLDivElement>(null)
 
+  useEffect(() => {
+
+    if(open){
+        handleMessages()
+    }
+
+  }, [open])
+
+
   // Scroll to bottom on new messages
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messagePairs])
+  }, [messagesData])
 
   // Focus textarea on drawer open
   useEffect(() => {
@@ -273,9 +295,48 @@ export const AIModelTestDrawer = ({
     }
   }, [editingMessage])
 
+const groupMessagesToPairs = (messages: Message[]): MessagePair[] => {
+  const pairs: MessagePair[] = []
+  
+  for (let i = 0; i < messages.length; i++) {
+    const message = messages[i] as any;
+    
+    if (message.role === 'user') {
+      const pairId = `${message.session_id}` || `pair-${Date.now()}-${i}`
+      const assistantMessage = messages[i + 1]?.role === 'assistant' 
+        ? messages[i + 1] 
+        : undefined as any;
+      
+      const systemMessage = messages[i - 1]?.role === 'system' 
+        ? messages[i - 1] 
+        : undefined as any;
+      
+      pairs.push({
+        id: pairId,
+        systemMessage: systemMessage,
+        userMessage: {...message, feedback: message.metadata?.feedback, timestamp: new Date(message.created_at)},
+        assistantMessage: {...assistantMessage, feedback: assistantMessage.metadata?.feedback, timestamp: new Date(assistantMessage.created_at)},
+      })
+      
+      // Skip the assistant message if it was paired
+      if (assistantMessage) {
+        i++
+      }
+    }
+  }
+  
+  return pairs
+}
+
+  const handleMessages = async () => {
+      let {data} =  await fetchMessages({parameters: {id: model.id}});
+let newPairs = groupMessagesToPairs(data)
+        console.log(newPairs, 'NEW PAIRS')
+        setMessagePairs(newPairs)
+  }
+
   const handleSendMessage = async () => {
     if (!inputMessage.trim() || isSending) return
-
     const userMessage: Message = {
       id: `user-${Date.now()}`,
       role: 'user',
@@ -294,12 +355,23 @@ export const AIModelTestDrawer = ({
     setIsSending(true)
 
     try {
-      if (onSendMessage) {
-        const response = await onSendMessage(inputMessage, context, parameters)
+         const res = await fetch("/actions/chat-ai-model/execute", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+         "session_id": session_id as any
+      },
+      body: JSON.stringify({ parameters: { message: inputMessage, model: model.model_name, session_id, parameters: parameters } })
+    })
+
+    const json = await res.json()
+console.log(json, 'JSON RESPP')
+    const assistantText = json.data.message   // 👈 the field you want
+    
         const assistantMessage: Message = {
           id: `assistant-${Date.now()}`,
           role: 'assistant',
-          content: response,
+          content: assistantText,
           timestamp: new Date(),
         }
         
@@ -310,25 +382,7 @@ export const AIModelTestDrawer = ({
               : pair
           )
         )
-      } else {
-        // Mock response for development
-        setTimeout(() => {
-          const mockResponse: Message = {
-            id: `assistant-${Date.now()}`,
-            role: 'assistant',
-            content: `This is a mock response to: "${inputMessage}"`,
-            timestamp: new Date(),
-          }
-          setMessagePairs(prev =>
-            prev.map(pair =>
-              pair.id === pairId
-                ? { ...pair, assistantMessage: mockResponse }
-                : pair
-            )
-          )
-          setIsSending(false)
-        }, 1000)
-      }
+    
     } catch (error) {
       console.error('Error sending message:', error)
     } finally {
@@ -343,51 +397,44 @@ export const AIModelTestDrawer = ({
     setIsRegenerating(pairId)
 
     try {
-      if (onRegenerateMessage) {
-        const response = await onRegenerateMessage(pair.userMessage.content, context, parameters)
-        const newAssistantMessage: Message = {
-          id: `assistant-${Date.now()}`,
-          role: 'assistant',
-          content: response,
-          timestamp: new Date(),
-          feedback: null,
-        }
-        
+
+      let system = messagePairs.find(a => a.id == pairId);
+
+         const res = await fetch("/ai/chat", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "session_id": session_id as any
+      },
+      body: JSON.stringify({ config: parameters, message: pair.userMessage.content, model: model.model_name, system: system?.systemMessage?.content, session_id })
+    })
+
+    const json = await res.json()
+console.log(context, parameters, json, 'REGEN JSON RESPP')
+            const assistantText = json   // 👈 the field you want
+
         setMessagePairs(prev =>
           prev.map(p =>
             p.id === pairId
-              ? { ...p, assistantMessage: newAssistantMessage }
+              ? { ...p, assistantMessage: {...p.assistantMessage, content: assistantText } as any }
               : p
           )
         )
-      } else {
-        // Mock regeneration
-        setTimeout(() => {
-          const mockResponse: Message = {
-            id: `assistant-${Date.now()}`,
-            role: 'assistant',
-            content: `Regenerated response to: "${pair.userMessage.content}"`,
-            timestamp: new Date(),
-            feedback: null,
-          }
-          setMessagePairs(prev =>
-            prev.map(p =>
-              p.id === pairId
-                ? { ...p, assistantMessage: mockResponse }
-                : p
-            )
-          )
-          setIsRegenerating(null)
-        }, 1000)
-      }
     } catch (error) {
       console.error('Error regenerating message:', error)
     } finally {
-      setIsRegenerating(false)
+      setIsRegenerating(null)
     }
   }
 
-  const handleFeedback = (messageId: string, feedback: 'like' | 'dislike') => {
+  const handleFeedback = async (messageId: string, feedback: 'like' | 'dislike') => {
+    let pair = messagePairs.find(a => a.assistantMessage?.id == messageId) as any;
+    
+    if(pair?.id){
+        let {feedback: oldFeedback} = pair.assistantMessage;
+        await updateFeedback({parameters: {id: pair.id, feedback: feedback == oldFeedback ? '' : feedback }})
+    }
+
     setMessagePairs(prev =>
       prev.map(pair => {
         if (pair.assistantMessage?.id === messageId) {
@@ -438,12 +485,22 @@ export const AIModelTestDrawer = ({
     setEditingMessage(null)
   }
 
-  const handleDeletePair = (pairId: string) => {
+  const handleDeletePair = async (pairId: string) => {
+
+
+    if(pairId.includes('mess')){
+
+    await deletePair({parameters: {id: pairId}});
     setMessagePairs(prev => prev.filter(pair => pair.id !== pairId))
+    } else {
+    handleClearConversation(pairId)
+    }
     setShowDeletePrompt(null)
+
   }
 
-  const handleClearConversation = () => {
+  const handleClearConversation = async (id) => {
+    await deleteMessagesByModel({parameters: {id}})
     setMessagePairs([])
   }
 
@@ -485,6 +542,8 @@ export const AIModelTestDrawer = ({
     }
   }
 
+
+
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
       <Drawer.Content className="!max-w-4xl">
@@ -492,14 +551,14 @@ export const AIModelTestDrawer = ({
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Sparkles />
-              <Drawer.Title>Test AI Model</Drawer.Title>
+              <Drawer.Title>Chat {model.model_name} AI MODEL</Drawer.Title>
             </div>
             <div className="flex items-center gap-2">
               <Tooltip content="Clear conversation">
                 <Button
                   variant="secondary"
                   size="small"
-                  onClick={handleClearConversation}
+                  onClick={() => setShowDeletePrompt(model.id)}
                 >
                   <Trash />
                 </Button>
@@ -543,11 +602,47 @@ export const AIModelTestDrawer = ({
                   {messagePairs.map((pair) => (
                     <div key={pair.id} className="space-y-4">
                       {/* User Message */}
+                                     {showSystem && <>
+                            <div className="flex items-center justify-between mb-2">
+                              <div className="flex items-center gap-2">
+                                <Badge size="small" color="grey">
+                                  {getMessageLabel('system')}
+                                </Badge>
+                                {/* <span className="text-xs text-ui-fg-subtle">
+                                  {pair.systemMessage?.timestamp.toLocaleTimeString()}
+                                </span> */}
+                              </div>
+                              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                {/* <Tooltip content="Edit message">
+                                  <IconButton
+                                    size="small"
+                                    variant="transparent"
+                                    onClick={() => handleEditMessage(pair.systemMessage)}
+                                  >
+                                    <PencilSquare />
+                                  </IconButton>
+                                </Tooltip> */}
+                                {/* <Tooltip content="Delete conversation">
+                                  <IconButton
+                                    size="small"
+                                    variant="transparent"
+                                    onClick={() => setShowDeletePrompt(pair.id)}
+                                  >
+                                    <Trash />
+                                  </IconButton>
+                                </Tooltip> */}
+                              </div>
+                            </div>
+                            <div className="whitespace-pre-wrap text-ui-fg-base">
+                              {pair.systemMessage?.content}
+                            </div>
+                          </>}
                       <div
                         className={`rounded-lg p-4 border ${getMessageColor(
                           'user'
                         )} relative group`}
                       >
+       
                         {editingMessage?.id === pair.userMessage.id ? (
                           <div className="space-y-2">
                             <Textarea
@@ -764,7 +859,14 @@ export const AIModelTestDrawer = ({
                         className="min-h-[80px]"
                       />
                     </div>
-                    <Button
+
+                  </div>
+                  <p className="text-xs text-ui-fg-subtle mt-2">
+                    Press Enter to send, Shift+Enter for new line. Press Esc to close drawer.
+                  </p>
+                </div>
+                <div className='gap-5'>
+                                    <Button
                       variant="primary"
                       onClick={handleSendMessage}
                       isLoading={isSending}
@@ -773,11 +875,13 @@ export const AIModelTestDrawer = ({
                       <ArrowUpCircle />
                       Send
                     </Button>
-                  </div>
-                  <p className="text-xs text-ui-fg-subtle mt-2">
-                    Press Enter to send, Shift+Enter for new line. Press Esc to close drawer.
-                  </p>
-                </div>
+                             <Switch
+                             checked={showSystem}
+                      onCheckedChange={(e: any) => setShowSystem(e)}
+                    >
+                      System  
+                    </Switch>
+                    </div>
               </div>
             </Tabs.Content>
 

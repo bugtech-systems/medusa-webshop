@@ -22,6 +22,7 @@ interface DraggableWidgetProps {
   dragOffset?: { x: number; y: number }
   gridMetrics: { colWidth: number; totalWidth?: number; rowHeight?: number; gap: number }
   isEditing: any
+  style?: any
 }
 
 export const DraggableWidget: React.FC<DraggableWidgetProps> = ({
@@ -37,6 +38,7 @@ export const DraggableWidget: React.FC<DraggableWidgetProps> = ({
   dragOffset,
   gridMetrics,
   isEditing,
+  style
 }) => {
   const { mutateAsync: getWidgetData } = useExecuteAction('get-widget-data')
   const [showControls, setShowControls] = useState(false)
@@ -96,9 +98,9 @@ fetchWidget(widget.id)
   return (
     <div
       id="widget-component" 
-      className={`relative h-full w-full transition-all duration-200 ${
+      className={`h-full relative  w-full transition-all duration-200 ${
         isDragging ? 'z-50' : ''
-      }`}
+      } `}
       style={{ ...dragStyle, ...resizeStyle }}
       onMouseEnter={() => {
         if (isEditing) {
@@ -112,7 +114,7 @@ fetchWidget(widget.id)
       }}
     >
       {/* Widget Content */}
-  <div className="h-full w-full">
+  <div className="w-full h-full overflow-auto">
         <WidgetComponent widget={{...widget, ...widgetData}} />
       </div>
 
@@ -168,7 +170,7 @@ fetchWidget(widget.id)
             </Button>
           </Tooltip> */}
           {widget?.config?.redirect_url && 
-           <Tooltip content="Duplicate widget">
+           <Tooltip content="View Widget">
             <Button
               size="small"
               variant="secondary"

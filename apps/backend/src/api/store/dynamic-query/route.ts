@@ -47,7 +47,7 @@ export async function POST(
   })
 
 
-  res.json({ data })
+  res.json(data)
 
   
   } catch (error: any) {

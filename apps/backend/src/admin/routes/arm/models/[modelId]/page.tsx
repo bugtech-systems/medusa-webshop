@@ -34,6 +34,7 @@ import { AdminAiModel } from "../../../../../types/ai-model";
 import { useAiModel, useUpdateAiModel, useAiModels } from "../../../../hooks/api";
 import { useExecuteAction } from "../../../../hooks/api/actions";
 import { Code } from "lucide-react";
+import { AIModelTestDrawer } from "../components/model-chat-drawer";
 
 const AIModelDetails = () => {
   const { modelId } = useParams();
@@ -47,7 +48,7 @@ const AIModelDetails = () => {
   const [editingMessage, setEditingMessage] = useState<any>(null);
   const [messages, setMessages] = useState<any[]>([]);
   const [jsonFields, setJsonFields] = useState<{ key: string; type: string }[]>([]);
-
+  const [isChatDrawerOpen, setIsChatDrawerOpen] = useState(false)
   const [formData, setFormData] = useState({
     system: "",
     status: "draft",
@@ -376,9 +377,16 @@ const AIModelDetails = () => {
           <Heading className="font-sans font-medium h1-core">
             Current Configuration
           </Heading>
+          <div className="space-x-3">
           <Button variant="secondary" disabled={isTraining}  onClick={() => handleTraining()}>
             <ArrowPath /> Re-train
           </Button>
+            <Button variant="secondary" disabled={isChatDrawerOpen}  onClick={() => setIsChatDrawerOpen(true)}>
+         <ChatBubble className="text-ui-fg-subtle mr-2" />
+            Chat-test
+          </Button>
+          </div>
+         
         </div>
 
         <div className="p-6 space-y-6">
@@ -458,81 +466,7 @@ const AIModelDetails = () => {
         </div>
       </Container>
 
-      {/* Default Messages Section */}
-      <Container className="flex flex-col p-0 overflow-hidden">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-          <Heading className="font-sans font-medium h1-core">
-            Default Conversation Messages
-          </Heading>
-          <Button onClick={handleAddMessage}>
-            <Plus /> Add Message
-          </Button>
-        </div>
 
-        {messages.length > 0 ? (
-          <Table>
-            <Table.Header>
-              <Table.Row>
-                <Table.HeaderCell>Role</Table.HeaderCell>
-                <Table.HeaderCell>Content</Table.HeaderCell>
-                <Table.HeaderCell className="text-right">
-                  Actions
-                </Table.HeaderCell>
-              </Table.Row>
-            </Table.Header>
-            <Table.Body>
-              {messages.map((message) => (
-                <Table.Row key={message.id}>
-                  <Table.Cell>
-                    <Badge
-                      size="small"
-                      color={message.role === "user" ? "blue" : "green"}
-                    >
-                      {message.role}
-                    </Badge>
-                  </Table.Cell>
-                  <Table.Cell>
-                    <Text className="txt-small line-clamp-2">
-                      {message.content}
-                    </Text>
-                  </Table.Cell>
-                  <Table.Cell>
-                    <div className="flex justify-end gap-2">
-                      <IconButton
-                        size="small"
-                        onClick={() => handleEditMessage(message)}
-                      >
-                        <PencilSquare />
-                      </IconButton>
-                      <IconButton
-                        size="small"
-                        variant="danger"
-                        onClick={() => handleDeleteMessage(message.id)}
-                      >
-                        <Trash />
-                      </IconButton>
-                    </div>
-                  </Table.Cell>
-                </Table.Row>
-              ))}
-            </Table.Body>
-          </Table>
-        ) : (
-          <div className="flex h-[200px] w-full flex-col items-center justify-center gap-y-4">
-            <div className="flex flex-col items-center gap-y-3">
-              <ExclamationCircle />
-              <div className="flex flex-col items-center gap-y-1">
-                <Text className="font-medium font-sans txt-compact-small">
-                  No messages
-                </Text>
-                <Text className="txt-small text-ui-fg-muted">
-                  Add default conversation messages for this model.
-                </Text>
-              </div>
-            </div>
-          </div>
-        )}
-      </Container>
 
       {/* Edit Model Drawer */}
       <Drawer open={isDrawerOpen} onOpenChange={setIsDrawerOpen}>
@@ -999,71 +933,15 @@ const AIModelDetails = () => {
         </Drawer.Content>
       </Drawer>
 
-      {/* Edit Message Drawer */}
-      <Drawer open={isMessagesDrawerOpen} onOpenChange={setIsMessagesDrawerOpen}>
-        <Drawer.Content className="max-h-[90vh]">
-          <Drawer.Header>
-            <Drawer.Title>
-              {editingMessage?.id ? "Edit Message" : "Add Message"}
-            </Drawer.Title>
-            <Drawer.Description>
-              Configure default conversation message
-            </Drawer.Description>
-          </Drawer.Header>
-          <Drawer.Body className="overflow-y-auto">
-            <div className="space-y-6">
-              <div className="space-y-3">
-                <Label htmlFor="role" weight="plus" size="small">
-                  Role
-                </Label>
-                <Select
-                  value={editingMessage?.role || "user"}
-                  onValueChange={(value) =>
-                    setEditingMessage((prev: any) => ({
-                      ...prev,
-                      role: value,
-                    }))
-                  }
-                >
-                  <Select.Trigger>
-                    <Select.Value />
-                  </Select.Trigger>
-                  <Select.Content>
-                    <Select.Item value="system">System</Select.Item>
-                    <Select.Item value="user">User</Select.Item>
-                    <Select.Item value="assistant">Assistant</Select.Item>
-                  </Select.Content>
-                </Select>
-              </div>
-
-              <div className="space-y-3">
-                <Label htmlFor="message-content" weight="plus" size="small">
-                  Content
-                </Label>
-                <Textarea
-                  id="message-content"
-                  placeholder="Enter message content..."
-                  value={editingMessage?.content || ""}
-                  onChange={(e) =>
-                    setEditingMessage((prev: any) => ({
-                      ...prev,
-                      content: e.target.value,
-                    }))
-                  }
-                  rows={6}
-                  className="min-h-[120px] resize-y"
-                />
-              </div>
-            </div>
-          </Drawer.Body>
-          <Drawer.Footer>
-            <Drawer.Close asChild>
-              <Button variant="secondary">Cancel</Button>
-            </Drawer.Close>
-            <Button onClick={handleSaveMessage}>Save Message</Button>
-          </Drawer.Footer>
-        </Drawer.Content>
-      </Drawer>
+        <AIModelTestDrawer
+        open={isChatDrawerOpen}
+        onOpenChange={setIsChatDrawerOpen}
+        // onSendMessage={handleSendMessage}
+        // onUpdateContext={handleUpdateContext}
+        initialParameters={model.config}
+        initialContext={model}
+        model={model}
+      />
 
       <Toaster />
     </div>

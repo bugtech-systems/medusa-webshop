@@ -94,6 +94,8 @@ const ParameterField = ({ param }: { param: ActionParameter }) => {
   const value = watch(param.name)
 
 
+console.log(param, 'PARR')
+
   const renderField = () => {
     switch (param.type) {
       case "boolean":
@@ -518,19 +520,19 @@ export const ExecuteActionDrawer = ({
       const sessionId = localStorage.getItem('session_id');
       let params = action.parameters ?? [] as any;
       // // Parse JSON fields
-      // params?.forEach((p) => {
-      //   if(p.defaultValue && !parsed[p.name].trim()){
-      //           parsed[p.name] = p.defaultValue;           
-      //   }
+      params?.forEach((p) => {
+        if(p.defaultValue && (typeof parsed[p.name] == 'string' && !parsed[p.name]?.trim())){
+                parsed[p.name] = p.defaultValue;           
+        }
 
-      //   if ((p.type === "json" || p.type === 'array') && typeof parsed[p.name] === "string" && parsed[p.name].trim()) {
-      //     try {
-      //       parsed[p.name] = JSON.parse(parsed[p.name])
-      //     } catch (e) {
-      //       throw new Error(`Invalid JSON in ${p.name}: ${e}`)
-      //     }
-      //   }
-      // })
+        // if ((p.type === "json" || p.type === 'array') && typeof parsed[p.name] === "string" && parsed[p.name].trim()) {
+        //   try {
+        //     parsed[p.name] = JSON.parse(parsed[p.name])
+        //   } catch (e) {
+        //     throw new Error(`Invalid JSON in ${p.name}: ${e}`)
+        //   }
+        // }
+      })
       
       
 
@@ -560,7 +562,7 @@ export const ExecuteActionDrawer = ({
       })
 
       if(res?.sessionId){
-          localStorage.setItem('session_id', res.sessionId);
+          localStorage.setItem('session_id', res.session_id);
       }
 
       if(res?.outputs){
@@ -571,7 +573,7 @@ export const ExecuteActionDrawer = ({
       }
       
       
-      refetchHistory()
+      // refetchHistory()
       
       // Auto-navigate to result tab
       setActiveTab("result")
@@ -590,7 +592,7 @@ export const ExecuteActionDrawer = ({
     } finally {
       setIsExecuting(false)
     }
-  }, [action.id, action.parameters, executeAction, refetchHistory])
+  }, [action.id, action.parameters, executeAction])
 
   /* ============================================================
      Replay & Close

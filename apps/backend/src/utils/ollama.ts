@@ -60,6 +60,15 @@ export async function streamChatCompletion({
   }
 }
 
+export async function callLLM(prompt, model = "llama3.2:latest") {
+  const res = await fetch(`${OLLAMA_BASE_URL}/api/generate`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ model, prompt, stream: false, format: 'json' })
+  });
+  return (await res.json()).response;
+}
+
 
 export async function chatCompletion({
   messages,

@@ -123,6 +123,7 @@ export const ModelActionsMenu = ({ model }: ActionActionsMenuProps) => {
         onUpdateContext={handleUpdateContext}
         initialParameters={model.config}
         initialContext={model}
+        model={model}
       />
       <DropdownMenu>
       <DropdownMenu.Trigger asChild>

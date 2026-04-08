@@ -15,7 +15,7 @@ import axios from "axios"
 import { DbOperationService } from "./services/database-action-service"
 import { ActionConfig } from "./types"
 import { parseActionInput, StepActionError, validateAndRefineParameters } from "../../utils/validators"
-import { parseFieldsString, removeEmptyObjects, removeNullKeys } from "../../utils/helpers"
+import { parseFieldsString, removeEmptyObjects, removeNullKeys, hashObject } from "../../utils/helpers"
 import { buildErrorResponse, evaluateConditions, handleExecutionError } from "../../utils/action-engine-utils"
 import Redis from "ioredis"
 import { chatCompletion } from "../../utils/ollama"
@@ -76,7 +76,7 @@ export default class ActionEngineService extends MedusaService({
   private customEventBus?: any
 
   redisClient: Redis
-  readonly SESSION_TTL = 3600
+  readonly SESSION_TTL = 100
 
 constructor(container: any, options?: any) {
   super(container)
@@ -109,6 +109,75 @@ constructor(container: any, options?: any) {
 
   this.logger_.info("✅ ActionEngineService initialized")
 }
+
+  
+  // ========== EXECUTION CACHING ==========
+   getExecutionCacheKey(
+    templateId: string,
+    parameters: Record<string, any>,
+    sessionId?: string
+  ): string {
+    const paramsHash = hashObject(parameters); // deterministic hash
+    return `execution:${templateId}:${paramsHash}${sessionId ? `:${sessionId}` : ""}`;
+  }
+
+   async getCachedExecution(
+    templateId: string,
+    parameters: Record<string, any>,
+    sessionId?: string
+  ): Promise<any | null> {
+    if (!this.redisClient) return null;
+    const key = this.getExecutionCacheKey(templateId, parameters, sessionId);
+    try {
+      const cached = await this.redisClient.get(key);
+      if (cached) {
+        this.logger_.debug(`Execution cache hit for ${key}`);
+        return JSON.parse(cached);
+      }
+    } catch (error) {
+      this.logger_.error(`Failed to get cached execution ${key}:`, error);
+    }
+    return null;
+  }
+
+   async setCachedExecution(
+    templateId: string,
+    parameters: Record<string, any>,
+    sessionId: string | undefined,
+    result: any
+  ): Promise<void> {
+    if (!this.redisClient) return;
+    const key = this.getExecutionCacheKey(templateId, parameters, sessionId);
+    try {
+      await this.redisClient.setex(key, this.SESSION_TTL, JSON.stringify(result));
+    } catch (error) {
+      this.logger_.error(`Failed to cache execution ${key}:`, error);
+    }
+  }
+
+  /**
+   * Invalidate all execution caches for a given template.
+   * This is called when the template is updated or deleted.
+   */
+   async invalidateExecutionCachesForTemplate(templateId: string): Promise<void> {
+    if (!this.redisClient) return;
+    const pattern = `execution:${templateId}:*`;
+    let cursor = "0";
+    do {
+      const [nextCursor, keys] = await this.redisClient.scan(
+        cursor,
+        "MATCH",
+        pattern,
+        "COUNT",
+        100
+      );
+      cursor = nextCursor;
+      if (keys.length) {
+        await this.redisClient.del(...keys);
+        this.logger_.debug(`Invalidated ${keys.length} execution caches for template ${templateId}`);
+      }
+    } while (cursor !== "0");
+  }
 
 
   // ========== SESSION MANAGEMENT ==========
@@ -203,6 +272,16 @@ constructor(container: any, options?: any) {
       const template = await this.retrieveActionTemplate(templateId) as any;
       if (!template) throw new Error(`Action template ${templateId} not found`)
 
+      const canCache = true;
+      // const canCache = !template.context_template;
+
+      // 3. Check cache
+      let cachedResult = null;
+      if (canCache) {
+        cachedResult = await this.getCachedExecution(templateId, parameters, sessionId);
+      }
+
+
       await this.createExecutions({
         id: executionId,
         workflow_id: template.id,
@@ -282,9 +361,8 @@ constructor(container: any, options?: any) {
     }
 
     const config = await expressionEvaluator.evaluatePlaceholders(removeNullKeys(template.config), context);
-
     switch (template.type) {
-      case 'DB_OPERATION': return await this.executeDatabaseOperation(config);
+      case 'DB_OPERATION': return await this.executeDatabaseOperation(removeNullKeys((config)));
       case 'API_CALL': return await this.callAPI(config, context);
       case 'AI_ACTION': return await this.callAI(config, context);
       case 'WORKFLOW': return await this.executeWorkflow(removeNullKeys(template.config), context);
@@ -303,6 +381,7 @@ constructor(container: any, options?: any) {
 
 
     try {
+      console.log(queryConfig, config, 'DB CONFIG')
       return await this.dbService.execute(queryConfig);
     } catch(err) {
       return { success: false, status: 'error', message: `Database operation failed: ${queryConfig.operation}`}
@@ -381,86 +460,291 @@ constructor(container: any, options?: any) {
     }
   }
 
-  async executeWorkflow(config: any, context: any): Promise<any> {
-    let success = true;
-    let variables = {}
-    let oldParams = {...context.params};
-    let finalResult;
-    let index = 0;
-    const actions = config.actions || [];
-    const workflowResults: Record<string, any> = {};
-    
-    for (const actionConfig of actions) {
-      let conf = await expressionEvaluator.resolvePlaceholders(
-        actionConfig.action_id || {}, 
-        {context: variables, outputs: workflowResults }
-      );
-
-      const action = await this.getActionTemplate(conf);
-      if (!action) continue;
-      
-      let params = actionConfig.parameters;
-      
-      const mergedParams = {
-        ...oldParams,
-        ...(await expressionEvaluator.resolvePlaceholders(
-          params || {}, 
-          {...context, ...oldParams, context: variables, outputs: workflowResults }
-        ))
-      };
-
-      const result = await this.executeAction({...action, ...actionConfig}, {
-        ...context,
-        context: variables,
-        params: mergedParams,
-        outputs: workflowResults
-      });
-      
-      let outputKey = action.output_as ? action.output_as : (action.handle || action.id);
-      let output = result;
-      let output_template = removeEmptyObjects(actionConfig).output_template ?? action.output_template;
-      let context_template = removeEmptyObjects(actionConfig).context_template ?? action.context_template;
-      
-      if(output?.skip) continue;
-
-      if(output_template){
-        output = await expressionEvaluator.resolvePlaceholders(
-          output_template, 
-          {...context, ...oldParams, context: variables, outputs: workflowResults, result }
+    private async executeWorkflow(template: any, session: any): Promise<any> {
+      let config = template.config;
+      let success = true;
+      let variables = {...session.context}
+      let oldParams = {...session.params};
+      let finalResult;
+      let index = 0;
+      const actions = config.actions || [];
+      const workflowResults: Record<string, any> = {};
+      let contextOutput = variables;
+  
+      for (const actionConfig of actions) {
+        let conf = await expressionEvaluator.resolvePlaceholders(
+          actionConfig.action_id || {}, 
+          {context: variables, outputs: workflowResults }
         );
-      }
-      
-      if(context_template){
-        let contextOutput = await expressionEvaluator.resolvePlaceholders(
-          context_template, 
-          {...context, ...oldParams, context: variables, outputs: workflowResults, result: output }
-        );        
-        variables = {...variables, ...contextOutput};
+  
+        const action = await this.getActionTemplate(conf);
+        if (!action) continue;
         
-        if (context.session) {
-          context.session = {...context.session, ...contextOutput};
+        let params = actionConfig.parameters;
+        
+        const mergedParams = {
+          // ...oldParams,
+          ...(await expressionEvaluator.resolvePlaceholders(
+            params || {}, 
+            {...session, ...oldParams, context: variables, outputs: workflowResults }
+          ))
+        };
+  
+        const result = await this.executeAction({...action, ...actionConfig}, {
+          ...session,
+          context: variables,
+          params: mergedParams,
+          outputs: workflowResults
+        });
+        let outputKey = action.output_as ? action.output_as : (action.handle || action.id);
+        let output = result;
+        let output_template = removeEmptyObjects(actionConfig).output_template ?? action.output_template;
+        let context_template = removeEmptyObjects(actionConfig).context_template ?? action.context_template;
+        if(output?.skip) continue;
+  
+        if(output_template && Object.keys(output_template).length){
+          output = await expressionEvaluator.resolvePlaceholders(
+            output_template, 
+            {...session, ...oldParams, context: variables, outputs: workflowResults, result }
+          );
         }
+        
+        if(context_template && Object.keys(context_template).length){
+          contextOutput = await expressionEvaluator.resolvePlaceholders(
+            context_template, 
+            {...session, ...oldParams, context: variables, outputs: workflowResults, result: output }
+          );        
+          variables = {...variables, ...contextOutput};
+        }
+        
+  
+  
+        // workflowResults[outputKey] = {index: index + 1, parameters: mergedParams, context: variables, result: output};
+    const stepUuid = this.generateId('step');
+  
+    workflowResults[outputKey] = {
+          index: index + 1,
+          parameters: mergedParams,
+          context: contextOutput,
+          result: {
+            ...output,
+            uuid: stepUuid,
+            handle: outputKey,
+            noCompensation: action.noCompensation ?? false,
+          },
+        };
+  
+        finalResult = output;
+        success = result?.success ?? true;
+        oldParams = {...oldParams, ...mergedParams}
+       await this.updateSession(session.id, { result: output, context: {...session.context, ...result.context, ...contextOutput } });
+  
+        if (result?.exit || result?.status === 'error') break;
+  
+        index++;
       }
-      
-      workflowResults[outputKey] = {index: index + 1, parameters: mergedParams, context: variables, result: output};
-      
-      finalResult = output;
-      success = result?.success;
-      oldParams = {...oldParams, ...mergedParams}
-      
-      if (result?.exit || result?.status === 'error') break;
-      
-      index++;
+  
+  
+  
+    const workflowObject = this.generateWorkflowObject(oldParams, workflowResults, variables, finalResult, success, template);
+      await this.saveWorkflowObject(template, {...workflowObject, state: 'done', transaction_id: `${template.handle}-${new Date().getTime()}`})
+  
+      return {
+        success,
+        status_code: success ? 200 : 400,
+        data: finalResult,
+        outputs: workflowResults,
+        context: contextOutput,
+        workflowObject,
+      };
     }
 
-    return {
-      success,
-      status_code: success ? 200 : 400,
-      data: finalResult,
-      outputs: workflowResults,
-      context: variables,
-      completedActions: Object.keys(workflowResults).length,
+ // Builds execution.definition from workflowResults recursively
+  buildExecutionDefinition(results: Record<string, any>, keys: string[]): any {
+    if (!keys.length) return null;
+
+    const [currentKey, ...restKeys] = keys;
+    const current = results[currentKey];
+    if (!current) return null;
+
+    const node: any = {
+      uuid: current.result?.uuid || currentKey,
+      handle: current.result?.action || currentKey,
+      // noCompensation: current.result?.noCompensation ?? false,
     };
+
+    // If there is more in the chain, create nested `next`
+    if (restKeys.length) {
+      node.next = this.buildExecutionDefinition(results, restKeys);
+    }
+
+    return node;
+  }
+
+  generateWorkflowObject(
+  inputs: any,
+  workflowResults: Record<string, any>,
+  variables: Record<string, any>,
+  finalResult: any,
+  success: boolean,
+  template?: any
+): any {
+  const runId = `wf_exec_${Date.now().toString(36).toUpperCase()}`;
+  const config = template.config;
+  const transactionId = `${template.handle}-${new Date().getTime()}`;
+  const workflowId = config.workflow_id || config.name || "workflow";
+
+  // Build invoke object from workflowResults
+  const invoke: Record<string, any> = {};
+const sortedEntries = Object.entries(workflowResults)
+  .sort(([, a], [, b]) => (a.index ?? 0) + (b.index ?? 0))
+
+  for (const [key, value] of sortedEntries) {
+    invoke[key] = {
+      __type: "Symbol(WorkflowWorkflowData)",
+      output: {
+        __type: "Symbol(WorkflowStepResponse)",
+        output: value.result ?? {},
+        compensateInput: value.result?.compensateInput ?? null,
+      },
+    };
+  }
+
+  // Build compensate object (placeholder, can be extended)
+  const compensate: Record<string, any> = {};
+  for (const key of Object.keys(workflowResults)) {
+    compensate[key] = {};
+    if (workflowResults[key].result?.compensateInput) {
+      compensate[key].output = { __type: "Symbol(WorkflowStepResponse)" };
+    }
+  }
+
+  // Build execution steps
+  const steps: Record<string, any> = {};
+  const rootId = "_root";
+  steps[rootId] = {
+    id: rootId,
+    next: [],
+  };
+
+
+  const buildSteps = (parentKey: string, parentIndex = 0) => {
+    const resultKeys = Object.keys(workflowResults);
+    let prevKey = parentKey;
+
+    for (let i = parentIndex; i < resultKeys.length; i++) {
+      const key = resultKeys[i];
+      const step = workflowResults[key];
+      const stepId = `${parentKey}.${key}`;
+      const stepUuid = this.generateId('step');
+      steps[stepId] = {
+        _v: 0,
+        id: stepId,
+        next: [],
+        uuid: `${step.result.uuid}`,
+        depth: i + 1,
+        invoke: { state: "done", status: "ok" },
+        attempts: 0,
+        failures: 0,
+        compensate: { state: "dormant", status: "idle" },
+        definition: { uuid: `${step.result.uuid}`, handle: key, noCompensation: false, input: step.parameters },
+        stepFailed: false,
+        lastAttempt: null,
+        saveResponse: true,
+      };
+
+      steps[prevKey].next.push(stepId);
+      prevKey = stepId;
+    }
+  };
+
+  buildSteps(rootId);
+
+  let definitions = this.buildExecutionDefinition(workflowResults, Object.keys(workflowResults));
+
+
+  // Build errors array from failed actions
+  const errors = Object.entries(workflowResults)
+    .filter(([_, value]) => value.result?.status === "error" || value.result?.exit)
+    .map(([key, value]) => ({
+      error: {
+        date: new Date().toISOString(),
+        name: value.result?.name || "Error",
+        type: value.result?.type || "runtime_error",
+        stack: value.result?.stack || "",
+        message: value.result?.message || "Action failed",
+        __isMedusaError: true,
+      },
+      action: key,
+      handlerType: value.result?.handlerType || "invoke",
+    }));
+
+  
+
+  
+
+
+  return {
+    id: runId,
+    workflow_id: workflowId,
+    transaction_id: transactionId,
+    context: {
+      data: {
+        invoke,
+        payload: {inputs,context: variables},
+        compensate,
+      },
+      errors,
+    },
+    execution: {
+      _v: 0,
+      runId,
+      state: success ? "completed" : "failed",
+      steps,
+      modelId: workflowId,
+      options: {
+        name: workflowId,
+        store: true,
+        idempotent: false,
+        retentionTime: 259200,
+      },
+      metadata: {
+        sourcePath: config.sourcePath ?? "",
+        eventGroupId: `evt_${Date.now().toString(36).toUpperCase()}`,
+        preventReleaseEvents: false,
+      },
+      definition: definitions,
+      timedOutAt: null,
+      hasAsyncSteps: false,
+      transactionId,
+      hasFailedSteps: errors.length > 0,
+      hasSkippedSteps: false,
+      hasWaitingSteps: false,
+      hasRevertedSteps: false,
+      hasSkippedOnFailureSteps: false,
+    },
+    state: "not_started",
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+    deleted_at: null,
+  };
+}
+
+
+  async saveWorkflowObject(template: any, workflow: any): Promise<any> {
+ 
+await this.executeDatabaseOperation({
+      table: 'workflow_execution',
+      operation: "create",
+      data: {
+          ...workflow,
+          id: this.generateId('wf_exec'),
+          workflow_id: template.handle,
+          retention_time: 60000 * 3
+      }
+})
+
+    return template.length ? template[0] : null
   }
 
   async getActionTemplate(actionId: string): Promise<any> {
@@ -503,19 +787,14 @@ constructor(container: any, options?: any) {
         );
       }
       
-      // if(context_template && Object.keys(context_template).length){
-      //   contextOutput = await expressionEvaluator.resolvePlaceholders(
-      //     context_template, 
-      //     {...session, params: input}
-      //   );        
-      //     session = {...session, context: contextOutput};
-      // }
-      
-  //  await this.actionService.updateSession(session.id, session);
-
 
 
     return output;
+  }
+
+    /** Generate a unique ID for a document */
+  generateId(type?: any) {
+    return generateEntityId(undefined, type);
   }
 
   async onApplicationShutdown(): Promise<void> {

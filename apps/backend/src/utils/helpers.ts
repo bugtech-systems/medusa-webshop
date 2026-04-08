@@ -150,6 +150,12 @@ export function removeNullKeys(obj) {
   return obj;
 }
 
+export function isEmptyObject(obj) {
+    
+  // Return primitive values as-is
+  return Object.keys(obj).length ? true : false;
+}
+
 type Field = {
   name: string;
   type: 'string' | 'number' | 'boolean' | 'json' | 'array';
@@ -923,3 +929,41 @@ export const generateAlphaNumeric = async ()=>{
   }
   return result;
 };
+
+export const convertToHandle = (string) => {
+  const lowerText = string.split(' ').map(a => a.toLowerCase()).join('-');
+  
+  return lowerText;
+};
+
+function sortObjectKeys(obj: any): any {
+  if (obj === null || typeof obj !== "object") return obj;
+  if (Array.isArray(obj)) return obj.map(sortObjectKeys);
+  return Object.keys(obj)
+    .sort()
+    .reduce((sorted: any, key) => {
+      sorted[key] = sortObjectKeys(obj[key]);
+      return sorted;
+    }, {});
+}
+
+
+function simpleHash(str: string): string {
+  let hash = 5381;
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = (hash * 33) ^ char;
+  }
+  // Convert to unsigned 32-bit integer and then to base36 for short keys
+  return (hash >>> 0).toString(36);
+}
+
+/**
+ * Generates a deterministic hash from an object.
+ * Use for cache keys where parameter order shouldn't matter.
+ */
+export function hashObject(obj: any): string {
+  const normalized = sortObjectKeys(obj);
+  const jsonString = JSON.stringify(normalized);
+  return simpleHash(jsonString);
+}

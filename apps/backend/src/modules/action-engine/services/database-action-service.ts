@@ -1,5 +1,7 @@
 import { Pool } from 'pg';
 import { randomBytes } from 'crypto';
+import { toSql } from 'pgvector';
+import { generateEntityId } from '@medusajs/framework/utils';
 
 export interface JoinConfig {
   type: 'INNER' | 'LEFT' | 'RIGHT' | 'FULL';
@@ -95,8 +97,9 @@ export class DbOperationService {
   async execute(config: QueryConfig): Promise<any> {
     // Raw SQL path
     if (config.sql) {
-      return this.executeRaw(config.sql, config.params || []);
+      return await this.executeRaw(config.sql, config.params || []);
     }
+
 
     // JSON-based operation path
     const client = await this.pool.connect();
@@ -122,8 +125,15 @@ export class DbOperationService {
   private async executeRaw(sql: string, params: any[] = []): Promise<any> {
     const client = await this.pool.connect();
     try {
-      const result = await client.query(sql, params);
+      console.log(params, 'RAAW')
+            console.log(params[0], 'PGRAAW')
+
+      const result = await client.query(sql, params.map(a => Array.isArray(a) ? toSql(a) : a));
+      console.log(result, 'RESULTT')
       return result.rows;
+    } catch (error) {
+      console.log(error, 'ERRORR');
+      return { success: false, status: 'error', message: `Database operation failed: ${error.message}` };
     } finally {
       client.release();
     }
@@ -134,7 +144,9 @@ export class DbOperationService {
     if (['create', 'update', 'upsert', 'batch_create'].includes(config.operation || '') && !config.returning) {
       config.returning = '*'; // Default to returning all columns
     }
-  
+    
+
+
     switch (config.operation) {
       case 'read': return this.buildSelect(config);
       case 'create': return this.buildInsert(config);
