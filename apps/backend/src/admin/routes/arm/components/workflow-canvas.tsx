@@ -166,12 +166,12 @@ const ConnectionEdgeComponent = ({
 
   const isSelfLoop = source === target;
   let selfLoopPath = edgePath;
-  
+
   if (isSelfLoop) {
     const radius = 80;
     const midX = (sourceX + targetX) / 2;
     const midY = (sourceY + targetY) / 2 - radius;
-    
+
     selfLoopPath = `M ${sourceX} ${sourceY} 
                     Q ${midX} ${midY} 
                     ${targetX} ${targetY}`;
@@ -206,7 +206,7 @@ const ConnectionEdgeComponent = ({
           cursor: 'pointer',
         }}
       />
-      
+
       {data?.label && (
         <EdgeLabelRenderer>
           <div
@@ -236,13 +236,13 @@ const ConnectionEdgeComponent = ({
 };
 
 // SubFlow Node Component
-const SubFlowNodeComponent = ({ 
-  data, 
-  id, 
+const SubFlowNodeComponent = ({
+  data,
+  id,
   selected,
-}: { 
-  data: ActionNodeData; 
-  id: string; 
+}: {
+  data: ActionNodeData;
+  id: string;
   selected: boolean;
 }) => {
   const [isHovered, setIsHovered] = useState(false);
@@ -274,9 +274,9 @@ const SubFlowNodeComponent = ({
         <Handle
           type="target"
           position={targetPosition}
-          style={{ 
-            background: '#6b7280', 
-            width: 12, 
+          style={{
+            background: '#6b7280',
+            width: 12,
             height: 12,
             border: '3px solid white',
             transition: 'all 0.2s',
@@ -284,8 +284,8 @@ const SubFlowNodeComponent = ({
           isConnectable={true}
         />
       )}
-      
-      <div 
+
+      <div
         className="relative"
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
@@ -317,14 +317,13 @@ const SubFlowNodeComponent = ({
         )}
 
         {/* SubFlow Container */}
-        <div 
-          className={`rounded-lg border-2 bg-white min-w-[300px] min-h-[200px] shadow-sm transition-all ${
-            selected 
-              ? 'border-purple-600 ring-2 ring-purple-200' 
-              : isHovered
-                ? 'border-purple-400 shadow-lg'
-                : 'border-purple-300 hover:border-purple-400'
-          }`}
+        <div
+          className={`rounded-lg border-2 bg-white min-w-[300px] min-h-[200px] shadow-sm transition-all ${selected
+            ? 'border-purple-600 ring-2 ring-purple-200'
+            : isHovered
+              ? 'border-purple-400 shadow-lg'
+              : 'border-purple-300 hover:border-purple-400'
+            }`}
           style={{
             borderStyle: 'dashed',
           }}
@@ -367,9 +366,9 @@ const SubFlowNodeComponent = ({
       <Handle
         type="source"
         position={sourcePosition}
-        style={{ 
-          background: '#6b7280', 
-          width: 12, 
+        style={{
+          background: '#6b7280',
+          width: 12,
           height: 12,
           border: '3px solid white',
           transition: 'all 0.2s',
@@ -381,13 +380,13 @@ const SubFlowNodeComponent = ({
 };
 
 // Regular Action Node Component
-const ActionNodeComponent = ({ 
-  data, 
-  id, 
+const ActionNodeComponent = ({
+  data,
+  id,
   selected,
-}: { 
-  data: ActionNodeData; 
-  id: string; 
+}: {
+  data: ActionNodeData;
+  id: string;
   selected: boolean;
 }) => {
   const targetPosition = data.targetPosition || Position.Left;
@@ -412,9 +411,9 @@ const ActionNodeComponent = ({
         <Handle
           type="target"
           position={targetPosition}
-          style={{ 
-            background: '#6b7280', 
-            width: 12, 
+          style={{
+            background: '#6b7280',
+            width: 12,
             height: 12,
             border: '3px solid white',
             transition: 'all 0.2s',
@@ -422,7 +421,7 @@ const ActionNodeComponent = ({
           isConnectable={true}
         />
       )}
-      
+
       <div className="relative">
         {/* Selection actions */}
         {selected && !isStartNode && (
@@ -450,27 +449,25 @@ const ActionNodeComponent = ({
           </div>
         )}
 
-        <div 
-          className={`px-4 py-3 rounded-lg border bg-white min-w-[200px] shadow-sm cursor-pointer transition-all ${
-            selected 
-              ? 'border-blue-600 ring-2 ring-blue-200' 
-              : isStartNode
-                ? 'border-green-500 bg-green-50'
-                : hasParent
-                  ? 'border-purple-300 bg-purple-50/30'
-                  : 'border-gray-200 hover:border-gray-300'
-          }`}
+        <div
+          className={`px-4 py-3 rounded-lg border bg-white min-w-[200px] shadow-sm cursor-pointer transition-all ${selected
+            ? 'border-blue-600 ring-2 ring-blue-200'
+            : isStartNode
+              ? 'border-green-500 bg-green-50'
+              : hasParent
+                ? 'border-purple-300 bg-purple-50/30'
+                : 'border-gray-200 hover:border-gray-300'
+            }`}
           onClick={() => data.onClick?.(id)}
         >
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">
-              <Sparkles className={`w-4 h-4 ${
-                isStartNode ? 'text-green-600' : 
+              <Sparkles className={`w-4 h-4 ${isStartNode ? 'text-green-600' :
                 hasParent ? 'text-purple-500' : 'text-gray-500'
-              }`} />
+                }`} />
               <Text size="small" weight="plus" className={
-                isStartNode ? 'text-green-700' : 
-                hasParent ? 'text-purple-700' : 'text-gray-700'
+                isStartNode ? 'text-green-700' :
+                  hasParent ? 'text-purple-700' : 'text-gray-700'
               }>
                 {data.label || 'Unnamed Action'}
               </Text>
@@ -497,9 +494,9 @@ const ActionNodeComponent = ({
       <Handle
         type="source"
         position={sourcePosition}
-        style={{ 
-          background: '#6b7280', 
-          width: 12, 
+        style={{
+          background: '#6b7280',
+          width: 12,
           height: 12,
           border: '3px solid white',
           transition: 'all 0.2s',
@@ -556,12 +553,12 @@ const WorkflowEditor: React.FC<WorkflowEditorProps> = ({
   const [edges, setEdges, onEdgesChange] = useEdgesState(externalEdges);
   const { screenToFlowPosition, fitView, getIntersectingNodes } = useReactFlow();
   const prompt = usePrompt();
-  
+
   // Store initial state for change detection
   const [initialNodes] = useState(externalNodes);
   const [initialEdges] = useState(externalEdges);
   const hasChanges = useHasChanges(nodes, edges, initialNodes, initialEdges);
-  
+
   const [drawerOpen, openDrawer, closeDrawer] = useDrawerToggle(false);
   const [selectedAction, setSelectedAction] = useState<ActionNodeData | null>(null);
   const [isEditing, setIsEditing] = useState(false);
@@ -578,7 +575,7 @@ const WorkflowEditor: React.FC<WorkflowEditorProps> = ({
 
   // Ensure there's always a start node
   useEffect(() => {
-    const hasStartNode = nodes.some(node => 
+    const hasStartNode = nodes.some(node =>
       node.data.isStartNode || node.data.label === 'Start Alayon'
     );
 
@@ -598,7 +595,7 @@ const WorkflowEditor: React.FC<WorkflowEditorProps> = ({
           targetPosition: Position.Left,
         },
       };
-      
+
       setNodes([startNode]);
       parentOnNodesChange([startNode]);
     }
@@ -625,7 +622,7 @@ const WorkflowEditor: React.FC<WorkflowEditorProps> = ({
       const selectedNodes = nodes.filter(node => node.selected);
       const selectedEdges = edges.filter(edge => edge.selected);
 
-      const hasStartNodeSelected = selectedNodes.some(node => 
+      const hasStartNodeSelected = selectedNodes.some(node =>
         node.data.isStartNode || node.data.label === 'Start Alayon'
       );
 
@@ -644,40 +641,40 @@ const WorkflowEditor: React.FC<WorkflowEditorProps> = ({
         if (confirmed) {
           if (selectedNodes.length > 0) {
             const nodeIds = selectedNodes.map(n => n.id);
-            
+
             // Also delete all child nodes if deleting a subflow
             const childNodeIds = nodes
               .filter(n => n.data.parentId && nodeIds.includes(n.data.parentId))
               .map(n => n.id);
-            
+
             const allNodeIdsToDelete = [...nodeIds, ...childNodeIds];
-            
-            const edgesToDelete = edges.filter(e => 
+
+            const edgesToDelete = edges.filter(e =>
               allNodeIdsToDelete.includes(e.source) || allNodeIdsToDelete.includes(e.target)
             );
-            
+
             const updatedNodes = nodes.filter(n => !allNodeIdsToDelete.includes(n.id));
-            const updatedEdges = edges.filter(e => 
+            const updatedEdges = edges.filter(e =>
               !allNodeIdsToDelete.includes(e.source) && !allNodeIdsToDelete.includes(e.target)
             );
-            
+
             setNodes(updatedNodes);
             setEdges(updatedEdges);
-            
+
             parentOnNodesChange(updatedNodes);
             parentOnEdgesChange(updatedEdges);
-            
+
             allNodeIdsToDelete.forEach(id => onNodeDelete?.(id));
             edgesToDelete.forEach(e => onEdgeDelete?.(e.id));
           }
-          
+
           if (selectedEdges.length > 0) {
             const edgeIds = selectedEdges.map(e => e.id);
             const updatedEdges = edges.filter(e => !edgeIds.includes(e.id));
-            
+
             setEdges(updatedEdges);
             parentOnEdgesChange(updatedEdges);
-            
+
             edgeIds.forEach(id => onEdgeDelete?.(id));
           }
         }
@@ -690,7 +687,7 @@ const WorkflowEditor: React.FC<WorkflowEditorProps> = ({
   // Handle node changes
   const handleNodesChange = useCallback((changes: any) => {
     if (readOnly) return;
-    
+
     // Check if nodes are being dragged into subflows
     changes.forEach((change: any) => {
       if (change.type === 'position' && change.dragging) {
@@ -700,11 +697,11 @@ const WorkflowEditor: React.FC<WorkflowEditorProps> = ({
           const intersectingNodes = getIntersectingNodes(node).filter(
             n => n.type === 'subFlowNode'
           );
-          
+
           if (intersectingNodes.length > 0) {
             // Update node with parent
-            const updatedNodes = nodes.map(n => 
-              n.id === node.id 
+            const updatedNodes = nodes.map(n =>
+              n.id === node.id
                 ? { ...n, parentId: intersectingNodes[0].id, extent: 'parent' as const }
                 : n
             );
@@ -713,7 +710,7 @@ const WorkflowEditor: React.FC<WorkflowEditorProps> = ({
         }
       }
     });
-    
+
     const updatedNodes = applyNodeChanges(changes, nodes);
     setNodes(updatedNodes);
     parentOnNodesChange(updatedNodes);
@@ -760,7 +757,7 @@ const WorkflowEditor: React.FC<WorkflowEditorProps> = ({
 
     const confirmed = await prompt({
       title: node?.type === 'subFlowNode' ? 'Delete SubFlow' : 'Delete action',
-      description: node?.type === 'subFlowNode' 
+      description: node?.type === 'subFlowNode'
         ? 'Are you sure you want to delete this subflow and all actions inside it?'
         : 'Are you sure you want to delete this action and all its connections?',
       confirmText: 'Delete',
@@ -772,29 +769,29 @@ const WorkflowEditor: React.FC<WorkflowEditorProps> = ({
         const childNodes = nodes.filter(n => n.data.parentId === id);
         const childNodeIds = childNodes.map(n => n.id);
         const allNodeIds = [id, ...childNodeIds];
-        
+
         const updatedNodes = nodes.filter(n => !allNodeIds.includes(n.id));
-        const updatedEdges = edges.filter(e => 
+        const updatedEdges = edges.filter(e =>
           !allNodeIds.includes(e.source) && !allNodeIds.includes(e.target)
         );
-        
+
         setNodes(updatedNodes);
         setEdges(updatedEdges);
-        
+
         parentOnNodesChange(updatedNodes);
         parentOnEdgesChange(updatedEdges);
-        
+
         allNodeIds.forEach(nodeId => onNodeDelete?.(nodeId));
       } else {
         const updatedNodes = nodes.filter(node => node.id !== id);
         const updatedEdges = edges.filter(edge => edge.source !== id && edge.target !== id);
-        
+
         setNodes(updatedNodes);
         setEdges(updatedEdges);
-        
+
         parentOnNodesChange(updatedNodes);
         parentOnEdgesChange(updatedEdges);
-        
+
         onNodeDelete?.(id);
       }
     }
@@ -833,19 +830,19 @@ const WorkflowEditor: React.FC<WorkflowEditorProps> = ({
   // Handle new connections
   const onConnect = useCallback((params: Connection) => {
     if (readOnly) return;
-    
+
     const newEdge: ConnectionEdge = {
       ...params,
       id: `edge_${params.source}_${params.target}_${Date.now()}`,
       type: 'default',
       markerEnd: {
         type: MarkerType.ArrowClosed,
-        color: '#4b5563',
+        color: '#3e4f68',
         width: 12,
         height: 12,
       },
-      style: { 
-        stroke: '#4b5563', 
+      style: {
+        stroke: '#4b5563',
         strokeWidth: 2,
       },
       data: {
@@ -854,23 +851,23 @@ const WorkflowEditor: React.FC<WorkflowEditorProps> = ({
       },
       animated: params.source === params.target,
     };
-    
+
     setEdges((eds) => {
       const newEdges = addEdge(newEdge, eds);
       parentOnEdgesChange(newEdges);
       return newEdges;
     });
-    
+
     onEdgeConnect(newEdge);
     setEdgeStyle(prev => prev === 'solid' ? 'dashed' : 'solid');
-    
+
     setConnectionLine({ start: null, end: null });
   }, [edgeStyle, onEdgeConnect, parentOnEdgesChange, readOnly]);
 
   // Handle connect start
   const onConnectStart = useCallback((_: any, { nodeId }: { nodeId: string }) => {
     if (readOnly) return;
-    
+
     const node = nodes.find(n => n.id === nodeId);
     if (node) {
       setConnectionLine({
@@ -878,7 +875,7 @@ const WorkflowEditor: React.FC<WorkflowEditorProps> = ({
         end: null
       });
     }
-    
+
     setPendingConnection({ fromNode: nodeId, position: { x: 0, y: 0 } });
   }, [nodes, readOnly]);
 
@@ -886,10 +883,10 @@ const WorkflowEditor: React.FC<WorkflowEditorProps> = ({
   const onConnectEnd = useCallback(
     (event: any, connectionState: any) => {
       if (readOnly) return;
-      
+
       if (!connectionState.isValid && connectionState.fromNode) {
         const { clientX, clientY } = 'changedTouches' in event ? event.changedTouches[0] : event;
-        
+
         const position = screenToFlowPosition({
           x: clientX,
           y: clientY,
@@ -898,14 +895,14 @@ const WorkflowEditor: React.FC<WorkflowEditorProps> = ({
         // Check if dropping into a subflow
         const targetSubFlow = nodes.find(node => {
           if (node.type !== 'subFlowNode') return false;
-          
+
           const nodeBounds = {
             left: node.position.x,
             right: node.position.x + (node.width || LAYOUT_CONFIG.subFlowWidth),
             top: node.position.y,
             bottom: node.position.y + (node.height || LAYOUT_CONFIG.subFlowHeight),
           };
-          
+
           return (
             position.x >= nodeBounds.left &&
             position.x <= nodeBounds.right &&
@@ -913,18 +910,18 @@ const WorkflowEditor: React.FC<WorkflowEditorProps> = ({
             position.y <= nodeBounds.bottom
           );
         });
-        
+
         setPendingConnection({
           fromNode: connectionState.fromNode.id,
           position: position,
           parentId: targetSubFlow?.id,
         });
-        
+
         setSelectedAction(null);
         setIsEditing(false);
         openDrawer();
       }
-      
+
       setConnectionLine({ start: null, end: null });
     },
     [screenToFlowPosition, readOnly, openDrawer, nodes]
@@ -933,13 +930,13 @@ const WorkflowEditor: React.FC<WorkflowEditorProps> = ({
   // Handle edge click
   const onEdgeClick = useCallback((event: React.MouseEvent, edge: Edge) => {
     event.stopPropagation();
-    
+
     if (!readOnly) {
       const updatedEdges = edges.map(e => ({
         ...e,
         selected: e.id === edge.id ? !e.selected : false
       }));
-      
+
       setEdges(updatedEdges);
       parentOnEdgesChange(updatedEdges);
     }
@@ -954,9 +951,9 @@ const WorkflowEditor: React.FC<WorkflowEditorProps> = ({
   // Handle edge context menu
   const handleEdgeContextMenu = useCallback(async (event: React.MouseEvent, edge: Edge) => {
     event.preventDefault();
-    
+
     if (readOnly) return;
-    
+
     const result = await prompt({
       title: 'Connection Options',
       description: 'What would you like to do with this connection?',
@@ -975,12 +972,12 @@ const WorkflowEditor: React.FC<WorkflowEditorProps> = ({
       x: window.innerWidth / 2,
       y: window.innerHeight / 2,
     });
-    
+
     setPendingConnection({
       fromNode: 'start-node',
       position: center,
     });
-    
+
     setSelectedAction(null);
     setIsEditing(false);
     openDrawer();
@@ -992,7 +989,7 @@ const WorkflowEditor: React.FC<WorkflowEditorProps> = ({
       x: window.innerWidth / 2,
       y: window.innerHeight / 2,
     });
-    
+
     const newSubFlowId = `subflow_${Date.now()}`;
     const newSubFlow: ActionNode = {
       id: newSubFlowId,
@@ -1018,7 +1015,7 @@ const WorkflowEditor: React.FC<WorkflowEditorProps> = ({
     const updatedNodes = [...nodes, newSubFlow];
     setNodes(updatedNodes);
     parentOnNodesChange(updatedNodes);
-    
+
     if (onAddSubFlow) {
       onAddSubFlow(center);
     }
@@ -1033,22 +1030,22 @@ const WorkflowEditor: React.FC<WorkflowEditorProps> = ({
     } else if (isEditing && selectedAction) {
       const updatedNodes = nodes.map((node) =>
         node.id === selectedAction.id
-          ? { 
-              ...node, 
-              data: { 
-                ...actionData, 
-                onClick: handleNodeClick,
-                sourcePosition: node.data.sourcePosition,
-                targetPosition: node.data.targetPosition,
-                isSubFlow: node.type === 'subFlowNode',
-              } 
+          ? {
+            ...node,
+            data: {
+              ...actionData,
+              onClick: handleNodeClick,
+              sourcePosition: node.data.sourcePosition,
+              targetPosition: node.data.targetPosition,
+              isSubFlow: node.type === 'subFlowNode',
             }
+          }
           : node
       );
-      
+
       setNodes(updatedNodes);
       parentOnNodesChange(updatedNodes);
-      
+
       if (onNodeEdit) {
         onNodeEdit(selectedAction.id);
       }
@@ -1056,6 +1053,7 @@ const WorkflowEditor: React.FC<WorkflowEditorProps> = ({
       const newNodeId = `node_${Date.now()}`;
       const newNode: ActionNode = {
         // id: newNodeId,
+        ...actionData,
         type: 'actionNode',
         position: pendingConnection.position,
         parentId: pendingConnection.parentId,
@@ -1073,19 +1071,19 @@ const WorkflowEditor: React.FC<WorkflowEditorProps> = ({
       };
 
       let newAct = await onCreateNodeFromEdge(
-        pendingConnection.fromNode, 
-        pendingConnection.position, 
+        pendingConnection.fromNode,
+        pendingConnection.position,
         actionData
       ) as any;
 
-      
-      const updatedNodes = [...nodes, {...newNode, id: newAct?.id}];
+      console.log(newAct, 'NEW RELATION ACTION')
+      const updatedNodes = [...nodes, { ...newNode, id: newAct?.id }];
       setNodes(updatedNodes);
       parentOnNodesChange(updatedNodes);
 
 
 
-const newEdge: ConnectionEdge = {
+      const newEdge: ConnectionEdge = {
         id: `edge_${pendingConnection.fromNode}_${newAct?.id || newNodeId}_${Date.now()}`,
         source: pendingConnection.fromNode,
         target: newAct?.id || newNodeId,
@@ -1096,24 +1094,24 @@ const newEdge: ConnectionEdge = {
           width: 12,
           height: 12,
         },
-        style: { 
-          stroke: '#4b5563', 
+        style: {
+          stroke: '#4b5563',
           strokeWidth: 2,
         },
         data: {
           style: 'solid',
         },
       };
-     
-
-   let createdConnection = await onEdgeConnect(newEdge);
 
 
-    setEdges((eds) => {
-      const newEdges = addEdge(newEdge, eds);
-      parentOnEdgesChange(newEdges);
-      return newEdges;
-    });
+      let createdConnection = await onEdgeConnect(newEdge);
+
+
+      setEdges((eds) => {
+        const newEdges = addEdge(newEdge, eds);
+        parentOnEdgesChange(newEdges);
+        return newEdges;
+      });
 
 
 
@@ -1121,7 +1119,7 @@ const newEdge: ConnectionEdge = {
       // setEdges(updatedEdges);
       // parentOnEdgesChange(updatedEdges);
     }
-    
+
     closeDrawer();
     setSelectedAction(null);
     setIsEditing(false);
@@ -1131,7 +1129,7 @@ const newEdge: ConnectionEdge = {
       fitView({ padding: 0.2 });
     }, 100);
   };
-  
+
   const onNodeDragStop = useCallback(() => {
     setNodes((nds) =>
       resolveCollisions(nds, {
@@ -1145,17 +1143,17 @@ const newEdge: ConnectionEdge = {
   // Apply dagre layout
   const applyDagreLayout = (direction: LayoutDirection) => {
     if (nodes.length === 0 || readOnly) return;
-    
+
     setIsLayouting(true);
     setLayoutDirection(direction);
     onLayoutChange?.(direction);
 
     try {
       const g = new dagre.graphlib.Graph();
-      
-      g.setGraph({ 
-        rankdir: direction, 
-        nodesep: LAYOUT_CONFIG.nodeSep, 
+
+      g.setGraph({
+        rankdir: direction,
+        nodesep: LAYOUT_CONFIG.nodeSep,
         ranksep: LAYOUT_CONFIG.rankSep,
         marginx: 50,
         marginy: 50,
@@ -1167,8 +1165,8 @@ const newEdge: ConnectionEdge = {
       const childNodes = nodes.filter(n => n.parentId);
 
       rootNodes.forEach(node => {
-        g.setNode(node.id, { 
-          width: node.type === 'subFlowNode' ? LAYOUT_CONFIG.subFlowWidth : (node.width || LAYOUT_CONFIG.nodeWidth), 
+        g.setNode(node.id, {
+          width: node.type === 'subFlowNode' ? LAYOUT_CONFIG.subFlowWidth : (node.width || LAYOUT_CONFIG.nodeWidth),
           height: node.type === 'subFlowNode' ? LAYOUT_CONFIG.subFlowHeight : (node.height || LAYOUT_CONFIG.nodeHeight),
         });
       });
@@ -1180,7 +1178,7 @@ const newEdge: ConnectionEdge = {
       dagre.layout(g);
 
       const isVertical = direction === 'TB' || direction === 'BT';
-      
+
       const layoutedNodes = nodes.map(node => {
         if (node.parentId) {
           // Child nodes position relative to parent
@@ -1205,8 +1203,8 @@ const newEdge: ConnectionEdge = {
           if (nodeWithPos) {
             return {
               ...node,
-              position: { 
-                x: nodeWithPos.x - (node.type === 'subFlowNode' ? LAYOUT_CONFIG.subFlowWidth : (node.width || LAYOUT_CONFIG.nodeWidth)) / 2, 
+              position: {
+                x: nodeWithPos.x - (node.type === 'subFlowNode' ? LAYOUT_CONFIG.subFlowWidth : (node.width || LAYOUT_CONFIG.nodeWidth)) / 2,
                 y: nodeWithPos.y - (node.type === 'subFlowNode' ? LAYOUT_CONFIG.subFlowHeight : (node.height || LAYOUT_CONFIG.nodeHeight)) / 2,
               },
               data: {
@@ -1222,7 +1220,7 @@ const newEdge: ConnectionEdge = {
 
       setNodes(layoutedNodes);
       parentOnNodesChange(layoutedNodes);
-      
+
       setTimeout(() => {
         fitView({ padding: 0.2 });
       }, 100);
@@ -1266,9 +1264,9 @@ const newEdge: ConnectionEdge = {
         >
           <Background color="#e5e7eb" gap={16} />
           <Controls showFitView={true} showInteractive={true} />
-          
+
           {/* Save/Cancel Panel */}
-           {/* {hasChanges && !readOnly && (
+          {/* {hasChanges && !readOnly && (
             <Panel position="top-center" className="flex gap-2 bg-white rounded-lg shadow-lg p-2 z-10">
               <Button
                 variant="primary"
@@ -1289,7 +1287,7 @@ const newEdge: ConnectionEdge = {
               </Button>
             </Panel>
           )}  */}
-          
+
           {/* Main Controls */}
           <Panel position="top-right" className="flex flex-col gap-2">
             {/* Add buttons */}
@@ -1307,11 +1305,11 @@ const newEdge: ConnectionEdge = {
                 </Tooltip>
               </div>
             )}
-            
+
             {/* Layout Controls */}
             <div className="flex gap-2 bg-white rounded-lg shadow-lg p-2">
               <Tooltip content="Left to Right">
-                <IconButton 
+                <IconButton
                   onClick={() => applyDagreLayout('LR')}
                   isLoading={isLayouting}
                   variant={layoutDirection === 'LR' ? 'primary' : 'transparent'}
@@ -1320,7 +1318,7 @@ const newEdge: ConnectionEdge = {
                 </IconButton>
               </Tooltip>
               <Tooltip content="Right to Left">
-                <IconButton 
+                <IconButton
                   onClick={() => applyDagreLayout('RL')}
                   isLoading={isLayouting}
                   variant={layoutDirection === 'RL' ? 'primary' : 'transparent'}
@@ -1329,7 +1327,7 @@ const newEdge: ConnectionEdge = {
                 </IconButton>
               </Tooltip>
               <Tooltip content="Top to Bottom">
-                <IconButton 
+                <IconButton
                   onClick={() => applyDagreLayout('TB')}
                   isLoading={isLayouting}
                   variant={layoutDirection === 'TB' ? 'primary' : 'transparent'}
@@ -1338,7 +1336,7 @@ const newEdge: ConnectionEdge = {
                 </IconButton>
               </Tooltip>
               <Tooltip content="Bottom to Top">
-                <IconButton 
+                <IconButton
                   onClick={() => applyDagreLayout('BT')}
                   isLoading={isLayouting}
                   variant={layoutDirection === 'BT' ? 'primary' : 'transparent'}

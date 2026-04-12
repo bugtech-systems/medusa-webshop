@@ -11,26 +11,26 @@ import { useExecuteAction } from "../../../hooks/api/actions"
 import { toast } from "@medusajs/ui"
 import { Position } from "@xyflow/react"
 
- 
+
 
 const ActionFlowsPage = () => {
   const [selectedWorkflowId, setSelectedWorkflowId] = useState<string | null>(null)
   const [workflowNodes, setWorkflowNodes] = useState<ActionNode[]>([])
   const [workflowEdges, setWorkflowEdges] = useState<ConnectionEdge[]>([])
-  
+
   // Fetch workflows (actions)
   const { data: workflowsData, isLoading: workflowsLoading, refetch: refetchWorkflows } = useWorkflows() as any
-  
+
   // Fetch connections data
-  const { data: connectionsData, mutateAsync: fetchConnections, isLoading: connectionsLoading } = 
+  const { data: connectionsData, mutateAsync: fetchConnections, isLoading: connectionsLoading } =
     useExecuteAction('get-relation-connections') as any
-  const { mutateAsync: createConnection, isLoading: isCreating } = 
+  const { mutateAsync: createConnection, isLoading: isCreating } =
     useExecuteAction('find-or-create-connection') as any
-  const { mutateAsync: createActionRelation, isLoading: isCreatingAction } = 
-    useExecuteAction('create-relation-workflow') as any
-  const { mutateAsync: deleteRelation, isLoading: deletingRelation } = 
+  const { mutateAsync: createActionRelation, isLoading: isCreatingAction } =
+    useExecuteAction('create-relation') as any
+  const { mutateAsync: deleteRelation, isLoading: deletingRelation } =
     useExecuteAction('delete-relation-and-connections') as any
-  const { mutateAsync: deleteConnection, isLoading: deletingConnection } = 
+  const { mutateAsync: deleteConnection, isLoading: deletingConnection } =
     useExecuteAction('delete-action-relation-connection') as any
 
   // Update workflow mutation
@@ -38,24 +38,24 @@ const ActionFlowsPage = () => {
 
   // Transform actions and connections into workflow definition
   const prepareWorkflowDefinition = useCallback((actions: ActionRelation[], connections: Connection[]) => {
-       const startNode: ActionNode = {
-            id: 'start-node',
-            type: 'actionNode',
-            position: { x: 150, y: 150 },
-            data: {
-              id: 'start-node',
-              label: 'Start Alayon',
-              type: 'start',
-              status: 'active',
-              config: {},
-              isStartNode: true,
-              sourcePosition: Position.Right,
-              targetPosition: Position.Left,
-            },
-          } 
-          
-    
-    
+    const startNode: ActionNode = {
+      id: 'start-node',
+      type: 'actionNode',
+      position: { x: 150, y: 150 },
+      data: {
+        id: 'start-node',
+        label: 'Start Alayon',
+        type: 'start',
+        status: 'active',
+        config: {},
+        isStartNode: true,
+        sourcePosition: Position.Right,
+        targetPosition: Position.Left,
+      },
+    }
+
+
+
     if (!actions?.length) return { nodes: [startNode], edges: [] }
 
 
@@ -64,9 +64,9 @@ const ActionFlowsPage = () => {
     const nodes: ActionNode[] = actions.map((action: any, index) => ({
       id: action.id,
       type: 'actionNode',
-      position: action.metadata.position || { 
-        x: 200 + ((index + 1) % 3) * 250, 
-        y: 150 + Math.floor((index + 1) / 3) * 100 
+      position: action.metadata.position || {
+        x: 200 + ((index + 1) % 3) * 250,
+        y: 150 + Math.floor((index + 1) / 3) * 100
       },
       data: {
         ...action,
@@ -81,9 +81,9 @@ const ActionFlowsPage = () => {
       target: conn.target,
       ...conn.metadata
     })) || []
-    
-       
-          
+
+
+
 
     return { nodes: [startNode, ...nodes], edges }
   }, [])
@@ -181,26 +181,26 @@ const ActionFlowsPage = () => {
 
 
     setWorkflowNodes(prev => [...prev, newNode])
-    
 
-    
-   let {success, data} = await createActionRelation({
-        parameters: {
-          label: actionData.label,
-          action_id: actionData.id,
-          metadata: newNode
-        }
+
+
+    let { success, data } = await createActionRelation({
+      parameters: {
+        label: actionData.label,
+        action_id: actionData.id,
+        metadata: newNode
+      }
     })
-    
-        if(!success) return;
-    
+
+    // if (!success) return;
 
 
-    
-  return data
 
-     
-    
+
+    return data
+
+
+
   }
 
   // Handle adding new action from button
@@ -220,33 +220,33 @@ const ActionFlowsPage = () => {
     }
     setWorkflowNodes(prev => [...prev, newNode])
   }
-  
-    // Handle adding new action from button
+
+  // Handle adding new action from button
   const handleAddConnection = async (connection: any) => {
-      let { id, target, source, ...metadata} = connection;
-   let {success, data} = await createConnection({
-        parameters: {
-        source:  connection.source,
+    let { id, target, source, ...metadata } = connection;
+    let { success, data } = await createConnection({
+      parameters: {
+        source: connection.source,
         target: connection.target,
         metadata
-        }
-      })
+      }
+    })
 
-      if(!success) return;
+    // if (!success) return;
 
-      return data
+    return data
   }
-  
+
   const handleDeleteNode = async (n) => {
-      await deleteRelation({parameters: {id: n}})
+    await deleteRelation({ parameters: { id: n } })
   }
-  
- const handleDeleteConnection = async (n) => {
-      await deleteConnection({parameters: {id: n}})
+
+  const handleDeleteConnection = async (n) => {
+    await deleteConnection({ parameters: { id: n } })
 
   }
-  
-  
+
+
   // Handle opening subflow
   const handleOpenSubflow = (subflowId: string) => {
     setSelectedWorkflowId(subflowId)
@@ -281,6 +281,7 @@ const ActionFlowsPage = () => {
           onSave={handleSaveWorkflow}
           onAddAction={handleAddAction}
           onNodeDelete={handleDeleteNode}
+          onNodeClick={(e) => console.log(e, 'Node CLicked')}
           onEdgeDelete={handleDeleteConnection}
           onCreateNodeFromEdge={handleCreateNodeFromEdge}
           onOpenSubflow={handleOpenSubflow}
