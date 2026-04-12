@@ -55,11 +55,11 @@ export default class AiClassService {
 
   async getSession(id?: any) {
     let session;
-    let sessionId = this.sessionId || id;
+    let sessionId = id || this.sessionId;
     if (!sessionId) {
       // session = await this.aiService.createSession();
       // await this.actionService.setSession(session.id, session);
-      return {}
+      session = {}
     } else {
       let redisSession = await this.actionService.getSession(sessionId);
       if (redisSession) {
@@ -67,24 +67,42 @@ export default class AiClassService {
       } else {
         let dbSession = await this.aiService.retrieveConversation(sessionId);
         if (!dbSession) {
-          return {}
+          session = {}
         } else {
           session = dbSession;
         }
       }
     }
 
-    await this.actionService.setSession(this.sessionId, session);
+    if (session.id) {
+      await this.actionService.setSession(sessionId, session);
+    } else {
+      await this.actionService.deleteSession(sessionId);
+    }
+
     return session;
   }
 
   async updateSession(session?: any) {
-    let sessionOld = await this.getSession();
+    let sessionOld = await this.getSession(session?.id) as any;
     if (sessionOld?.id) {
-      await this.actionService.updateSession(this.sessionId, { ...sessionOld, ...session });
-      await this.aiService.updateAiConversationSessions({ ...sessionOld, ...session });
+      let { created_at, updated_at, deleted_at, id, relation_id = 'start-node', auth_id, context, ...metadata } = sessionOld as any
+      let { id: sessionId, headers, session_id, context: sessionContext, relation_id: sessionRelation, ...cleanSession } = session as any
+
+      await this.actionService.updateSession(this.sessionId, { relation_id, auth_id, ...metadata, ...cleanSession });
+      await this.aiService.updateAiConversationSessions({ ...sessionOld, ...cleanSession, metadata: { ...metadata, ...cleanSession } });
     }
     return session;
+  }
+
+  async updateContext(id, context?: any) {
+    let sessionOld = await this.getSession(id);
+
+    if (sessionOld?.id) {
+      await this.actionService.updateSession(this.sessionId, { ...sessionOld, context });
+      await this.aiService.updateAiConversationSessions({ ...sessionOld, context });
+    }
+    return { ...sessionOld, context };
   }
 
   async clearSession() {
@@ -181,16 +199,16 @@ export default class AiClassService {
 
       if (isEmptyObject(context_template)) {
         contextOutput = await expressionEvaluator.resolvePlaceholders(context_template, { ...session, result: result.data, outputs });
+        // this.updateContext(session.id, contextOutput)
       }
 
 
-      await this.actionService.updateSession(session?.id, { ...session, context: { ...session.context, ...result.context, ...contextOutput } });
-      await this.updateSession({ ...session, context: { ...session.context, ...result.context, ...contextOutput } });
 
       finalResult['outputs'] = outputs;
       finalResult['session_id'] = session.id;
       // 8. Cache the result if allowed
 
+      await this.updateSession({ ...session, outputs, context: { ...session.context, ...result.context, ...contextOutput } });
 
       await this.actionService.updateExecutions({
         id: executionId,
@@ -382,6 +400,7 @@ export default class AiClassService {
           { ...session, ...oldParams, context: variables, outputs: workflowResults, result: output }
         );
         variables = { ...variables, ...contextOutput };
+        // this.updateContext(session.id, variables)
       }
 
 
@@ -404,13 +423,15 @@ export default class AiClassService {
       finalResult = output;
       success = result?.success ?? true;
       oldParams = { ...oldParams, ...mergedParams }
-      await this.actionService.updateSession(session.id, { result: output, context: { ...session.context, ...result.context, ...contextOutput } });
+      // await this.actionService.updateSession(session.id, { result: output, context: { ...session.context, ...result.context, ...contextOutput } });
+      await this.updateSession({ ...session, inputs: oldParams, outputs: workflowResults, result: output, context: variables });
 
       if (result?.exit || result?.status === 'error') break;
 
       index++;
     }
 
+    await this.updateSession({ ...session, inputs: oldParams, outputs: workflowResults, result: finalResult, context: variables });
 
 
     const workflowObject = this.generateWorkflowObject(oldParams, workflowResults, variables, finalResult, success, template);
