@@ -1,6 +1,6 @@
 import axios from "axios"
 
-const OLLAMA_BASE_URL = process.env.OLLAMA_URL || "http://localhost:11434"
+const OLLAMA_BASE_URL = process.env.OLLAMA_URL || "http://192.168.1.100:11434"
 
 export async function generateEmbedding(input: string): Promise<number[]> {
   const { data } = await axios.post(
@@ -74,7 +74,12 @@ export async function chatCompletion({
   messages,
   model = "llama3.2:1b",
   format = 'json',
-  options = {}
+  options = {
+    "num_predict": 500,
+    "temperature": 0.2,
+    "num_ctx": 2048,
+    "num_thread": 2
+  }
 }: any) {
   const response = await fetch(`${OLLAMA_BASE_URL}/api/chat`, {
     method: "POST",
@@ -112,8 +117,8 @@ export async function generateCompletion({
       format
     }),
   });
-  
-  
+
+
 
   const ollamaResponse = await response.json();
 

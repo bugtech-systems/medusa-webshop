@@ -14,7 +14,7 @@ import {
   Switch,
   Container,
 } from '@medusajs/ui'
-import { 
+import {
   XMark,
   Trash,
   Check,
@@ -143,13 +143,13 @@ const defaultModels = [
 ]
 
 // Custom Range Slider Component
-const RangeSlider = ({ 
-  value, 
-  onValueChange, 
-  min, 
-  max, 
-  step 
-}: { 
+const RangeSlider = ({
+  value,
+  onValueChange,
+  min,
+  max,
+  step
+}: {
   value: number[]
   onValueChange: (value: number[]) => void
   min: number
@@ -180,12 +180,12 @@ const RangeSlider = ({
 }
 
 // JSON Editor Component
-const JSONEditor = ({ 
-  data, 
-  onChange 
-}: { 
-  data: any, 
-  onChange?: (data: any) => void 
+const JSONEditor = ({
+  data,
+  onChange
+}: {
+  data: any,
+  onChange?: (data: any) => void
 }) => {
   const [jsonString, setJsonString] = useState(JSON.stringify(data, null, 2))
   const [error, setError] = useState<string | null>(null)
@@ -232,14 +232,14 @@ export const AIModelTestDrawer = ({
   initialContext = {},
   initialParameters = {},
 }: AIModelTestDrawerProps) => {
-    const { data: messagesData, mutateAsync: fetchMessages, isLoading: messagesLoading } = 
-      useExecuteAction('get-messages-by-model-id') as any
-    const {  mutateAsync: updateFeedback, isLoading: loadingFeedback } = 
-      useExecuteAction('update-message-feedback') as any
-      const {  mutateAsync: deletePair } = 
-      useExecuteAction('delete-message-pair') as any
-      const {  mutateAsync: deleteMessagesByModel } = 
-      useExecuteAction('delete-messages-by-model') as any
+  const { data: messagesData, mutateAsync: fetchMessages, isLoading: messagesLoading } =
+    useExecuteAction('get-messages-by-model-id') as any
+  const { mutateAsync: updateFeedback, isLoading: loadingFeedback } =
+    useExecuteAction('update-message-feedback') as any
+  const { mutateAsync: deletePair } =
+    useExecuteAction('delete-message-pair') as any
+  const { mutateAsync: deleteMessagesByModel } =
+    useExecuteAction('delete-messages-by-model') as any
 
   const [activeTab, setActiveTab] = useState<'conversation' | 'context' | 'parameters'>('conversation')
   const [messagePairs, setMessagePairs] = useState<MessagePair[]>([])
@@ -265,8 +265,8 @@ export const AIModelTestDrawer = ({
 
   useEffect(() => {
 
-    if(open){
-        handleMessages()
+    if (open) {
+      handleMessages()
     }
 
   }, [open])
@@ -295,44 +295,44 @@ export const AIModelTestDrawer = ({
     }
   }, [editingMessage])
 
-const groupMessagesToPairs = (messages: Message[]): MessagePair[] => {
-  const pairs: MessagePair[] = []
-  
-  for (let i = 0; i < messages.length; i++) {
-    const message = messages[i] as any;
-    
-    if (message.role === 'user') {
-      const pairId = `${message.session_id}` || `pair-${Date.now()}-${i}`
-      const assistantMessage = messages[i + 1]?.role === 'assistant' 
-        ? messages[i + 1] 
-        : undefined as any;
-      
-      const systemMessage = messages[i - 1]?.role === 'system' 
-        ? messages[i - 1] 
-        : undefined as any;
-      
-      pairs.push({
-        id: pairId,
-        systemMessage: systemMessage,
-        userMessage: {...message, feedback: message.metadata?.feedback, timestamp: new Date(message.created_at)},
-        assistantMessage: {...assistantMessage, feedback: assistantMessage.metadata?.feedback, timestamp: new Date(assistantMessage.created_at)},
-      })
-      
-      // Skip the assistant message if it was paired
-      if (assistantMessage) {
-        i++
+  const groupMessagesToPairs = (messages: Message[]): MessagePair[] => {
+    const pairs: MessagePair[] = []
+
+    for (let i = 0; i < messages.length; i++) {
+      const message = messages[i] as any;
+
+      if (message.role === 'user') {
+        const pairId = `${message.session_id}` || `pair-${Date.now()}-${i}`
+        const assistantMessage = messages[i + 1]?.role === 'assistant'
+          ? messages[i + 1]
+          : undefined as any;
+
+        const systemMessage = messages[i - 1]?.role === 'system'
+          ? messages[i - 1]
+          : undefined as any;
+
+        pairs.push({
+          id: pairId,
+          systemMessage: systemMessage,
+          userMessage: { ...message, feedback: message?.metadata?.feedback, timestamp: new Date(message?.created_at) },
+          assistantMessage: { ...assistantMessage, feedback: assistantMessage?.metadata?.feedback, timestamp: new Date(assistantMessage?.created_at) },
+        })
+
+        // Skip the assistant message if it was paired
+        if (assistantMessage) {
+          i++
+        }
       }
     }
+
+    return pairs
   }
-  
-  return pairs
-}
 
   const handleMessages = async () => {
-      let {data} =  await fetchMessages({parameters: {id: model.id}});
-let newPairs = groupMessagesToPairs(data)
-        console.log(newPairs, 'NEW PAIRS')
-        setMessagePairs(newPairs)
+    let { data } = await fetchMessages({ parameters: { id: model.id } });
+    let newPairs = groupMessagesToPairs(data)
+    console.log(newPairs, 'NEW PAIRS')
+    setMessagePairs(newPairs)
   }
 
   const handleSendMessage = async () => {
@@ -355,34 +355,34 @@ let newPairs = groupMessagesToPairs(data)
     setIsSending(true)
 
     try {
-         const res = await fetch("/actions/chat-ai-model/execute", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-         "session_id": session_id as any
-      },
-      body: JSON.stringify({ parameters: { message: inputMessage, model: model.model_name, session_id, parameters: parameters } })
-    })
+      const res = await fetch("/actions/chat-ai-model/execute", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "session_id": session_id as any
+        },
+        body: JSON.stringify({ parameters: { message: inputMessage, model: model.model_name, session_id, parameters: parameters } })
+      })
 
-    const json = await res.json()
-console.log(json, 'JSON RESPP')
-    const assistantText = json.data.message   // 👈 the field you want
-    
-        const assistantMessage: Message = {
-          id: `assistant-${Date.now()}`,
-          role: 'assistant',
-          content: assistantText,
-          timestamp: new Date(),
-        }
-        
-        setMessagePairs(prev =>
-          prev.map(pair =>
-            pair.id === pairId
-              ? { ...pair, assistantMessage }
-              : pair
-          )
+      const json = await res.json()
+      console.log(json, 'JSON RESPP')
+      const assistantText = json.data.message   // 👈 the field you want
+
+      const assistantMessage: Message = {
+        id: `assistant-${Date.now()}`,
+        role: 'assistant',
+        content: assistantText,
+        timestamp: new Date(),
+      }
+
+      setMessagePairs(prev =>
+        prev.map(pair =>
+          pair.id === pairId
+            ? { ...pair, assistantMessage }
+            : pair
         )
-    
+      )
+
     } catch (error) {
       console.error('Error sending message:', error)
     } finally {
@@ -400,26 +400,26 @@ console.log(json, 'JSON RESPP')
 
       let system = messagePairs.find(a => a.id == pairId);
 
-         const res = await fetch("/ai/chat", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "session_id": session_id as any
-      },
-      body: JSON.stringify({ config: parameters, message: pair.userMessage.content, model: model.model_name, system: system?.systemMessage?.content, session_id })
-    })
+      const res = await fetch("/ai/chat", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "session_id": session_id as any
+        },
+        body: JSON.stringify({ config: parameters, message: pair.userMessage.content, model: model.model_name, system: system?.systemMessage?.content, session_id })
+      })
 
-    const json = await res.json()
-console.log(context, parameters, json, 'REGEN JSON RESPP')
-            const assistantText = json   // 👈 the field you want
+      const json = await res.json()
+      console.log(context, parameters, json, 'REGEN JSON RESPP')
+      const assistantText = json   // 👈 the field you want
 
-        setMessagePairs(prev =>
-          prev.map(p =>
-            p.id === pairId
-              ? { ...p, assistantMessage: {...p.assistantMessage, content: assistantText } as any }
-              : p
-          )
+      setMessagePairs(prev =>
+        prev.map(p =>
+          p.id === pairId
+            ? { ...p, assistantMessage: { ...p.assistantMessage, content: assistantText } as any }
+            : p
         )
+      )
     } catch (error) {
       console.error('Error regenerating message:', error)
     } finally {
@@ -429,10 +429,10 @@ console.log(context, parameters, json, 'REGEN JSON RESPP')
 
   const handleFeedback = async (messageId: string, feedback: 'like' | 'dislike') => {
     let pair = messagePairs.find(a => a.assistantMessage?.id == messageId) as any;
-    
-    if(pair?.id){
-        let {feedback: oldFeedback} = pair.assistantMessage;
-        await updateFeedback({parameters: {id: pair.id, feedback: feedback == oldFeedback ? '' : feedback }})
+
+    if (pair?.id) {
+      let { feedback: oldFeedback } = pair.assistantMessage;
+      await updateFeedback({ parameters: { id: pair.id, feedback: feedback == oldFeedback ? '' : feedback } })
     }
 
     setMessagePairs(prev =>
@@ -468,10 +468,10 @@ console.log(context, parameters, json, 'REGEN JSON RESPP')
     if (editingMessage) {
       setMessagePairs(prev =>
         prev.map(pair => {
-          if (pair.userMessage.id === editingMessage.id) {
+          if (pair.userMessage.id === editingMessage?.id) {
             return { ...pair, userMessage: { ...editingMessage, isEditing: false } }
           }
-          if (pair.assistantMessage?.id === editingMessage.id) {
+          if (pair.assistantMessage?.id === editingMessage?.id) {
             return { ...pair, assistantMessage: { ...editingMessage, isEditing: false } }
           }
           return pair
@@ -488,19 +488,19 @@ console.log(context, parameters, json, 'REGEN JSON RESPP')
   const handleDeletePair = async (pairId: string) => {
 
 
-    if(pairId.includes('mess')){
+    if (pairId.includes('mess')) {
 
-    await deletePair({parameters: {id: pairId}});
-    setMessagePairs(prev => prev.filter(pair => pair.id !== pairId))
+      await deletePair({ parameters: { id: pairId } });
+      setMessagePairs(prev => prev.filter(pair => pair.id !== pairId))
     } else {
-    handleClearConversation(pairId)
+      handleClearConversation(pairId)
     }
     setShowDeletePrompt(null)
 
   }
 
   const handleClearConversation = async (id) => {
-    await deleteMessagesByModel({parameters: {id}})
+    await deleteMessagesByModel({ parameters: { id } })
     setMessagePairs([])
   }
 
@@ -542,7 +542,7 @@ console.log(context, parameters, json, 'REGEN JSON RESPP')
     }
   }
 
-
+  console.log(messagesData, 'MESSAGES DATA')
 
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
@@ -572,8 +572,8 @@ console.log(context, parameters, json, 'REGEN JSON RESPP')
           </div>
         </Drawer.Header>
 
-        <Tabs 
-          value={activeTab} 
+        <Tabs
+          value={activeTab}
           onValueChange={(value) => setActiveTab(value as 'conversation' | 'context' | 'parameters')}
         >
           <div className="border-b border-ui-border-base px-6">
@@ -602,18 +602,18 @@ console.log(context, parameters, json, 'REGEN JSON RESPP')
                   {messagePairs.map((pair) => (
                     <div key={pair.id} className="space-y-4">
                       {/* User Message */}
-                                     {showSystem && <>
-                            <div className="flex items-center justify-between mb-2">
-                              <div className="flex items-center gap-2">
-                                <Badge size="small" color="grey">
-                                  {getMessageLabel('system')}
-                                </Badge>
-                                {/* <span className="text-xs text-ui-fg-subtle">
+                      {showSystem && <>
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-2">
+                            <Badge size="small" color="grey">
+                              {getMessageLabel('system')}
+                            </Badge>
+                            {/* <span className="text-xs text-ui-fg-subtle">
                                   {pair.systemMessage?.timestamp.toLocaleTimeString()}
                                 </span> */}
-                              </div>
-                              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                {/* <Tooltip content="Edit message">
+                          </div>
+                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            {/* <Tooltip content="Edit message">
                                   <IconButton
                                     size="small"
                                     variant="transparent"
@@ -622,7 +622,7 @@ console.log(context, parameters, json, 'REGEN JSON RESPP')
                                     <PencilSquare />
                                   </IconButton>
                                 </Tooltip> */}
-                                {/* <Tooltip content="Delete conversation">
+                            {/* <Tooltip content="Delete conversation">
                                   <IconButton
                                     size="small"
                                     variant="transparent"
@@ -631,23 +631,23 @@ console.log(context, parameters, json, 'REGEN JSON RESPP')
                                     <Trash />
                                   </IconButton>
                                 </Tooltip> */}
-                              </div>
-                            </div>
-                            <div className="whitespace-pre-wrap text-ui-fg-base">
-                              {pair.systemMessage?.content}
-                            </div>
-                          </>}
+                          </div>
+                        </div>
+                        <div className="whitespace-pre-wrap text-ui-fg-base">
+                          {pair.systemMessage?.content}
+                        </div>
+                      </>}
                       <div
                         className={`rounded-lg p-4 border ${getMessageColor(
                           'user'
                         )} relative group`}
                       >
-       
+
                         {editingMessage?.id === pair.userMessage.id ? (
                           <div className="space-y-2">
                             <Textarea
                               ref={editTextareaRef}
-                              value={editingMessage.content}
+                              value={editingMessage?.content}
                               onChange={(e) =>
                                 setEditingMessage({
                                   ...editingMessage,
@@ -729,11 +729,11 @@ console.log(context, parameters, json, 'REGEN JSON RESPP')
                             'assistant'
                           )} relative group`}
                         >
-                          {editingMessage?.id === pair.assistantMessage.id ? (
+                          {(editingMessage && editingMessage?.id === pair.assistantMessage.id) ? (
                             <div className="space-y-2">
                               <Textarea
                                 ref={editTextareaRef}
-                                value={editingMessage.content}
+                                value={editingMessage?.content}
                                 onChange={(e) =>
                                   setEditingMessage({
                                     ...editingMessage,
@@ -802,7 +802,7 @@ console.log(context, parameters, json, 'REGEN JSON RESPP')
                                       </IconButton>
                                     </Tooltip>
                                   </div>
-                                  
+
                                   {/* Regenerate Button */}
                                   <Tooltip content="Regenerate response">
                                     <IconButton
@@ -837,7 +837,7 @@ console.log(context, parameters, json, 'REGEN JSON RESPP')
                     </div>
                   ))}
                   <div ref={messagesEndRef} />
-                  
+
                   {messagePairs.length === 0 && (
                     <div className="flex flex-col items-center justify-center h-64 text-center">
                       <ChatBubble />
@@ -866,22 +866,22 @@ console.log(context, parameters, json, 'REGEN JSON RESPP')
                   </p>
                 </div>
                 <div className='gap-5'>
-                                    <Button
-                      variant="primary"
-                      onClick={handleSendMessage}
-                      isLoading={isSending}
-                      disabled={!inputMessage.trim() || isSending}
-                    >
-                      <ArrowUpCircle />
-                      Send
-                    </Button>
-                             <Switch
-                             checked={showSystem}
-                      onCheckedChange={(e: any) => setShowSystem(e)}
-                    >
-                      System  
-                    </Switch>
-                    </div>
+                  <Button
+                    variant="primary"
+                    onClick={handleSendMessage}
+                    isLoading={isSending}
+                    disabled={!inputMessage.trim() || isSending}
+                  >
+                    <ArrowUpCircle />
+                    Send
+                  </Button>
+                  <Switch
+                    checked={showSystem}
+                    onCheckedChange={(e: any) => setShowSystem(e)}
+                  >
+                    System
+                  </Switch>
+                </div>
               </div>
             </Tabs.Content>
 
@@ -889,7 +889,7 @@ console.log(context, parameters, json, 'REGEN JSON RESPP')
             <Tabs.Content value="context">
               <div className="flex flex-col h-[600px]">
                 <div className="flex-1 overflow-y-auto space-y-6 pr-2">
-      
+
 
                   <div className="bg-ui-bg-subtle rounded-lg p-4">
                     <div className="flex items-center justify-between mb-4">
@@ -913,7 +913,7 @@ console.log(context, parameters, json, 'REGEN JSON RESPP')
             {/* Parameters Tab - Fixed Overflow */}
             <Tabs.Content value="parameters">
               <div className="flex flex-col h-[600px]">
-                <div 
+                <div
                   ref={parametersContainerRef}
                   className="flex-1 overflow-y-auto pr-2 space-y-6"
                 >
@@ -922,7 +922,7 @@ console.log(context, parameters, json, 'REGEN JSON RESPP')
                       <SettingsIcon />
                       Model Parameters
                     </h3>
-                    
+
                     <div className="space-y-6">
                       {/* Model Selection */}
 
@@ -1002,7 +1002,7 @@ console.log(context, parameters, json, 'REGEN JSON RESPP')
                         </p>
                       </div>
 
-                   
+
                       {/* Num Predict / Max Tokens */}
                       <div className="space-y-2 pb-2">
                         <Label>Max Tokens (num_predict)</Label>

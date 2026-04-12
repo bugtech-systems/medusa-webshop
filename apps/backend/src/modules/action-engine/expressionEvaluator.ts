@@ -2,26 +2,25 @@
 // Expression Evaluator with Helpers and Array Mapping
 // --------------------------------------
 
-import { generateEntityId } from "@medusajs/framework/utils";
 import { generateAlphaNumeric, sanitizePhoneNumber } from "../../utils/helpers";
 import { toSql } from 'pgvector';
 
 // Safe getter function - UPDATED to return null for missing values
 function get(obj, path, defaultValue = null) {
     if (!obj || !path) return defaultValue;
-    
+
     // Handle array bracket notation: items[0].name
     const parts = path.replace(/\[(\w+)\]/g, '.$1').split('.');
     let current = obj;
 
     for (const part of parts) {
         if (current === null || current === undefined) return defaultValue;
-        
+
         // Check if the property exists on the object
         if (typeof current === 'object' && !Object.prototype.hasOwnProperty.call(current, part)) {
             return defaultValue;
         }
-        
+
         current = current[part];
     }
 
@@ -62,34 +61,34 @@ const defaultFunctions = {
     number: str => str !== null && str !== undefined ? Number(str) : null,
     jsonStringify: str => str !== null && str !== undefined ? JSON.stringify(str, null, 2) : null,
     arrayParse: str => {
-              if (typeof str !== 'string') return str;
-              
-              // Replace single quotes with double quotes and wrap in array brackets if needed
-              try {
-                // Check if it looks like an array string
-                if (str.startsWith('[') && str.endsWith(']')) {
-                  // Replace single quotes with double quotes
-                  const jsonStr = str.replace(/'/g, '"');
-                  return JSON.parse(jsonStr);
-                }
-              } catch (e) {
-                console.error('Failed to parse string array:', e);
-              }
-              
-              return str;
-            },
+        if (typeof str !== 'string') return str;
+
+        // Replace single quotes with double quotes and wrap in array brackets if needed
+        try {
+            // Check if it looks like an array string
+            if (str.startsWith('[') && str.endsWith(']')) {
+                // Replace single quotes with double quotes
+                const jsonStr = str.replace(/'/g, '"');
+                return JSON.parse(jsonStr);
+            }
+        } catch (e) {
+            console.error('Failed to parse string array:', e);
+        }
+
+        return str;
+    },
     jsonParse: (value, pretty = false, indent = 2) => {
         if (value === null || value === undefined) return null;
-        
+
         // If value is already an object/array (not a JSON string), return as-is
         if (typeof value !== 'string') {
-            return pretty && value !== null && typeof value === 'object' 
+            return pretty && value !== null && typeof value === 'object'
                 ? JSON.stringify(value, null, indent)
                 : value;
         }
-        
+
         const trimmed = value.trim();
-        
+
         // Quick check for common JSON patterns
         if (
             (trimmed.startsWith('{') && trimmed.endsWith('}')) ||
@@ -105,7 +104,7 @@ const defaultFunctions = {
                 return value;
             }
         }
-        
+
         // Doesn't look like JSON, return original
         return value;
     },
@@ -119,7 +118,7 @@ const defaultFunctions = {
     dateNow: () => new Date().toISOString().split("T")[0],
 
     // number helpers
-    formatCurrency: num => num !== null && num !== undefined 
+    formatCurrency: num => num !== null && num !== undefined
         ? Number(num).toLocaleString("en-US", { style: "currency", currency: "USD" })
         : null,
     formatPhoneNumber: num => num ? sanitizePhoneNumber(num) : null,
@@ -141,7 +140,27 @@ const defaultFunctions = {
         if (!arr || !Array.isArray(arr)) return [];
         return arr.map(item => item && item[key] !== undefined ? item[key] : null);
     },
+    filterFields: (data, fields) => {
+        // Handle edge cases
+        if (!Array.isArray(data) || !Array.isArray(fields)) {
+            return [];
+        }
 
+        // Map through each object in the array
+        return data.map(item => {
+            // Create a new object with only the specified fields
+            const filteredObj = {};
+
+            fields.forEach(field => {
+                // Only include the field if it exists in the original object
+                if (item.hasOwnProperty(field)) {
+                    filteredObj[field] = item[field];
+                }
+            });
+
+            return filteredObj;
+        });
+    },
     // ✅ Merge two objects deeply
     mergeObjects: (obj1 = {}, obj2 = {}) => {
         if (!obj1 || typeof obj1 !== "object") return obj2 || null;
@@ -205,7 +224,7 @@ const defaultFunctions = {
             })
         );
     },
-    
+
     mapObject: async (obj, fieldMappings, context = {}, helpers = {}) => {
         if (!obj || typeof obj !== "object") return {};
 
@@ -270,7 +289,7 @@ const defaultFunctions = {
 
     arrayParamsObject: arr => {
         if (!Array.isArray(arr)) return { params: {}, defaults: {}, options: [] };
-        
+
         const params = {};
         const defaults = {};
         const fieldOptions = arr.map(a => {

@@ -183,7 +183,7 @@ export class AiRagOperationService {
 
 
     const res = await this.pool.query(
-      `SELECT id, text, action, usage_count, success_rate,
+      `SELECT id, text, action as handle, usage_count, success_rate,
         examples, negative_examples, (1 - (embedding <=> $1::vector)) AS similarity
        FROM rag
        WHERE 1 - (embedding <=> $1::vector) >= $2
@@ -231,7 +231,7 @@ async searchRAG(config) {
 
 console.log(embeddingVector, "EMBEDDDIING")
     const res = await client.query(
-      `SELECT id, text, action, usage_count, success_rate,
+      `SELECT id, text, action as handle, usage_count, success_rate,
         examples, negative_examples, (1 - (embedding <=> $1::vector)) AS similarity
        FROM ${this.quoteIdentifier(config.table)}
        WHERE 1 - (embedding <=> $1::vector) >= $2
