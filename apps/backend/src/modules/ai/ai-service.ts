@@ -86,11 +86,11 @@ export default class AiClassService {
   async updateSession(session?: any) {
     let sessionOld = await this.getSession(session?.id) as any;
     if (sessionOld?.id) {
-      let { created_at, updated_at, deleted_at, id, relation_id = 'start-node', auth_id, context, ...metadata } = sessionOld as any
-      let { id: sessionId, headers, session_id, context: sessionContext, relation_id: sessionRelation, ...cleanSession } = session as any
+      let { created_at, updated_at, deleted_at, id, context, ...metadata } = sessionOld as any
+      let { id: sessionId, headers, session_id, auth_id, relation_id = 'start-node', context: sessionContext, relation_id: sessionRelation, ...cleanSession } = session as any
 
       await this.actionService.updateSession(this.sessionId, { relation_id, auth_id, ...metadata, ...cleanSession });
-      await this.aiService.updateAiConversationSessions({ ...sessionOld, ...cleanSession, metadata: { ...metadata, ...cleanSession } });
+      await this.aiService.updateAiConversationSessions({ ...sessionOld, ...cleanSession, relation_id, metadata: { ...metadata, ...cleanSession } });
     }
     return session;
   }
@@ -424,14 +424,14 @@ export default class AiClassService {
       success = result?.success ?? true;
       oldParams = { ...oldParams, ...mergedParams }
       // await this.actionService.updateSession(session.id, { result: output, context: { ...session.context, ...result.context, ...contextOutput } });
-      await this.updateSession({ ...session, inputs: oldParams, outputs: workflowResults, result: output, context: variables });
+      await this.updateSession({ ...session, outputs: workflowResults, result: output, context: variables });
 
       if (result?.exit || result?.status === 'error') break;
 
       index++;
     }
 
-    await this.updateSession({ ...session, inputs: oldParams, outputs: workflowResults, result: finalResult, context: variables });
+    await this.updateSession({ ...session, outputs: workflowResults, result: finalResult, context: variables });
 
 
     const workflowObject = this.generateWorkflowObject(oldParams, workflowResults, variables, finalResult, success, template);

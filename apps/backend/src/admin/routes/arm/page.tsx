@@ -9,7 +9,7 @@ import { AiAssistent, ArrowPath, PencilSquare, ThumbDown, ThumbUp, Trash } from 
 import clsx from "clsx"
 import { motion, AnimatePresence } from "framer-motion"
 import { useExecuteAction, useExecution } from "../../hooks/api/actions"
-import {  Check } from "lucide-react"
+import { Check } from "lucide-react"
 import { Button, IconButton, Textarea, Tooltip, Badge, Prompt } from "@medusajs/ui"
 
 interface Message {
@@ -47,29 +47,29 @@ interface AIContext {
 export default function Home() {
   const { mutateAsync: chatAi, isPending } = useExecuteAction("chat-ai-conversation");
   const { mutateAsync: getChats, isPending: isLoading } = useExecuteAction("get-conversation-messages")
-  const {  mutateAsync: updateFeedback, isLoading: loadingFeedback } = 
-        useExecuteAction('update-message-feedback') as any
-  const {  mutateAsync: deletePair } = 
-        useExecuteAction('delete-message-pair') as any
-  const {  mutateAsync: updateMessage } = 
-        useExecuteAction('update-message-content') as any
+  const { mutateAsync: updateFeedback, isLoading: loadingFeedback } =
+    useExecuteAction('update-message-feedback') as any
+  const { mutateAsync: deletePair } =
+    useExecuteAction('delete-message-pair') as any
+  const { mutateAsync: updateMessage } =
+    useExecuteAction('update-message-content') as any
   const [messagePairs, setMessagePairs] = useState<any[]>([])
   const [messages, setMessages] = useState<Message[]>([])
   const [loading, setLoading] = useState(false)
-    const [inputMessage, setInputMessage] = useState('')
-    const [isSending, setIsSending] = useState(false)
-    const [showSystem, setShowSystem] = useState(false)
-    const [isRegenerating, setIsRegenerating] = useState<string | null>(null)
-    const [config, setConfig] = useState<any>({model: 'action-selector', relation_id: 'start-node', chat_url: ''});
-    const [context, setContext] = useState<AIContext | any>({})
-    const [parameters, setParameters] = useState<AIParameters | any>({})
-    const [editingMessage, setEditingMessage] = useState<Message | null>(null)
-    const [showDeletePrompt, setShowDeletePrompt] = useState<string | null>(null)
-    const bottomRef = useRef<HTMLDivElement>(null)
-    const messagesEndRef = useRef<HTMLDivElement>(null)
-    const textareaRef = useRef<HTMLTextAreaElement>(null)
-    const editTextareaRef = useRef<HTMLTextAreaElement>(null)
-    const parametersContainerRef = useRef<HTMLDivElement>(null)
+  const [inputMessage, setInputMessage] = useState('')
+  const [isSending, setIsSending] = useState(false)
+  const [showSystem, setShowSystem] = useState(false)
+  const [isRegenerating, setIsRegenerating] = useState<string | null>(null)
+  const [config, setConfig] = useState<any>({ model: 'action-selector', relation_id: 'start-node', chat_url: '' });
+  const [context, setContext] = useState<AIContext | any>({})
+  const [parameters, setParameters] = useState<AIParameters | any>({})
+  const [editingMessage, setEditingMessage] = useState<Message | null>(null)
+  const [showDeletePrompt, setShowDeletePrompt] = useState<string | null>(null)
+  const bottomRef = useRef<HTMLDivElement>(null)
+  const messagesEndRef = useRef<HTMLDivElement>(null)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const editTextareaRef = useRef<HTMLTextAreaElement>(null)
+  const parametersContainerRef = useRef<HTMLDivElement>(null)
 
   // Auto-scroll to latest message
   const scrollBottom = () => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
@@ -79,18 +79,18 @@ export default function Home() {
 
 
   const handleMessages = async (id) => {
-    let {data} = await getChats({parameters: {id}}) as any;
-setMessages(data);
-      // let {data} =  await fetchMessages({parameters: {id: model.id}});
-let newPairs = groupMessagesToPairs(data)
-        setMessagePairs(newPairs)
+    let { data } = await getChats({ parameters: { id } }) as any;
+    setMessages(data);
+    // let {data} =  await fetchMessages({parameters: {id: model.id}});
+    let newPairs = groupMessagesToPairs(data)
+    setMessagePairs(newPairs)
   }
 
   const handleSendMessage = async (text, model) => {
     console.log(text, model, 'haha')
     if (!text.trim() || isSending) return
-  const session_id = localStorage.getItem('session_id');
-  
+    const session_id = localStorage.getItem('session_id');
+
 
     const userMessage: Message = {
       id: `user-${Date.now()}`,
@@ -111,38 +111,38 @@ let newPairs = groupMessagesToPairs(data)
 
 
     try {
-          
-    const res = await fetch(config.chat_url || '/actions/chat-action/execute', {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "session_id": session_id as any
-      },
-      body: JSON.stringify({ parameters: { ...config, message: text, model, session_id } })
-    })
 
-    const json = await res.json()
+      const res = await fetch(config.chat_url || '/actions/chat-action/execute', {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "session_id": session_id as any
+        },
+        body: JSON.stringify({ parameters: { ...config, message: text, model, session_id } })
+      })
 
-    const assistantText = json.data.message   // 👈 the field you want
-    
+      const json = await res.json()
 
-    console.log(json, 'ASSISTANT RESP')
+      const assistantText = json.data.message   // 👈 the field you want
 
 
-        const assistantMessage: Message = {
-          id: `assistant-${Date.now()}`,
-          role: 'assistant',
-          content: assistantText,
-          timestamp: new Date(),
-        }
-        
-        setMessagePairs(prev =>
-          prev.map(pair =>
-            pair.id === pairId
-              ? { ...pair, assistantMessage }
-              : pair
-          )
+      console.log(json, 'ASSISTANT RESP')
+
+
+      const assistantMessage: Message = {
+        id: `assistant-${Date.now()}`,
+        role: 'assistant',
+        content: assistantText,
+        timestamp: new Date(),
+      }
+
+      setMessagePairs(prev =>
+        prev.map(pair =>
+          pair.id === pairId
+            ? { ...pair, assistantMessage }
+            : pair
         )
+      )
 
 
 
@@ -163,24 +163,24 @@ let newPairs = groupMessagesToPairs(data)
 
     try {
 
-        // Mock regeneration
-        setTimeout(() => {
-          const mockResponse: Message = {
-            id: `assistant-${Date.now()}`,
-            role: 'assistant',
-            content: `Regenerated response to: "${pair.userMessage.content}"`,
-            timestamp: new Date(),
-            feedback: null,
-          }
-          setMessagePairs(prev =>
-            prev.map(p =>
-              p.id === pairId
-                ? { ...p, assistantMessage: mockResponse }
-                : p
-            )
+      // Mock regeneration
+      setTimeout(() => {
+        const mockResponse: Message = {
+          id: `assistant-${Date.now()}`,
+          role: 'assistant',
+          content: `Regenerated response to: "${pair.userMessage.content}"`,
+          timestamp: new Date(),
+          feedback: null,
+        }
+        setMessagePairs(prev =>
+          prev.map(p =>
+            p.id === pairId
+              ? { ...p, assistantMessage: mockResponse }
+              : p
           )
-          setIsRegenerating(null)
-        }, 1000)
+        )
+        setIsRegenerating(null)
+      }, 1000)
     } catch (error) {
       console.error('Error regenerating message:', error)
     } finally {
@@ -190,10 +190,10 @@ let newPairs = groupMessagesToPairs(data)
 
   const handleFeedback = async (messageId: string, feedback: 'like' | 'dislike') => {
     let pair = messagePairs.find(a => a.assistantMessage?.id == messageId) as any;
-    
-    if(pair?.id){
-        let {feedback: oldFeedback} = pair.assistantMessage;
-        await updateFeedback({parameters: {id: pair.id, feedback: feedback == oldFeedback ? '' : feedback }})
+
+    if (pair?.id) {
+      let { feedback: oldFeedback } = pair.assistantMessage;
+      await updateFeedback({ parameters: { id: pair.id, feedback: feedback == oldFeedback ? '' : feedback } })
     }
 
     setMessagePairs(prev =>
@@ -227,7 +227,7 @@ let newPairs = groupMessagesToPairs(data)
 
   const handleSaveEdit = async () => {
     if (editingMessage) {
-      await updateMessage({parameters: {id: editingMessage.id, content: editingMessage.content }})
+      await updateMessage({ parameters: { id: editingMessage.id, content: editingMessage.content } })
       setMessagePairs(prev =>
         prev.map(pair => {
           if (pair.userMessage.id === editingMessage.id) {
@@ -248,7 +248,7 @@ let newPairs = groupMessagesToPairs(data)
   }
 
   const handleDeletePair = async (pairId: string) => {
-    await deletePair({parameters: {id: pairId}});
+    await deletePair({ parameters: { id: pairId } });
 
     setMessagePairs(prev => prev.filter(pair => pair.id !== pairId))
     setShowDeletePrompt(null)
@@ -272,17 +272,17 @@ let newPairs = groupMessagesToPairs(data)
 
   const handleConfig = (prop) => {
     console.log(prop, 'PROP')
-      setConfig({...config, ...prop});
-      localStorage.setItem("config", JSON.stringify({...config, ...prop}))
+    setConfig({ ...config, ...prop });
+    localStorage.setItem("config", JSON.stringify({ ...config, ...prop }))
   }
 
   const handleContext = (prop) => {
-      setConfig({...config, context: prop});
+    setConfig({ ...config, context: prop });
   }
 
 
-    const handleParameters = (prop) => {
-      setConfig({...config, parameters: prop});
+  const handleParameters = (prop) => {
+    setConfig({ ...config, parameters: prop });
   }
 
   const handleSession = async () => {
@@ -297,27 +297,27 @@ let newPairs = groupMessagesToPairs(data)
     const json = await res.json()
 
 
-      console.log(json.session_id, 'sessio')
-      if(json?.session_id){
-        localStorage.setItem("session_id", json.session_id);
-       setConfig({...config, session_id: json.session_id});
-      }
-}
+    console.log(json.session_id, 'sessio')
+    if (json?.session_id) {
+      localStorage.setItem("session_id", json.session_id);
+      setConfig({ ...config, session_id: json.session_id });
+    }
+  }
 
 
 
-useEffect(() => {
-let session_id = localStorage.getItem("session_id") as any;
+  useEffect(() => {
+    let session_id = localStorage.getItem("session_id") as any;
 
-console.log(session_id != 'undefined', 'udnee')
-if(session_id && session_id != 'undefined'){
+    console.log(session_id != 'undefined', 'udnee')
+    if (session_id && session_id != 'undefined') {
       handleMessages(session_id)
-} else {
-    localStorage.removeItem('session_id')
-    handleSession();
-}
+    } else {
+      localStorage.removeItem('session_id')
+      handleSession();
+    }
 
-}, [])
+  }, [])
 
 
 
@@ -327,46 +327,49 @@ if(session_id && session_id != 'undefined'){
 
 
 
-// useEffect(() => {
-// let newMessages = [] as any
-// newMessages = groupMessagesToPairs(messages);
-// setMessagePairs(newMessages)
-// }, [messages])
+  // useEffect(() => {
+  // let newMessages = [] as any
+  // newMessages = groupMessagesToPairs(messages);
+  // setMessagePairs(newMessages)
+  // }, [messages])
 
 
 
-const groupMessagesToPairs = (messages: any): any[] => {
-  const pairs: any[] = []
-  
-  for (let i = 0; i < messages.length; i++) {
-    const message = messages[i] as any;
-    
-    if (message.role === 'user') {
-      const pairId = `${message.session_id}` || `pair-${Date.now()}-${i}`
-      const assistantMessage = messages[i + 1]?.role === 'assistant' 
-        ? messages[i + 1] 
-        : undefined as any;
-      
-      const systemMessage = messages[i - 1]?.role === 'system' 
-        ? messages[i - 1] 
-        : undefined as any;
-      
-      pairs.push({
-        id: pairId,
-        systemMessage: systemMessage,
-        userMessage: {...message, feedback: message.metadata?.feedback, timestamp: new Date(message.created_at)},
-        assistantMessage: {...assistantMessage, feedback: assistantMessage?.metadata?.feedback, timestamp: new Date(assistantMessage?.created_at)},
-      })
-      
-      // Skip the assistant message if it was paired
-      if (assistantMessage) {
-        i++
+  const groupMessagesToPairs = (messages: Message[]): MessagePair[] => {
+    const pairs: MessagePair[] = []
+
+    for (let i = 0; i < messages.length; i++) {
+      const message = messages[i] as any;
+
+      if (message.role === 'user') {
+        const pairId = `${message.session_id}` || `pair-${Date.now()}-${i}`;
+        const assistantMsg = messages.find(a >= (a.session_id == pairId && a.role == 'assistant'));
+        const systemMsg = messages.find(a >= (a.session_id == pairId && a.role == 'system'));
+
+        const assistantMessage = assistantMsg
+          ? assistantMsg
+          : undefined as any;
+
+        const systemMessage = systemMsg
+          ? systemMsgs
+          : undefined as any;
+
+        pairs.push({
+          id: pairId,
+          systemMessage: systemMessage,
+          userMessage: { ...message, feedback: message?.metadata?.feedback, timestamp: new Date(message?.created_at) },
+          assistantMessage: { ...assistantMessage, feedback: assistantMessage?.metadata?.feedback, timestamp: new Date(assistantMessage?.created_at) },
+        })
+
+        // Skip the assistant message if it was paired
+        if (assistantMessage) {
+          i++
+        }
       }
     }
+
+    return pairs
   }
-  
-  return pairs
-}
 
   const getMessageColor = (role: string) => {
     switch (role) {
@@ -406,7 +409,7 @@ const groupMessagesToPairs = (messages: any): any[] => {
         <div className="w-full max-w-2xl flex flex-col gap-3 p-4 bg-white rounded-lg shadow-lg h-[60vh] overflow-y-auto">
           {messagePairs.length ? (
             <>
-               {/* <AnimatePresence initial={false}>
+              {/* <AnimatePresence initial={false}>
             {messages.map((m, i) => (
               <motion.div
                 key={i}
@@ -431,35 +434,35 @@ const groupMessagesToPairs = (messages: any): any[] => {
 
 
           </AnimatePresence> */}
-             <div className="flex flex-col ">
+              <div className="flex flex-col ">
                 {/* Messages Container */}
                 <div className="flex-1 overflow-y-auto space-y-6 pr-2">
                   {messagePairs.map((pair) => (
                     <div key={pair.id} className="space-y-4">
                       {/* User Message */}
-                     {showSystem && <>
-                            <div className="flex items-center justify-between mb-2">
-                              <div className="flex items-center gap-2">
-                                <Badge size="small" color="grey">
-                                  {getMessageLabel('system')}
-                                </Badge>
-                                {/* <span className="text-xs text-ui-fg-subtle">
+                      {showSystem && <>
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-2">
+                            <Badge size="small" color="grey">
+                              {getMessageLabel('system')}
+                            </Badge>
+                            {/* <span className="text-xs text-ui-fg-subtle">
                                   {pair.systemMessage?.timestamp.toLocaleTimeString()}
                                 </span> */}
-                              </div>
-                              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                              </div>
-                            </div>
-                            <div className="whitespace-pre-wrap text-ui-fg-base">
-                              {pair.systemMessage?.content}
-                            </div>
-                          </>}
+                          </div>
+                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          </div>
+                        </div>
+                        <div className="whitespace-pre-wrap text-ui-fg-base">
+                          {pair.systemMessage?.content}
+                        </div>
+                      </>}
                       <div
                         className={`rounded-lg p-4 border ${getMessageColor(
                           'user'
                         )} relative group`}
                       >
-       
+
                         {editingMessage?.id === pair.userMessage.id ? (
                           <div className="space-y-2">
                             <Textarea
@@ -618,7 +621,7 @@ const groupMessagesToPairs = (messages: any): any[] => {
                                       </IconButton>
                                     </Tooltip>
                                   </div>
-                                  
+
                                   {/* Regenerate Button */}
                                   <Tooltip content="Regenerate response">
                                     <IconButton
@@ -655,27 +658,27 @@ const groupMessagesToPairs = (messages: any): any[] => {
                   <div ref={messagesEndRef} />
                 </div>
 
-   
+
               </div>
             </>
-        
 
-          ) : 
-          
-      <div className="flex items-center justify-center gap-2 text-xl font-semibold h-full">
-          How can I help you?
-        </div>
+
+          ) :
+
+            <div className="flex items-center justify-center gap-2 text-xl font-semibold h-full">
+              How can I help you?
+            </div>
           }
-      
+
           <div ref={messagesEndRef} />
         </div>
-             
+
         {/* Chat Input */}
         <div className="w-full max-w-2xl mt-4">
-          <ChatInput onSend={handleSendMessage} isPending={isPending} config={config} setConfig={handleConfig} setParameters={handleParameters} setContext={handleContext}/>
+          <ChatInput onSend={handleSendMessage} isPending={isPending} config={config} setConfig={handleConfig} setParameters={handleParameters} setContext={handleContext} />
         </div>
       </main>
-        {/* Delete Confirmation Prompt */}
+      {/* Delete Confirmation Prompt */}
       {showDeletePrompt && (
         <Prompt
           open={true}

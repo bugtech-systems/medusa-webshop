@@ -302,13 +302,16 @@ export const AIModelTestDrawer = ({
       const message = messages[i] as any;
 
       if (message.role === 'user') {
-        const pairId = `${message.session_id}` || `pair-${Date.now()}-${i}`
-        const assistantMessage = messages[i + 1]?.role === 'assistant'
-          ? messages[i + 1]
+        const pairId = `${message.session_id}` || `pair-${Date.now()}-${i}`;
+        const assistantMsg = messages.find(a >= (a.session_id == pairId && a.role == 'assistant'));
+        const systemMsg = messages.find(a >= (a.session_id == pairId && a.role == 'system'));
+
+        const assistantMessage = assistantMsg
+          ? assistantMsg
           : undefined as any;
 
-        const systemMessage = messages[i - 1]?.role === 'system'
-          ? messages[i - 1]
+        const systemMessage = systemMsg
+          ? systemMsgs
           : undefined as any;
 
         pairs.push({
