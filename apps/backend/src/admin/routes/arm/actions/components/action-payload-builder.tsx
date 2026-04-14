@@ -17,17 +17,17 @@ import {
   Switch,
   Alert,
 } from "@medusajs/ui"
-import { 
-  Plus, 
-  Trash, 
+import {
+  Plus,
+  Trash,
   CheckCircle,
   XMark,
   PencilSquare,
-  
+
 } from "@medusajs/icons"
-import {  
-  GripVertical, 
-  Copy, 
+import {
+  GripVertical,
+  Copy,
   Download,
   Eye,
   Edit,
@@ -71,12 +71,12 @@ interface ActionPayloadBuilderProps {
 }
 
 // Sortable Field Item Component
-const SortableFieldItem = ({ 
-  field, 
-  onRemove, 
+const SortableFieldItem = ({
+  field,
+  onRemove,
   onEdit,
-  editMode 
-}: { 
+  editMode
+}: {
   field: PayloadField
   onRemove: (id: string) => void
   onEdit: (field: PayloadField) => void
@@ -102,7 +102,7 @@ const SortableFieldItem = ({
       <Container className={isDragging ? "shadow-lg" : ""}>
         <div className="p-4 flex items-center gap-3">
           {editMode && (
-            <div 
+            <div
               className="cursor-grab active:cursor-grabbing text-ui-fg-muted hover:text-ui-fg-base"
               {...attributes}
               {...listeners}
@@ -110,7 +110,7 @@ const SortableFieldItem = ({
               <GripVertical className="h-5 w-5" />
             </div>
           )}
-          
+
           <div className="flex-1">
             <div className="flex items-center gap-2 flex-wrap">
               <Text className="font-medium">{field.name}</Text>
@@ -124,11 +124,11 @@ const SortableFieldItem = ({
                 </Badge>
               )}
             </div>
-            
+
             {field.description && (
               <Text className="text-ui-fg-subtle text-sm mt-1">{field.description}</Text>
             )}
-            
+
             {field.enumValues && field.enumValues.length > 0 && (
               <div className="mt-2">
                 <Text className="text-xs text-ui-fg-muted mb-1">Allowed values:</Text>
@@ -141,7 +141,7 @@ const SortableFieldItem = ({
                 </div>
               </div>
             )}
-            
+
             {field.defaultValue !== undefined && field.defaultValue !== '' && (
               <div className="mt-2">
                 <Text className="text-xs text-ui-fg-muted">
@@ -150,7 +150,7 @@ const SortableFieldItem = ({
               </div>
             )}
           </div>
-          
+
           {editMode && (
             <div className="flex items-center gap-1">
               <Tooltip content="Edit field">
@@ -163,7 +163,7 @@ const SortableFieldItem = ({
                   <Edit className="h-4 w-4" />
                 </IconButton>
               </Tooltip>
-              
+
               <Tooltip content="Remove field">
                 <IconButton
                   variant="transparent"
@@ -199,7 +199,7 @@ const FieldEditorDrawer = ({
   existingFields: PayloadField[]
 }) => {
   const [editedField, setEditedField] = useState<any>(
-    field ||  { name: '', defaultValue: '', description: '', type: 'string', required: false, nullable: true } 
+    field || { name: '', defaultValue: '', description: '', type: 'string', required: false, nullable: true }
   )
   const [errors, setErrors] = useState<Record<string, string>>({})
 
@@ -253,8 +253,8 @@ const FieldEditorDrawer = ({
     if (!validateField()) return
 
     const savedField: PayloadField = {
-     ...editedField,
-      id: field?.id || crypto.randomUUID(),
+      ...editedField,
+      id: field?.id,
       name: editedField?.name!.trim(),
       type: editedField?.type as PayloadField['type'],
       required: editedField?.required,
@@ -274,13 +274,13 @@ const FieldEditorDrawer = ({
     setErrors({})
     onOpenChange(false)
   }
-  
+
   useEffect(() => {
-    
-      setEditedField(field)
-  
+
+    setEditedField(field)
+
   }, [field])
-  
+
 
   return (
     <Drawer open={open} onOpenChange={handleClose}>
@@ -290,7 +290,7 @@ const FieldEditorDrawer = ({
             {field?.id ? 'Edit Field' : 'Add New Field'}
           </Drawer.Title>
         </Drawer.Header>
-        
+
         <Drawer.Body className="space-y-6">
           {/* Field Name */}
           <div className="space-y-2">
@@ -300,7 +300,7 @@ const FieldEditorDrawer = ({
             <Input
               id="field-name"
               value={editedField?.name || ""}
-              onChange={(e) => setEditedField({...editedField, name: e.target.value})}
+              onChange={(e) => setEditedField({ ...editedField, name: e.target.value })}
               placeholder="e.g., user_id"
               className={errors.name ? "border-ui-border-error" : ""}
             />
@@ -317,7 +317,7 @@ const FieldEditorDrawer = ({
             <Select
               value={editedField?.type}
               onValueChange={(value) => setEditedField({
-                ...editedField, 
+                ...editedField,
                 type: value as PayloadField['type']
               })}
             >
@@ -344,7 +344,7 @@ const FieldEditorDrawer = ({
                 id="enum-values"
                 value={editedField?.enumValues?.join(", ") || ""}
                 onChange={(e) => setEditedField({
-                  ...editedField, 
+                  ...editedField,
                   enumValues: e.target.value.split(",").map(v => v.trim()).filter(Boolean)
                 })}
                 placeholder="value1, value2, value3"
@@ -367,7 +367,7 @@ const FieldEditorDrawer = ({
               <Select
                 value={editedField?.arrayType}
                 onValueChange={(value) => setEditedField({
-                  ...editedField, 
+                  ...editedField,
                   arrayType: value as PayloadField['arrayType']
                 })}
               >
@@ -396,7 +396,7 @@ const FieldEditorDrawer = ({
             <Textarea
               id="description"
               value={editedField?.description || ""}
-              onChange={(e) => setEditedField({...editedField, description: e.target.value})}
+              onChange={(e) => setEditedField({ ...editedField, description: e.target.value })}
               placeholder="Field description (optional)"
               rows={3}
             />
@@ -410,7 +410,7 @@ const FieldEditorDrawer = ({
             <Input
               id="default-value"
               value={editedField?.defaultValue || ""}
-              onChange={(e) => setEditedField({...editedField, defaultValue: e.target.value})}
+              onChange={(e) => setEditedField({ ...editedField, defaultValue: e.target.value })}
               placeholder="Optional default value"
             />
           </div>
@@ -426,10 +426,10 @@ const FieldEditorDrawer = ({
             <Switch
               id="required-switch"
               checked={editedField?.required || false}
-              onCheckedChange={(checked) => setEditedField({...editedField, required: checked})}
+              onCheckedChange={(checked) => setEditedField({ ...editedField, required: checked })}
             />
           </div>
-         {/* Required Switch */}
+          {/* Required Switch */}
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
               <Label htmlFor="nullable-switch">Nullable field</Label>
@@ -440,7 +440,7 @@ const FieldEditorDrawer = ({
             <Switch
               id="nullable-switch"
               checked={editedField?.nullable || false}
-              onCheckedChange={(checked) => setEditedField({...editedField, nullable: checked})}
+              onCheckedChange={(checked) => setEditedField({ ...editedField, nullable: checked })}
             />
           </div>
 
@@ -484,7 +484,7 @@ export const ActionPayloadBuilder = ({ action, editMode, onEditModeChange }: Act
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
   const [editingField, setEditingField] = useState<any>(null)
-  
+
   const { mutateAsync: updateAction, isPending } = useUpdateActionTemplate(action.id)
 
   // Configure sensors for drag and drop
@@ -501,7 +501,7 @@ export const ActionPayloadBuilder = ({ action, editMode, onEditModeChange }: Act
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event
-    
+
     if (active.id !== over?.id) {
       setPayloadFields((items) => {
         const oldIndex = items.findIndex((item) => item.id === active.id)
@@ -515,7 +515,7 @@ export const ActionPayloadBuilder = ({ action, editMode, onEditModeChange }: Act
   const handleSaveField = (field: PayloadField) => {
     if (editingField) {
       // Update existing field
-      setPayloadFields(prev => 
+      setPayloadFields(prev =>
         prev.map(f => f.id === field.id ? field : f)
       )
       // toast.success('Field updated', {
@@ -565,13 +565,13 @@ export const ActionPayloadBuilder = ({ action, editMode, onEditModeChange }: Act
 
   const generatePayloadExample = useMemo(() => {
     const example: Record<string, any> = {}
-    
+
     payloadFields.forEach(field => {
       if (field.defaultValue !== undefined && field.defaultValue !== '') {
         example[field.name] = field.defaultValue
         return
       }
-      
+
       switch (field.type) {
         case 'string':
           example[field.name] = "example_string"
@@ -605,7 +605,7 @@ export const ActionPayloadBuilder = ({ action, editMode, onEditModeChange }: Act
           break
       }
     })
-    
+
     return JSON.stringify(example, null, 2)
   }, [payloadFields])
 
@@ -657,18 +657,18 @@ export const ActionPayloadBuilder = ({ action, editMode, onEditModeChange }: Act
                   <Badge color="orange" size="small">Unsaved changes</Badge>
                 )}
               </div>
-              
+
               {!editMode && (
-                <Button 
-                  variant="secondary" 
-                  size="small" 
+                <Button
+                  variant="secondary"
+                  size="small"
                   onClick={() => onEditModeChange?.(true)}
                 >
                   <Eye className="h-4 w-4" /> Edit Payload
                 </Button>
               )}
             </div>
-            
+
             {editMode && (
               <div className="flex items-center gap-2">
                 {hasUnsavedChanges && (
@@ -680,9 +680,9 @@ export const ActionPayloadBuilder = ({ action, editMode, onEditModeChange }: Act
                     <XMark /> Cancel
                   </Button>
                 )}
-                <Button 
-                  variant="primary" 
-                  size="small" 
+                <Button
+                  variant="primary"
+                  size="small"
                   className="w-[150px]"
                   onClick={handleSavePayload}
                   disabled={isPending || !hasUnsavedChanges}
@@ -714,7 +714,7 @@ export const ActionPayloadBuilder = ({ action, editMode, onEditModeChange }: Act
                 <Info />
                 <div className="flex-1">
                   <Text size="small">
-                    Drag fields using the grip handle <GripVertical className="h-4 w-4 inline" /> to reorder them. 
+                    Drag fields using the grip handle <GripVertical className="h-4 w-4 inline" /> to reorder them.
                     Click the edit button to modify field properties.
                   </Text>
                 </div>
@@ -748,7 +748,7 @@ export const ActionPayloadBuilder = ({ action, editMode, onEditModeChange }: Act
                   </SortableContext>
                 </DndContext>
               ) : (
-                <div 
+                <div
                   className="text-center py-16 bg-ui-bg-subtle rounded-lg border-2 border-dashed border-ui-border-base cursor-pointer hover:bg-ui-bg-base transition-colors"
                   onClick={() => {
                     setEditingField(null)
@@ -776,11 +776,11 @@ export const ActionPayloadBuilder = ({ action, editMode, onEditModeChange }: Act
                           <Badge size="small" color="red">Required</Badge>
                         )}
                       </div>
-                      
+
                       {field.description && (
                         <Text className="text-ui-fg-subtle text-sm mb-2">{field.description}</Text>
                       )}
-                      
+
                       {field.enumValues && field.enumValues.length > 0 && (
                         <div className="mt-2">
                           <Text className="text-xs text-ui-fg-muted mb-1">Allowed values:</Text>
@@ -793,7 +793,7 @@ export const ActionPayloadBuilder = ({ action, editMode, onEditModeChange }: Act
                           </div>
                         </div>
                       )}
-                      
+
                       {field.defaultValue !== undefined && field.defaultValue !== '' && (
                         <div className="mt-2">
                           <Text className="text-xs text-ui-fg-muted">
@@ -832,7 +832,7 @@ export const ActionPayloadBuilder = ({ action, editMode, onEditModeChange }: Act
                   <Copy className="h-4 w-4" />
                 </IconButton>
               </Tooltip>
-              
+
               <Tooltip content="Download as JSON">
                 <IconButton
                   variant="secondary"
@@ -845,13 +845,13 @@ export const ActionPayloadBuilder = ({ action, editMode, onEditModeChange }: Act
               </Tooltip>
             </div>
           </div>
-          
+
           <Text className="text-ui-fg-subtle mb-4">
-            {payloadFields.length > 0 
+            {payloadFields.length > 0
               ? "Based on the defined fields, here's an example of what the payload should look like:"
               : "Add fields to see an example payload structure."}
           </Text>
-          
+
           <div className="border rounded-lg overflow-hidden">
             <CodeBlock
               snippets={[{
@@ -877,7 +877,7 @@ export const ActionPayloadBuilder = ({ action, editMode, onEditModeChange }: Act
                 <Badge>{action.context_as}</Badge>
               )}
             </div>
-            
+
             <div className="border rounded-lg overflow-hidden">
               <CodeBlock
                 snippets={[{
@@ -890,7 +890,7 @@ export const ActionPayloadBuilder = ({ action, editMode, onEditModeChange }: Act
                 <CodeBlock.Body />
               </CodeBlock>
             </div>
-            
+
             <Text className="mt-4 text-ui-fg-subtle text-sm">
               This template defines how the action context is structured and will be merged with the payload.
             </Text>

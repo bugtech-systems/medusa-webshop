@@ -296,40 +296,59 @@ export const AIModelTestDrawer = ({
   }, [editingMessage])
 
   const groupMessagesToPairs = (messages: Message[]): MessagePair[] => {
-    const pairs: MessagePair[] = []
+    // First, sort messages by created_at to ensure proper order
+    const sortedMessages = [...messages].sort((a, b) => {
+      const dateA = new Date(a.created_at).getTime();
+      const dateB = new Date(b.created_at).getTime();
+      return dateA - dateB;
+    });
 
-    for (let i = 0; i < messages.length; i++) {
-      const message = messages[i] as any;
+    const pairs: MessagePair[] = [];
+    let userMessageQueue: any[] = [];
+
+    for (let i = 0; i < sortedMessages.length; i++) {
+      const message = sortedMessages[i] as any;
 
       if (message.role === 'user') {
-        const pairId = `${message.session_id}` || `pair-${Date.now()}-${i}`;
-        const assistantMsg = messages.find(a >= (a.session_id == pairId && a.role == 'assistant'));
-        const systemMsg = messages.find(a >= (a.session_id == pairId && a.role == 'system'));
+        // Queue user messages
+        userMessageQueue.push(message);
+      }
+      else if (message.role === 'assistant' && userMessageQueue.length > 0) {
+        // Pair assistant with the most recent unpaired user message
+        const userMessage = userMessageQueue.shift();
+        const pairId = userMessage.session_id || `pair-${Date.now()}-${i}`;
 
-        const assistantMessage = assistantMsg
-          ? assistantMsg
-          : undefined as any;
-
-        const systemMessage = systemMsg
-          ? systemMsgs
-          : undefined as any;
+        // Find system message for this session
+        const systemMsg = sortedMessages.find(
+          (a: any) => a.session_id === userMessage.session_id && a.role === 'system'
+        );
 
         pairs.push({
           id: pairId,
-          systemMessage: systemMessage,
-          userMessage: { ...message, feedback: message?.metadata?.feedback, timestamp: new Date(message?.created_at) },
-          assistantMessage: { ...assistantMessage, feedback: assistantMessage?.metadata?.feedback, timestamp: new Date(assistantMessage?.created_at) },
-        })
-
-        // Skip the assistant message if it was paired
-        if (assistantMessage) {
-          i++
-        }
+          systemMessage: systemMsg || undefined,
+          userMessage: {
+            ...userMessage,
+            feedback: userMessage?.metadata?.feedback,
+            timestamp: new Date(userMessage.created_at)
+          },
+          assistantMessage: {
+            ...message,
+            feedback: message?.metadata?.feedback,
+            timestamp: new Date(message.created_at)
+          }
+        });
       }
     }
 
-    return pairs
-  }
+    // Sort pairs by the user message timestamp
+    pairs.sort((a, b) => {
+      const dateA = new Date(a.userMessage.created_at).getTime();
+      const dateB = new Date(b.userMessage.created_at).getTime();
+      return dateA - dateB;
+    });
+
+    return pairs;
+  };
 
   const handleMessages = async () => {
     let { data } = await fetchMessages({ parameters: { id: model.id } });

@@ -1,0 +1,446 @@
+{
+  "name": "RAG Feedback Trainer (Vector Similarity)",
+  "nodes": [
+    {
+      "parameters": {
+        "jsCode": "const embeddingData = $input.first().json;\nconst extractData = $('Extract Embedding').first().json;\n\n// Format vector for PostgreSQL (should be like: [0.1,0.2,0.3,...])\nlet vectorString = '';\nif (extractData.embedding && Array.isArray(extractData.embedding)) {\n  vectorString = '[' + extractData.embedding.join(',') + ']';\n} else {\n  throw new Error('Embedding is not an array: ' + typeof extractData.embedding);\n}\n\nreturn [{\n  json: {\n    id: extractData.id,\n    userInput: extractData.userInput,\n    aiResponse: extractData.aiResponse,\n    feedback: extractData.feedback,\n    embedding: extractData.embedding,\n    vectorString: vectorString\n  }\n}];"
+      },
+      "id": "cb1fba31-4808-4f80-8e49-fd1ce6a46623",
+      "name": "Format Vector",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        48,
+        -80
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT id, content, role, metadata FROM ai_conversation_message WHERE session_id = '{{ $('Webhook').item.json.body.id }}' AND deleted_at IS NULL ORDER BY created_at ASC;",
+        "options": {}
+      },
+      "id": "821a0afd-36ed-4a27-b4e9-4c54ba316358",
+      "name": "message pairs",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        -688,
+        -128
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "lMAy1U6U60KJt0Hx",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "http://192.168.1.100:9010/actions/session/{{ $json.headers.session_id }}",
+        "options": {}
+      },
+      "id": "e1dcf9e7-1c96-495a-a80e-c9e7b45b7722",
+      "name": "session",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        -912,
+        -128
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "e7744b1c-cd71-418c-be07-70bd38fe1bc9",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        1328,
+        -128
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO ai_rag (id, content, embedding, response, usage_count, success_rate, examples, negative_examples, created_at) VALUES (gen_random_uuid(), $1, $2::vector, $3, 1, $4, $5, $6, NOW()) RETURNING id;",
+        "options": {
+          "queryReplacement": [
+            "={{ $json.content }}",
+            "={{ '[' + $json.embedding.join(',') + ']' }}",
+            "={{ $json.response }}",
+            "={{ $json.success }}",
+            "={{ $json.examples }}",
+            "={{ $json.negative }}"
+          ]
+        }
+      },
+      "id": "833011e8-2b93-42ca-b0cb-8ec7ad13698c",
+      "name": "Insert RAG",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        1104,
+        -32
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "lMAy1U6U60KJt0Hx",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const inputData = $input.first().json;\nconst extractData = $('Extract Embedding').first().json;\n\nconst exampleText = `User: ${extractData.userInput} | Assistant: ${extractData.aiResponse}`;\nconst isLike = extractData.feedback === 1 || extractData.feedback === 'like';\n\nreturn [{\n  json: {\n    content: extractData.userInput,\n    embedding: extractData.embedding,\n    examples: isLike ? [exampleText] : [],\n    negative: !isLike ? [exampleText] : [],\n    success: isLike ? 1 : 0,\n    response: extractData.aiResponse\n  }\n}];"
+      },
+      "id": "f2de7882-e7af-487d-af1f-aa32a2d5d370",
+      "name": "Process Insert",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        880,
+        -32
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE ai_rag SET usage_count = $1, success_rate = $2, examples = $3, negative_examples = $4, updated_at = NOW() WHERE id = $5;",
+        "options": {
+          "queryReplacement": [
+            "={{ $json.usage }}",
+            "={{ $json.success }}",
+            "={{ $json.examples }}",
+            "={{ $json.negative }}",
+            "={{ $json.id }}"
+          ]
+        }
+      },
+      "id": "888c1fcb-e534-4d20-a811-2c59f44fa888",
+      "name": "Update RAG",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        1104,
+        -224
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "lMAy1U6U60KJt0Hx",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\nconst current = data.rag || {};\nconst inputData = data.input;\n\nlet usage = current.usage_count || 0;\nlet success = current.success_rate || 0;\n\nusage += 1;\n\nlet examples = current.examples || [];\nlet negative = current.negative_examples || [];\n\nconst exampleText = `User: ${inputData.userInput} | Assistant: ${inputData.aiResponse}`;\n\nif (inputData.feedback === 1 || inputData.feedback === 'like') {\n  // Remove from negative if exists\n  negative = negative.filter(ex => ex !== exampleText);\n  \n  // Add to examples if not exists\n  if (!examples.includes(exampleText)) {\n    examples.push(exampleText);\n  }\n  success = ((success * (usage - 1)) + 1) / usage;\n} else {\n  // Remove from examples if exists\n  examples = examples.filter(ex => ex !== exampleText);\n  \n  // Add to negative if not exists\n  if (!negative.includes(exampleText)) {\n    negative.push(exampleText);\n  }\n  success = ((success * (usage - 1)) + 0) / usage;\n}\n\n// Limit array size\nconst MAX_EXAMPLES = 500;\nif (examples.length > MAX_EXAMPLES) examples = examples.slice(0, MAX_EXAMPLES);\nif (negative.length > MAX_EXAMPLES) negative = negative.slice(0, MAX_EXAMPLES);\n\nreturn [{\n  json: {\n    id: current.id,\n    usage: usage,\n    success: success,\n    examples: examples,\n    negative: negative\n  }\n}];"
+      },
+      "id": "245156e2-da16-4bdb-9e0d-19726a46276c",
+      "name": "Process Update",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        880,
+        -224
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.exists }}",
+              "operation": "equals",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "03a2583b-d1ef-47c3-a799-e7eede5b84fa",
+      "name": "IF Exists",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        656,
+        -128
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const row = $input.first().json;\nconst inputData = $('Extract Embedding').first().json;\n\nconst exists = row && row.id && row.distance < 0.4;\n\nreturn [{\n  json: {\n    exists: exists,\n    rag: row,\n    input: inputData\n  }\n}];"
+      },
+      "id": "4a221c72-be6b-4449-9065-274904664a96",
+      "name": "Check Exists",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        432,
+        -128
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT id, usage_count, success_rate, examples, negative_examples, (embedding <-> $1::vector) AS distance FROM ai_rag ORDER BY embedding <-> $1::vector ASC LIMIT 1;",
+        "options": {
+          "queryReplacement": "={{ '[' + $json.embedding.join(',') + ']' }}"
+        }
+      },
+      "id": "b26398c2-5a12-4431-9c45-3989ba4bb213",
+      "name": "Similarity Search",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        192,
+        -128
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "lMAy1U6U60KJt0Hx",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const embedding = $json.embedding || $json.embeddings?.[0];\nconst prepareData = $('Prepare Input').first().json;\n\nreturn [{\n  json: {\n    userInput: prepareData.userInput,\n    aiResponse: prepareData.aiResponse,\n    feedback: prepareData.feedback,\n    embedding: embedding\n  }\n}];"
+      },
+      "id": "f902d57d-14b2-4f0d-aa9b-369a9483a7e2",
+      "name": "Extract Embedding",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -16,
+        -288
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:11434/api/embeddings",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"model\": \"nomic-embed-text\", \"prompt\": $json.userInput } }}",
+        "options": {}
+      },
+      "id": "a94e4fd6-eefa-4168-9147-6a3cae3bcec7",
+      "name": "Generate Embedding",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        -240,
+        -128
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const webhookData = $('Webhook').first().json.body;\nconst sessionData = $('session').first().json;\nconst messages = $input.all();\nconsole.log(messages, 'MESSAGES')\nlet user = messages.find(a => a.json.role == 'user');\nlet assistant = messages.find(a => a.json.role == 'assistant');\n\nconsole.log(assistant, user, 'MES')\nreturn [{\n  json: {\n    id: webhookData.id,\n    feedback: webhookData.feedback,\n    userInput: user.json.content,\n    aiResponse: assistant.json.content,\n    context: sessionData.context || {},\n    relation_id: sessionData.relation_id || \"start-node\"\n  }\n}];"
+      },
+      "id": "8de5e831-ac46-43e0-ad3d-969ee262aab7",
+      "name": "Prepare Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -464,
+        -128
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "rag-feedback",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "b09a2ffb-8054-4565-b046-142f836104bd",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        -1136,
+        -128
+      ],
+      "webhookId": "a4f3938b-0134-40e5-b472-5d35b149a89d"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "message pairs": {
+      "main": [
+        [
+          {
+            "node": "Prepare Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "session": {
+      "main": [
+        [
+          {
+            "node": "message pairs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Vector": {
+      "main": [
+        [
+          {
+            "node": "Similarity Search",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert RAG": {
+      "main": [
+        [
+          {
+            "node": "Respond",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Insert": {
+      "main": [
+        [
+          {
+            "node": "Insert RAG",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update RAG": {
+      "main": [
+        [
+          {
+            "node": "Respond",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Update": {
+      "main": [
+        [
+          {
+            "node": "Update RAG",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Exists": {
+      "main": [
+        [
+          {
+            "node": "Process Update",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Process Insert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Exists": {
+      "main": [
+        [
+          {
+            "node": "IF Exists",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Similarity Search": {
+      "main": [
+        [
+          {
+            "node": "Check Exists",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Embedding": {
+      "main": [
+        [
+          {
+            "node": "Format Vector",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Embedding": {
+      "main": [
+        [
+          {
+            "node": "Extract Embedding",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Input": {
+      "main": [
+        [
+          {
+            "node": "Generate Embedding",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "session",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "cdb507e1-9809-475b-ac63-21503ea124e0",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "f70430c3d1a71aa21bb7886ba7a5b79fc3745cbd65f9cfb783cb5dfa540216b9"
+  },
+  "id": "YeAgBmPBNv6r1Ise",
+  "tags": []
+}

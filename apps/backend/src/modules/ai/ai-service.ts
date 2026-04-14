@@ -86,11 +86,11 @@ export default class AiClassService {
   async updateSession(session?: any) {
     let sessionOld = await this.getSession(session?.id) as any;
     if (sessionOld?.id) {
-      let { created_at, updated_at, deleted_at, id, context, ...metadata } = sessionOld as any
-      let { id: sessionId, headers, session_id, auth_id, relation_id = 'start-node', context: sessionContext, relation_id: sessionRelation, ...cleanSession } = session as any
+      let { created_at, updated_at, deleted_at, id, context, ...cleanOld } = sessionOld as any
+      let { id: sessionId, metadata, headers, session_id, auth_id, relation_id = 'start-node', context: sessionContext, relation_id: sessionRelation, ...cleanSession } = session as any
 
-      await this.actionService.updateSession(this.sessionId, { relation_id, auth_id, ...metadata, ...cleanSession });
-      await this.aiService.updateAiConversationSessions({ ...sessionOld, ...cleanSession, relation_id, metadata: { ...metadata, ...cleanSession } });
+      await this.actionService.updateSession(this.sessionId, { relation_id, auth_id, ...cleanOld, ...cleanSession });
+      await this.aiService.updateAiConversationSessions({ id, ...cleanOld, ...cleanSession, relation_id, metadata: { ...cleanOld.metadata, ...cleanSession } });
     }
     return session;
   }
