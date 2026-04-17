@@ -56,7 +56,7 @@ export const useWorkflows = (
 
   const fetchWorkflows = async () =>
     sdk.client.fetch<WorkflowListResponse>(
-      `/admin/actions/get-relation-workflows/execute${filterQuery ? `?${filterQuery}` : ""}`,
+      `/actions/get-relation-workflows/execute${filterQuery ? `?${filterQuery}` : ""}`,
       {
         method: "POST",
       }
@@ -87,7 +87,7 @@ export const useWorkflow = (
       `/admin/actions/get-relation-workflows-by-id/execute`,
       {
         method: "POST",
-        body: {"parameters": { "id": workflowId}}
+        body: { "parameters": { "id": workflowId } }
       }
     )
 

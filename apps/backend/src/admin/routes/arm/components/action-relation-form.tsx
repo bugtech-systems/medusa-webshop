@@ -56,9 +56,9 @@ export const ActionDrawer: React.FC<ActionDrawerProps> = ({ open, onClose, onSub
   const [actions, setActions] = useState<any[]>([]);
   const [isLoadingActions, setIsLoadingActions] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<any>(null);
-  
+
   const { data, mutateAsync: getActions, isError } = useExecuteAction('get-action-templates') as any;
-  
+
   // Fetch action templates when drawer opens
   useEffect(() => {
     if (open) {
@@ -93,10 +93,11 @@ export const ActionDrawer: React.FC<ActionDrawerProps> = ({ open, onClose, onSub
         key,
         value: String(value),
       }));
-      
+
       setConfigFields(metadataFields);
-      
+
       setFormData({
+        ...action,
         id: action.id || '',
         action_id: action.action_id || action.id || '',
         label: action.label || '',
@@ -122,19 +123,19 @@ export const ActionDrawer: React.FC<ActionDrawerProps> = ({ open, onClose, onSub
     const selectedAction = actions.find(a => a.id === actionId);
     if (selectedAction) {
       setSelectedTemplate(selectedAction);
-      
+
       // Auto-populate label from action name
       const actionLabel = selectedAction.label || selectedAction.name || '';
-      
+
       // Convert template metadata to config fields
       const templateMetadata = selectedAction.metadata || selectedAction.config || {};
       // const metadataFields = Object.entries(templateMetadata).map(([key, value]) => ({
       //   key,
       //   value: String(value),
       // }));
-      
+
       // setConfigFields(metadataFields);
-      
+
       setFormData({
         ...formData,
         action_id: selectedAction.id,
@@ -152,7 +153,7 @@ export const ActionDrawer: React.FC<ActionDrawerProps> = ({ open, onClose, onSub
     });
   };
 
-    // Handle label change (allows editing)
+  // Handle label change (allows editing)
   const handleChanges = prop => (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
       ...formData,
@@ -170,10 +171,10 @@ export const ActionDrawer: React.FC<ActionDrawerProps> = ({ open, onClose, onSub
     const updatedFields = [...configFields];
     updatedFields[index][field] = newValue;
     setConfigFields(updatedFields);
-    
+
     // Update formData.metadata
     const newMetadata = { ...formData.metadata };
-    
+
     // If we're updating an existing key, remove the old one first
     if (field === 'key') {
       const oldKey = Object.keys(formData.metadata)[index];
@@ -181,14 +182,14 @@ export const ActionDrawer: React.FC<ActionDrawerProps> = ({ open, onClose, onSub
         delete newMetadata[oldKey];
       }
     }
-    
+
     // Rebuild metadata object from fields
     updatedFields.forEach(field => {
       if (field.key.trim()) {
         newMetadata[field.key] = field.value;
       }
     });
-    
+
     setFormData({
       ...formData,
       metadata: newMetadata,
@@ -200,13 +201,13 @@ export const ActionDrawer: React.FC<ActionDrawerProps> = ({ open, onClose, onSub
     const fieldToRemove = configFields[index];
     const updatedFields = configFields.filter((_, i) => i !== index);
     setConfigFields(updatedFields);
-    
+
     // Update formData.metadata
     const newMetadata = { ...formData.metadata };
     if (fieldToRemove.key) {
       delete newMetadata[fieldToRemove.key];
     }
-    
+
     setFormData({
       ...formData,
       metadata: newMetadata,
@@ -215,20 +216,18 @@ export const ActionDrawer: React.FC<ActionDrawerProps> = ({ open, onClose, onSub
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Clean up metadata - remove empty keys
-    const cleanMetadata = Object.fromEntries(
-      Object.entries(formData.metadata).filter(([key, value]) => key.trim() !== '' && value !== '')
-    );
-    
+
+
+
     const submitData = {
       ...formData,
       id: formData.id || formData.action_id,
-      metadata: cleanMetadata,
     };
-    
+
     onSubmit(submitData);
   };
+
+  console.log(formData, 'form data')
 
   return (
     <Drawer open={open} onOpenChange={onClose}>
@@ -238,41 +237,39 @@ export const ActionDrawer: React.FC<ActionDrawerProps> = ({ open, onClose, onSub
             {isEditing ? `Configure Action ${formData.id}` : 'Configure New Action'}
           </Drawer.Title>
         </Drawer.Header>
-        
+
         <Drawer.Body>
           <form onSubmit={handleSubmit} className="flex flex-col gap-y-4 max-h-[70vh] overflow-auto">
             {/* Action Template Selection - Only show for new actions */}
-            {!isEditing && (
-              <div>
-                <Label htmlFor="action_template" className="mb-2 block">
-                  Select Action Template [{formData.type && formData.type }]
-                </Label>
-                <Select
-                  value={formData.action_id}
-                  onValueChange={handleActionTemplateSelect}
-                  disabled={isLoadingActions}
-                >
-                  <Select.Trigger>
-                    <Select.Value placeholder={isLoadingActions ? "Loading actions..." : "Choose an action template"} />
-                  </Select.Trigger>
-                  <Select.Content>
-                    {actions.map((actionItem) => (
-                      <Select.Item key={actionItem.id} value={actionItem.id}>
-                        <div className="flex flex-col">
-                          <span>{actionItem.label || actionItem.name}</span>
-                          <span className="text-xs text-gray-500">{actionItem.type}</span>
-                        </div>
-                      </Select.Item>
-                    ))}
-                  </Select.Content>
-                </Select>
-                {isError && (
-                  <Text className="text-red-500 text-xs mt-1">
-                    Failed to load action templates
-                  </Text>
-                )}
-              </div>
-            )}
+            <div>
+              <Label htmlFor="action_template" className="mb-2 block">
+                Select Action Template [{formData.type && formData.type}]
+              </Label>
+              <Select
+                value={formData.action_id}
+                onValueChange={handleActionTemplateSelect}
+                disabled={isLoadingActions}
+              >
+                <Select.Trigger>
+                  <Select.Value placeholder={isLoadingActions ? "Loading actions..." : "Choose an action template"} />
+                </Select.Trigger>
+                <Select.Content>
+                  {actions.map((actionItem) => (
+                    <Select.Item key={actionItem.id} value={actionItem.id}>
+                      <div className="flex flex-col">
+                        <span>{actionItem.label || actionItem.name}</span>
+                        <span className="text-xs text-gray-500">{actionItem.type}</span>
+                      </div>
+                    </Select.Item>
+                  ))}
+                </Select.Content>
+              </Select>
+              {isError && (
+                <Text className="text-red-500 text-xs mt-1">
+                  Failed to load action templates
+                </Text>
+              )}
+            </div>
 
 
             {/* Hidden action_id field */}
@@ -295,7 +292,7 @@ export const ActionDrawer: React.FC<ActionDrawerProps> = ({ open, onClose, onSub
               </Text>
             </div>
 
-  
+
             <div>
               <Label htmlFor="description" className="mb-2 block">
                 Description
@@ -341,7 +338,7 @@ export const ActionDrawer: React.FC<ActionDrawerProps> = ({ open, onClose, onSub
                   Add Field
                 </Button>
               </div>
-              
+
               <div className="space-y-2">
                 {configFields.map((field, index) => (
                   <div key={index} className="flex items-center gap-2">
@@ -366,7 +363,7 @@ export const ActionDrawer: React.FC<ActionDrawerProps> = ({ open, onClose, onSub
                     </IconButton>
                   </div>
                 ))}
-                
+
                 {configFields.length === 0 && (
                   <div className="text-center py-4 bg-gray-50 rounded border border-dashed border-gray-200">
                     <Text className="text-gray-500 text-sm">
@@ -379,8 +376,8 @@ export const ActionDrawer: React.FC<ActionDrawerProps> = ({ open, onClose, onSub
 
             {isEditing && (
               <div className="flex justify-end mt-4">
-                <Button 
-                  variant="danger" 
+                <Button
+                  variant="danger"
                   size="small"
                   onClick={() => {
                     if (confirm('Are you sure you want to delete this action?')) {
@@ -402,8 +399,8 @@ export const ActionDrawer: React.FC<ActionDrawerProps> = ({ open, onClose, onSub
             <Button variant="secondary" onClick={onClose}>
               Cancel
             </Button>
-            <Button 
-              variant="primary" 
+            <Button
+              variant="primary"
               onClick={handleSubmit}
               disabled={!isEditing && !formData.action_id}
             >

@@ -11,8 +11,6 @@ export const AiMemory = model.define("ai_memory", {
 
   content: model.text().nullable(),
 
-  action: model.text().nullable(),
-  // optional: intent/action mapping
 
   embedding: model.json().nullable() as any,
   // stored as JSON, converted to VECTOR in DB layer
@@ -22,7 +20,6 @@ export const AiMemory = model.define("ai_memory", {
 
   examples: model.array().default([]),
   negative_examples: model.array().default([]),
-
   language: model.text().nullable(),
 
   metadata: model.json().nullable() as any,

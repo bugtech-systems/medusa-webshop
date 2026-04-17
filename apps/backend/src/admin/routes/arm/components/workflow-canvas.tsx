@@ -97,7 +97,7 @@ interface WorkflowEditorProps {
   onEdgeConnect: (connection: any) => void
   onCreateNodeFromEdge: (sourceNodeId: string, position: { x: number; y: number }, actionData: any) => void
   onNodeClick: (id: string) => void
-  onNodeEdit?: (id: string) => void
+  onNodeEdit?: (id: string | any, data?: any) => void
   onNodeDelete?: (id: string) => void
   onEdgeDelete?: (edgeId: string) => void
   onLayoutChange?: (direction: LayoutDirection) => void
@@ -576,8 +576,9 @@ const WorkflowEditor: React.FC<WorkflowEditorProps> = ({
   // Ensure there's always a start node
   useEffect(() => {
     const hasStartNode = nodes.some(node =>
-      node.data.isStartNode || node.data.label === 'Start Alayon'
+      node.data.isStartNode || node.data.id === 'start-node'
     );
+
 
     if (!hasStartNode && !readOnly && nodes.length === 0) {
       const startNode: ActionNode = {
@@ -727,6 +728,7 @@ const WorkflowEditor: React.FC<WorkflowEditorProps> = ({
   // Handle node click
   const handleNodeClick = useCallback((id: string) => {
     const node = nodes.find(n => n.id === id);
+    console.log(node, "NODE CLICKK")
     if (node) {
       setSelectedAction(node.data);
       setIsEditing(true);
@@ -1025,6 +1027,8 @@ const WorkflowEditor: React.FC<WorkflowEditorProps> = ({
   const handleDrawerSubmit = async (actionData: any) => {
     if (readOnly) return;
 
+
+
     if (actionData._delete && selectedAction) {
       await handleNodeDelete(selectedAction.id);
     } else if (isEditing && selectedAction) {
@@ -1047,7 +1051,7 @@ const WorkflowEditor: React.FC<WorkflowEditorProps> = ({
       parentOnNodesChange(updatedNodes);
 
       if (onNodeEdit) {
-        onNodeEdit(selectedAction.id);
+        onNodeEdit(selectedAction.id, actionData);
       }
     } else if (pendingConnection) {
       const newNodeId = `node_${Date.now()}`;
@@ -1076,7 +1080,6 @@ const WorkflowEditor: React.FC<WorkflowEditorProps> = ({
         actionData
       ) as any;
 
-      console.log(newAct, 'NEW RELATION ACTION')
       const updatedNodes = [...nodes, { ...newNode, id: newAct?.id }];
       setNodes(updatedNodes);
       parentOnNodesChange(updatedNodes);
@@ -1230,6 +1233,9 @@ const WorkflowEditor: React.FC<WorkflowEditorProps> = ({
       setIsLayouting(false);
     }
   };
+
+
+  console.log(nodesWithHandlers, "NODD")
 
   return (
     <Container className="h-full w-full p-0">

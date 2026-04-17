@@ -17,8 +17,8 @@ export default defineConfig({
       storeCors: process.env.STORE_CORS || "*",
       adminCors: process.env.ADMIN_CORS || "*",
       authCors: process.env.AUTH_CORS || "*",
-      jwtSecret: process.env.JWT_SECRET || "psawebshop",
-      cookieSecret: process.env.COOKIE_SECRET || "psawebshop",
+      jwtSecret: process.env.JWT_SECRET || "alayonwebshop",
+      cookieSecret: process.env.COOKIE_SECRET || "alayonwebshop",
     },
     cookieOptions: {
       secure: process.env.NODE_ENV === "production",
@@ -26,38 +26,39 @@ export default defineConfig({
     },
   },
   modules: {
-  [ACTION_ENGINE_MODULE]: { 
-    resolve: "./modules/action-engine",
-    options: { 
-          connection_url: process.env.DATABASE_URL,
-          max_connections: 20,
-          idle_timeout_ms: 30000,
-          connection_timeout_ms: 5000,
-          ssl: process.env.NODE_ENV === 'production',
-          worker: {
-              minThreads: 1,
-            maxThreads: 2,
-            idleTimeout: 30000,
-            maxQueue: 50,
-            concurrentTasksPerWorker: 1,
-            // Use require.resolve so it works after build
-            // workerPath: "../services/script-worker.js",
-      }
+    [ACTION_ENGINE_MODULE]: {
+      resolve: "./modules/action-engine",
+      options: {
+        connection_url: process.env.DATABASE_URL,
+        max_connections: 20,
+        idle_timeout_ms: 30000,
+        connection_timeout_ms: 5000,
+        ssl: process.env.NODE_ENV === 'production',
+        worker: {
+          minThreads: 1,
+          maxThreads: 2,
+          idleTimeout: 30000,
+          maxQueue: 50,
+          concurrentTasksPerWorker: 1,
+          // Use require.resolve so it works after build
+          // workerPath: "../services/script-worker.js",
+        }
 
       },
     },
     [APPROVAL_MODULE]: { resolve: "./modules/approval" },
-    [AI_MODULE]: { resolve: "./modules/ai",
-       options: { 
-          connection_url: process.env.DATABASE_URL,
-          max_connections: 20,
-          idle_timeout_ms: 30000,
-          connection_timeout_ms: 5000,
-          ssl: process.env.NODE_ENV === 'production'
-      
+    [AI_MODULE]: {
+      resolve: "./modules/ai",
+      options: {
+        connection_url: process.env.DATABASE_URL,
+        max_connections: 20,
+        idle_timeout_ms: 30000,
+        connection_timeout_ms: 5000,
+        ssl: process.env.NODE_ENV === 'production'
+
 
       },
-     },
+    },
     [COMPANY_MODULE]: { resolve: "./modules/company" },
     [QUOTE_MODULE]: { resolve: "./modules/quote" },
     [DYNAMIC_QUERY_MODULE]: { resolve: "./modules/dynamic-query" },
@@ -69,7 +70,7 @@ export default defineConfig({
       resolve: "@medusajs/inventory",
     },
     [Modules.WORKFLOW_ENGINE]: { resolve: "@medusajs/medusa/workflow-engine-inmemory" },
-        /* -------------------- Payment -------------------- */
+    /* -------------------- Payment -------------------- */
     [Modules.PAYMENT]: {
       resolve: "@medusajs/medusa/payment",
       options: {
@@ -95,6 +96,6 @@ export default defineConfig({
         sandbox: process.env.SALESFORCE_SANDBOX === "true",
       },
     },
-  
+
   }
 });

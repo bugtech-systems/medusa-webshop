@@ -4,6 +4,9 @@ import { model } from "@medusajs/framework/utils"
 export const ActionRelation = model.define("action_relation", {
   id: model.id().primaryKey(),
   label: model.text(),
-  action_id: model.text(),
+  description: model.text().nullable(),
+  status: model.text().nullable(),
+  model_id: model.text().nullable(),
+  action_id: model.text().nullable(),
   metadata: model.json().nullable(),
 })

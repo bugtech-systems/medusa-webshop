@@ -32,6 +32,8 @@ const ActionFlowsPage = () => {
     useExecuteAction('delete-relation-and-connections') as any
   const { mutateAsync: deleteConnection, isLoading: deletingConnection } =
     useExecuteAction('delete-action-relation-connection') as any
+  const { mutateAsync: updateRelation } =
+    useExecuteAction('update-relation-workflows-by-id') as any
 
   // Update workflow mutation
   const { mutate: updateWorkflow, isLoading: isUpdating } = useUpdateWorkflow(selectedWorkflowId || "")
@@ -70,6 +72,7 @@ const ActionFlowsPage = () => {
       },
       data: {
         ...action,
+        ...action.metadata,
         onClick: (id: string) => handleNodeClick(id)
       }
     }))
@@ -253,13 +256,19 @@ const ActionFlowsPage = () => {
     // You might want to fetch the subflow data here
   }
 
+  const handleEdit = async (id, data) => {
+    console.log(id, data, "EDIT")
+    await updateRelation({
+      parameters: {
+        id, ...data
+      }
+    })
+    await refetchWorkflows()
+  }
+
   // Log data for debugging
   useEffect(() => {
     if (workflowsData || connectionsData) {
-      console.log('Workflows Data:', workflowsData)
-      console.log('Connections Data:', connectionsData)
-      console.log('Prepared Nodes:', workflowNodes)
-      console.log('Prepared Edges:', workflowEdges)
     }
   }, [workflowsData, connectionsData, workflowNodes, workflowEdges])
 
@@ -284,7 +293,7 @@ const ActionFlowsPage = () => {
           onNodeClick={(e) => console.log(e, 'Node CLicked')}
           onEdgeDelete={handleDeleteConnection}
           onCreateNodeFromEdge={handleCreateNodeFromEdge}
-          onOpenSubflow={handleOpenSubflow}
+          onNodeEdit={handleEdit}
           selectedWorkflowId={selectedWorkflowId}
           isLoading={isLoading}
           isSaving={isUpdating}

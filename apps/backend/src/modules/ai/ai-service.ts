@@ -90,7 +90,7 @@ export default class AiClassService {
       let { id: sessionId, metadata, headers, session_id, auth_id, relation_id = 'start-node', context: sessionContext, relation_id: sessionRelation, ...cleanSession } = session as any
 
       await this.actionService.updateSession(this.sessionId, { relation_id, auth_id, ...cleanOld, ...cleanSession });
-      await this.aiService.updateAiConversationSessions({ id, ...cleanOld, ...cleanSession, relation_id, metadata: { ...cleanOld.metadata, ...cleanSession } });
+      // await this.aiService.updateAiConversationSessions({ id, ...cleanOld, ...cleanSession, relation_id, metadata: { ...cleanOld.metadata, ...cleanSession } });
     }
     return session;
   }
@@ -129,9 +129,9 @@ export default class AiClassService {
 
       // 3. Check cache
       let cachedResult = null as any;
-      if (canCache) {
-        cachedResult = await this.actionService.getCachedExecution(templateId, parameters, session?.id);
-      }
+      // if (canCache) {
+      //   cachedResult = await this.actionService.getCachedExecution(templateId, parameters, session?.id);
+      // }
 
 
       // 5. If cache hit, create a lightweight execution record and return cached result
@@ -225,11 +225,11 @@ export default class AiClassService {
       })
 
 
-      if (canCache && finalResult?.data.success) {
-        await this.actionService.setCachedExecution(templateId, parameters, session.id, finalResult);
-      } else if (!finalResult?.data.success) {
-        await this.actionService.invalidateExecutionCachesForTemplate(templateId);
-      }
+      // if (canCache && finalResult?.data.success) {
+      //   await this.actionService.setCachedExecution(templateId, parameters, session.id, finalResult);
+      // } else if (!finalResult?.data.success) {
+      //   await this.actionService.invalidateExecutionCachesForTemplate(templateId);
+      // }
 
       return finalResult
 

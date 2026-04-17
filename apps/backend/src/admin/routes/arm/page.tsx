@@ -11,6 +11,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import { useExecuteAction, useExecution } from "../../hooks/api/actions"
 import { Check } from "lucide-react"
 import { Button, IconButton, Textarea, Tooltip, Badge, Prompt } from "@medusajs/ui"
+import { ChatConversation } from "./components/chat-conversation"
 
 interface Message {
   id: string
@@ -44,6 +45,47 @@ interface AIContext {
   [key: string]: any
 }
 
+export const DEFAULT_CONFIG: any = {
+  session_id: "",
+  model_id: "alayon",
+  relation_id: "start-node",
+  chat_url: "http://192.168.1.100:5678/webhook-test/ai-chat",
+  feedback_url: "http://192.168.1.100:5678/webhook-test/rag-feedback"
+};
+
+
+const tryParseJsonMessage = (content: any) => {
+  if (typeof content !== "string") return content;
+
+  const trimmed = content.trim();
+
+  // Quick reject (performance + safety)
+  if (
+    !(trimmed.startsWith("{") && trimmed.endsWith("}")) &&
+    !(trimmed.startsWith("[") && trimmed.endsWith("]"))
+  ) {
+    return content;
+  }
+
+  try {
+    const parsed = JSON.parse(trimmed);
+
+    // If it's an object and has message field → return message
+    if (parsed && typeof parsed === "object") {
+      if (typeof parsed.message === "string") {
+        return parsed;
+      }
+      return parsed; // fallback: return full object
+    }
+
+    return content;
+  } catch {
+    return content;
+  }
+};
+
+
+
 export default function Home() {
   const { mutateAsync: chatAi, isPending } = useExecuteAction("chat-ai-conversation");
   const { mutateAsync: getChats, isPending: isLoading } = useExecuteAction("get-conversation-messages")
@@ -55,21 +97,12 @@ export default function Home() {
     useExecuteAction('update-message-content') as any
   const [messagePairs, setMessagePairs] = useState<any[]>([])
   const [messages, setMessages] = useState<Message[]>([])
-  const [loading, setLoading] = useState(false)
   const [inputMessage, setInputMessage] = useState('')
   const [isSending, setIsSending] = useState(false)
-  const [showSystem, setShowSystem] = useState(false)
   const [isRegenerating, setIsRegenerating] = useState<string | null>(null)
-  const [config, setConfig] = useState<any>({ model: 'action-selector', relation_id: 'start-node', chat_url: '' });
-  const [context, setContext] = useState<AIContext | any>({})
-  const [parameters, setParameters] = useState<AIParameters | any>({})
-  const [editingMessage, setEditingMessage] = useState<Message | null>(null)
+  const [config, setConfig] = useState<any>({});
   const [showDeletePrompt, setShowDeletePrompt] = useState<string | null>(null)
-  const bottomRef = useRef<HTMLDivElement>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
-  const textareaRef = useRef<HTMLTextAreaElement>(null)
-  const editTextareaRef = useRef<HTMLTextAreaElement>(null)
-  const parametersContainerRef = useRef<HTMLDivElement>(null)
 
   // Auto-scroll to latest message
   const scrollBottom = () => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
@@ -86,8 +119,7 @@ export default function Home() {
     setMessagePairs(newPairs)
   }
 
-  const handleSendMessage = async (text, model) => {
-    console.log(text, model, 'haha')
+  const handleSendMessage = async (text, conf) => {
     if (!text.trim() || isSending) return
     const session_id = localStorage.getItem('session_id');
 
@@ -111,14 +143,15 @@ export default function Home() {
 
 
     try {
+      console.log(config, conf, 'cccd')
 
-      const res = await fetch(config.chat_url || '/actions/chat-action/execute', {
+      const res = await fetch(config.chat_url, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           "session_id": session_id as any
         },
-        body: JSON.stringify({ parameters: { ...config, message: text, model, session_id } })
+        body: JSON.stringify({ parameters: { ...config, message: text, session_id } })
       })
 
       const json = await res.json()
@@ -126,7 +159,6 @@ export default function Home() {
       const assistantText = json.data.message   // 👈 the field you want
 
 
-      console.log(json, 'ASSISTANT RESP')
 
 
       const assistantMessage: Message = {
@@ -155,97 +187,8 @@ export default function Home() {
     }
   }
 
-  const handleRegenerateMessage = async (pairId: string) => {
-    const pair = messagePairs.find(p => p.id === pairId)
-    if (!pair?.userMessage || isRegenerating) return
 
-    setIsRegenerating(pairId)
 
-    try {
-
-      // Mock regeneration
-      setTimeout(() => {
-        const mockResponse: Message = {
-          id: `assistant-${Date.now()}`,
-          role: 'assistant',
-          content: `Regenerated response to: "${pair.userMessage.content}"`,
-          timestamp: new Date(),
-          feedback: null,
-        }
-        setMessagePairs(prev =>
-          prev.map(p =>
-            p.id === pairId
-              ? { ...p, assistantMessage: mockResponse }
-              : p
-          )
-        )
-        setIsRegenerating(null)
-      }, 1000)
-    } catch (error) {
-      console.error('Error regenerating message:', error)
-    } finally {
-      // setIsRegenerating(false)
-    }
-  }
-
-  const handleFeedback = async (messageId: string, feedback: 'like' | 'dislike') => {
-    let pair = messagePairs.find(a => a.assistantMessage?.id == messageId) as any;
-
-    if (pair?.id) {
-      let { feedback: oldFeedback } = pair.assistantMessage;
-      await updateFeedback({ parameters: { id: pair.id, feedback: feedback == oldFeedback ? '' : feedback } })
-    }
-
-    setMessagePairs(prev =>
-      prev.map(pair => {
-        if (pair.assistantMessage?.id === messageId) {
-          const updatedAssistant = {
-            ...pair.assistantMessage,
-            feedback: pair.assistantMessage.feedback === feedback ? null : feedback,
-          }
-          return { ...pair, assistantMessage: updatedAssistant }
-        }
-        return pair
-      })
-    )
-    // onMessageFeedback?.(messageId, feedback)
-  }
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault()
-      handleSendMessage()
-    }
-    if (e.key === 'Escape') {
-      // onOpenChange(false)
-    }
-  }
-
-  const handleEditMessage = (message: Message) => {
-    setEditingMessage({ ...message, isEditing: true })
-  }
-
-  const handleSaveEdit = async () => {
-    if (editingMessage) {
-      await updateMessage({ parameters: { id: editingMessage.id, content: editingMessage.content } })
-      setMessagePairs(prev =>
-        prev.map(pair => {
-          if (pair.userMessage.id === editingMessage.id) {
-            return { ...pair, userMessage: { ...editingMessage, isEditing: false } }
-          }
-          if (pair.assistantMessage?.id === editingMessage.id) {
-            return { ...pair, assistantMessage: { ...editingMessage, isEditing: false } }
-          }
-          return pair
-        })
-      )
-      setEditingMessage(null)
-    }
-  }
-
-  const handleCancelEdit = () => {
-    setEditingMessage(null)
-  }
 
   const handleDeletePair = async (pairId: string) => {
     await deletePair({ parameters: { id: pairId } });
@@ -254,67 +197,93 @@ export default function Home() {
     setShowDeletePrompt(null)
   }
 
-  const handleClearConversation = () => {
-    setMessagePairs([])
-  }
-
-  const handleUpdateContext = (updates: Partial<AIContext>) => {
-    const newContext = { ...context, ...updates }
-    setContext(newContext)
-    // onUpdateContext?.(newContext)
-  }
-
-  const handleUpdateParameters = (updates: Partial<AIParameters>) => {
-    const newParameters = { ...parameters, ...updates }
-    setParameters(newParameters)
-    // onUpdateParameters?.(newParameters)
-  }
 
   const handleConfig = (prop) => {
-    console.log(prop, 'PROP')
     setConfig({ ...config, ...prop });
     localStorage.setItem("config", JSON.stringify({ ...config, ...prop }))
   }
 
-  const handleContext = (prop) => {
-    setConfig({ ...config, context: prop });
-  }
+  const handleRegenerateMessage = async (pairId: string) => {
+    let session_id = localStorage.getItem("session_id") as any;
+
+    const pair = messagePairs.find(p => p.id === pairId)
+    console.log(pair, pairId, 'PAAIR')
+    if (!pair?.userMessage || isRegenerating) return
+
+    setIsRegenerating(pairId)
+
+    try {
+
+      let system = messagePairs.find(a => a.id == pairId);
+
+      console.log(system, messagePairs, 'SYSTEM')
 
 
-  const handleParameters = (prop) => {
-    setConfig({ ...config, parameters: prop });
-  }
+      const res = await fetch(config.chat_url + '-regenrate', {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "session_id": session_id as any
+        },
+        body: JSON.stringify({ id: pairId })
+      })
 
-  const handleSession = async () => {
-
-    const res = await fetch(`/actions/session`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-      }
-    })
-
-    const json = await res.json()
+      const json = await res.json()
+      const assistantText = json   // 👈 the field you want
 
 
-    console.log(json.session_id, 'sessio')
-    if (json?.session_id) {
-      localStorage.setItem("session_id", json.session_id);
-      setConfig({ ...config, session_id: json.session_id });
+      console.log(assistantText, "ASSISTS")
+      setMessagePairs(prev =>
+        prev.map(p =>
+          p.id === pairId
+            ? { ...p, assistantMessage: { ...p.assistantMessage, content: assistantText } as any }
+            : p
+        )
+      )
+
+    } catch (error) {
+      console.error('Error regenerating message:', error)
+    } finally {
+      setIsRegenerating(null)
     }
   }
+
+  const handleFeedback = async (id: string, feedback) => {
+    let session_id = localStorage.getItem("session_id") as any;
+
+    try {
+
+
+      console.log(config, "CONFF")
+      const res = await fetch(config.feedback_url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "session_id": session_id as any
+        },
+        body: JSON.stringify({ id, feedback })
+      })
+
+      const json = await res.json()
+      console.log(json, 'FEEDBACK RESPONSE')
+
+
+    } catch (error) {
+      console.error('Error regenerating message:', error)
+    }
+  }
+
 
 
 
   useEffect(() => {
     let session_id = localStorage.getItem("session_id") as any;
 
-    console.log(session_id != 'undefined', 'udnee')
     if (session_id && session_id != 'undefined') {
       handleMessages(session_id)
+      // handleSession(session_id)
     } else {
       localStorage.removeItem('session_id')
-      handleSession();
     }
 
   }, [])
@@ -327,20 +296,11 @@ export default function Home() {
 
 
 
-  // useEffect(() => {
-  // let newMessages = [] as any
-  // newMessages = groupMessagesToPairs(messages);
-  // setMessagePairs(newMessages)
-  // }, [messages])
-
 
 
   const groupMessagesToPairs = (messages: Message[]): MessagePair[] => {
-    // First, sort messages by created_at to ensure proper order
     const sortedMessages = [...messages].sort((a, b) => {
-      const dateA = new Date(a.created_at).getTime();
-      const dateB = new Date(b.created_at).getTime();
-      return dateA - dateB;
+      return new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime();
     });
 
     const pairs: MessagePair[] = [];
@@ -349,72 +309,60 @@ export default function Home() {
     for (let i = 0; i < sortedMessages.length; i++) {
       const message = sortedMessages[i] as any;
 
-      if (message.role === 'user') {
-        // Queue user messages
-        userMessageQueue.push(message);
+      if (message.role === "user") {
+        userMessageQueue.push({
+          ...message,
+          content: tryParseJsonMessage(message.content),
+        });
       }
-      else if (message.role === 'assistant' && userMessageQueue.length > 0) {
-        // Pair assistant with the most recent unpaired user message
+
+      else if (message.role === "assistant" && userMessageQueue.length > 0) {
         const userMessage = userMessageQueue.shift();
         const pairId = userMessage.session_id || `pair-${Date.now()}-${i}`;
 
-        // Find system message for this session
         const systemMsg = sortedMessages.find(
-          (a: any) => a.session_id === userMessage.session_id && a.role === 'system'
+          (a: any) =>
+            a.session_id === userMessage.session_id &&
+            a.role === "system"
         );
 
         pairs.push({
           id: pairId,
-          systemMessage: systemMsg || undefined,
+
+          systemMessage: systemMsg
+            ? {
+              ...systemMsg,
+              content: tryParseJsonMessage(systemMsg.content),
+            }
+            : undefined,
+
           userMessage: {
             ...userMessage,
             feedback: userMessage?.metadata?.feedback,
-            timestamp: new Date(userMessage.created_at)
+            timestamp: new Date(userMessage.created_at),
           },
+
           assistantMessage: {
             ...message,
+            content: tryParseJsonMessage(message.content),
             feedback: message?.metadata?.feedback,
-            timestamp: new Date(message.created_at)
-          }
+            timestamp: new Date(message.created_at),
+          },
         });
       }
     }
 
-    // Sort pairs by the user message timestamp
     pairs.sort((a, b) => {
-      const dateA = new Date(a.userMessage.created_at).getTime();
-      const dateB = new Date(b.userMessage.created_at).getTime();
-      return dateA - dateB;
+      return (
+        new Date(a.userMessage.timestamp).getTime() -
+        new Date(b.userMessage.timestamp).getTime()
+      );
     });
 
     return pairs;
   };
 
-  const getMessageColor = (role: string) => {
-    switch (role) {
-      case 'user':
-        return 'bg-ui-bg-base border-ui-border-base'
-      case 'assistant':
-        return 'bg-ui-bg-subtle border-ui-border-strong'
-      case 'system':
-        return 'bg-ui-tag-neutral-bg border-ui-tag-neutral-border'
-      default:
-        return 'bg-ui-bg-base border-ui-border-base'
-    }
-  }
 
-  const getMessageLabel = (role: string) => {
-    switch (role) {
-      case 'user':
-        return 'You'
-      case 'assistant':
-        return 'AI Assistant'
-      case 'system':
-        return 'System'
-      default:
-        return role
-    }
-  }
 
 
 
@@ -425,276 +373,16 @@ export default function Home() {
 
 
         {/* Chat Window */}
-        <div className="w-full max-w-2xl flex flex-col gap-3 p-4 bg-white rounded-lg shadow-lg h-[60vh] overflow-y-auto">
-          {messagePairs.length ? (
-            <>
-              {/* <AnimatePresence initial={false}>
-            {messages.map((m, i) => (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.2 }}
-                className={clsx(
-                  "px-4 py-2 rounded-lg max-w-[80%]",
-                  m.role === "user"
-                    ? "self-end bg-blue-600 text-white"
-                    : "self-start bg-gray-100 text-gray-900 relative"
-                )}
-              >
-                {m.content}
-                {m.role === "assistant" && loading && i === messages.length - 1 && (
-                  <span className="animate-pulse ml-1">▋</span>
-                )}
-              </motion.div>
-            ))}
 
-
-
-          </AnimatePresence> */}
-              <div className="flex flex-col ">
-                {/* Messages Container */}
-                <div className="flex-1 overflow-y-auto space-y-6 pr-2">
-                  {messagePairs.map((pair) => (
-                    <div key={pair.id} className="space-y-4">
-                      {/* User Message */}
-                      {showSystem && <>
-                        <div className="flex items-center justify-between mb-2">
-                          <div className="flex items-center gap-2">
-                            <Badge size="small" color="grey">
-                              {getMessageLabel('system')}
-                            </Badge>
-                            {/* <span className="text-xs text-ui-fg-subtle">
-                                  {pair.systemMessage?.timestamp.toLocaleTimeString()}
-                                </span> */}
-                          </div>
-                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          </div>
-                        </div>
-                        <div className="whitespace-pre-wrap text-ui-fg-base">
-                          {pair.systemMessage?.content}
-                        </div>
-                      </>}
-                      <div
-                        className={`rounded-lg p-4 border ${getMessageColor(
-                          'user'
-                        )} relative group`}
-                      >
-
-                        {editingMessage?.id === pair.userMessage.id ? (
-                          <div className="space-y-2">
-                            <Textarea
-                              ref={editTextareaRef}
-                              value={editingMessage?.content}
-                              onChange={(e) =>
-                                setEditingMessage({
-                                  ...editingMessage as any,
-                                  content: e.target.value,
-                                })
-                              }
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter' && e.shiftKey) {
-                                  e.preventDefault()
-                                  handleSaveEdit()
-                                }
-                                if (e.key === 'Escape') {
-                                  handleCancelEdit()
-                                }
-                              }}
-                              className="min-h-[100px]"
-                            />
-                            <div className="flex items-center gap-2 justify-end">
-                              <Button
-                                variant="secondary"
-                                size="small"
-                                onClick={handleCancelEdit}
-                              >
-                                Cancel
-                              </Button>
-                              <Button
-                                variant="primary"
-                                size="small"
-                                onClick={handleSaveEdit}
-                              >
-                                <Check />
-                                Save
-                              </Button>
-                            </div>
-                          </div>
-                        ) : (
-                          <>
-                            <div className="flex items-center justify-between mb-2">
-                              <div className="flex items-center gap-2">
-                                <Badge size="small" color="grey">
-                                  {getMessageLabel('user')}
-                                </Badge>
-                                <span className="text-xs text-ui-fg-subtle">
-                                  {pair.userMessage.timestamp.toLocaleTimeString()}
-                                </span>
-                              </div>
-                              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <Tooltip content="Edit message">
-                                  <IconButton
-                                    size="small"
-                                    variant="transparent"
-                                    onClick={() => handleEditMessage(pair.userMessage)}
-                                  >
-                                    <PencilSquare />
-                                  </IconButton>
-                                </Tooltip>
-                                <Tooltip content="Delete conversation">
-                                  <IconButton
-                                    size="small"
-                                    variant="transparent"
-                                    onClick={() => setShowDeletePrompt(pair.id)}
-                                  >
-                                    <Trash />
-                                  </IconButton>
-                                </Tooltip>
-                              </div>
-                            </div>
-                            <div className="whitespace-pre-wrap text-ui-fg-base">
-                              {pair.userMessage.content}
-                            </div>
-                          </>
-                        )}
-                      </div>
-                      {/* Assistant Message */}
-                      {pair.assistantMessage && (
-                        <div
-                          className={`rounded-lg p-4 border ${getMessageColor(
-                            'assistant'
-                          )} relative group`}
-                        >
-                          {editingMessage?.id === pair.assistantMessage.id ? (
-                            <div className="space-y-2">
-                              <Textarea
-                                ref={editTextareaRef}
-                                value={editingMessage?.content}
-                                onChange={(e) =>
-                                  setEditingMessage({
-                                    ...editingMessage as any,
-                                    content: e.target.value,
-                                  })
-                                }
-                                onKeyDown={(e) => {
-                                  if (e.key === 'Enter' && e.shiftKey) {
-                                    e.preventDefault()
-                                    handleSaveEdit()
-                                  }
-                                  if (e.key === 'Escape') {
-                                    handleCancelEdit()
-                                  }
-                                }}
-                                className="min-h-[100px]"
-                              />
-                              <div className="flex items-center gap-2 justify-end">
-                                <Button
-                                  variant="secondary"
-                                  size="small"
-                                  onClick={handleCancelEdit}
-                                >
-                                  Cancel
-                                </Button>
-                                <Button
-                                  variant="primary"
-                                  size="small"
-                                  onClick={handleSaveEdit}
-                                >
-                                  <Check />
-                                  Save
-                                </Button>
-                              </div>
-                            </div>
-                          ) : (
-                            <>
-                              <div className="flex items-center justify-between mb-2">
-                                <div className="flex items-center gap-2">
-                                  <Badge size="small" color="blue">
-                                    {getMessageLabel('assistant')}
-                                  </Badge>
-                                  <span className="text-xs text-ui-fg-subtle">
-                                    {pair.assistantMessage.timestamp.toLocaleTimeString()}
-                                  </span>
-                                </div>
-                                <div className="flex items-center gap-1">
-                                  {/* Feedback Buttons */}
-                                  <div className="flex items-center gap-1 mr-2">
-                                    <Tooltip content="Like">
-                                      <IconButton
-                                        size="small"
-                                        variant={pair.assistantMessage.feedback === 'like' ? 'primary' : 'transparent'}
-                                        onClick={() => handleFeedback(pair.assistantMessage!.id, 'like')}
-                                      >
-                                        <ThumbUp />
-                                      </IconButton>
-                                    </Tooltip>
-                                    <Tooltip content="Dislike">
-                                      <IconButton
-                                        size="small"
-                                        variant={pair.assistantMessage.feedback === 'dislike' ? 'primary' : 'transparent'}
-                                        onClick={() => handleFeedback(pair.assistantMessage!.id, 'dislike')}
-                                      >
-                                        <ThumbDown />
-                                      </IconButton>
-                                    </Tooltip>
-                                  </div>
-
-                                  {/* Regenerate Button */}
-                                  <Tooltip content="Regenerate response">
-                                    <IconButton
-                                      size="small"
-                                      variant="transparent"
-                                      onClick={() => handleRegenerateMessage(pair.id)}
-                                      isLoading={isRegenerating === pair.id}
-                                    >
-                                      <ArrowPath />
-                                    </IconButton>
-                                  </Tooltip>
-
-                                  {/* Edit Button */}
-                                  <Tooltip content="Edit message">
-                                    <IconButton
-                                      size="small"
-                                      variant="transparent"
-                                      onClick={() => handleEditMessage(pair.assistantMessage!)}
-                                    >
-                                      <PencilSquare />
-                                    </IconButton>
-                                  </Tooltip>
-                                </div>
-                              </div>
-                              <div className="whitespace-pre-wrap text-ui-fg-base">
-                                {pair.assistantMessage.content}
-                              </div>
-                            </>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                  <div ref={messagesEndRef} />
-                </div>
-
-
-              </div>
-            </>
-
-
-          ) :
-
-            <div className="flex items-center justify-center gap-2 text-xl font-semibold h-full">
-              How can I help you?
-            </div>
-          }
-
-          <div ref={messagesEndRef} />
-        </div>
-
+        <ChatConversation
+          onFeedback={handleFeedback}
+          onRegenerate={handleRegenerateMessage}
+          messagePairs={messagePairs}
+          setMessagePairs={setMessagePairs}
+        />
         {/* Chat Input */}
-        <div className="w-full max-w-2xl mt-4">
-          <ChatInput onSend={handleSendMessage} isPending={isPending} config={config} setConfig={handleConfig} setParameters={handleParameters} setContext={handleContext} />
+        <div className="w-full max-w-4xl mt-4">
+          <ChatInput onSend={handleSendMessage} isPending={isPending} config={config} setConfig={handleConfig} />
         </div>
       </main>
       {/* Delete Confirmation Prompt */}

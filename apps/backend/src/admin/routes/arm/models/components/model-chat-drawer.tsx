@@ -298,8 +298,8 @@ export const AIModelTestDrawer = ({
   const groupMessagesToPairs = (messages: Message[]): MessagePair[] => {
     // First, sort messages by created_at to ensure proper order
     const sortedMessages = [...messages].sort((a, b) => {
-      const dateA = new Date(a.created_at).getTime();
-      const dateB = new Date(b.created_at).getTime();
+      const dateA = new Date(a.timestamp).getTime();
+      const dateB = new Date(b.timestamp).getTime();
       return dateA - dateB;
     });
 
@@ -414,6 +414,7 @@ export const AIModelTestDrawer = ({
 
   const handleRegenerateMessage = async (pairId: string) => {
     const pair = messagePairs.find(p => p.id === pairId)
+    console.log(pair, pairId, 'PAAIR')
     if (!pair?.userMessage || isRegenerating) return
 
     setIsRegenerating(pairId)
@@ -604,14 +605,14 @@ export const AIModelTestDrawer = ({
                 <ChatBubble />
                 Conversation
               </Tabs.Trigger>
-              <Tabs.Trigger value="context">
+              {/*   <Tabs.Trigger value="context">
                 <DocumentText />
                 Context
               </Tabs.Trigger>
               <Tabs.Trigger value="parameters">
                 <SettingsIcon />
                 Parameters
-              </Tabs.Trigger>
+              </Tabs.Trigger> */}
             </Tabs.List>
           </div>
 
@@ -838,7 +839,7 @@ export const AIModelTestDrawer = ({
                                   </Tooltip>
 
                                   {/* Edit Button */}
-                                  <Tooltip content="Edit message">
+                                  {/* <Tooltip content="Edit message">
                                     <IconButton
                                       size="small"
                                       variant="transparent"
@@ -846,7 +847,7 @@ export const AIModelTestDrawer = ({
                                     >
                                       <PencilSquare />
                                     </IconButton>
-                                  </Tooltip>
+                                  </Tooltip> */}
                                 </div>
                               </div>
                               <div className="whitespace-pre-wrap text-ui-fg-base">
@@ -868,42 +869,7 @@ export const AIModelTestDrawer = ({
                   )}
                 </div>
 
-                {/* Input Area */}
-                <div className="mt-4 pt-4 border-t border-ui-border-base flex-shrink-0">
-                  <div className="flex items-end gap-2">
-                    <div className="flex-1">
-                      <Textarea
-                        ref={textareaRef}
-                        placeholder="Type your message... (Shift+Enter for new line, Enter to send)"
-                        value={inputMessage}
-                        onChange={(e) => setInputMessage(e.target.value)}
-                        onKeyDown={handleKeyDown}
-                        className="min-h-[80px]"
-                      />
-                    </div>
 
-                  </div>
-                  <p className="text-xs text-ui-fg-subtle mt-2">
-                    Press Enter to send, Shift+Enter for new line. Press Esc to close drawer.
-                  </p>
-                </div>
-                <div className='gap-5'>
-                  <Button
-                    variant="primary"
-                    onClick={handleSendMessage}
-                    isLoading={isSending}
-                    disabled={!inputMessage.trim() || isSending}
-                  >
-                    <ArrowUpCircle />
-                    Send
-                  </Button>
-                  <Switch
-                    checked={showSystem}
-                    onCheckedChange={(e: any) => setShowSystem(e)}
-                  >
-                    System
-                  </Switch>
-                </div>
               </div>
             </Tabs.Content>
 

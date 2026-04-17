@@ -1,11 +1,11 @@
 // src/modules/action-engine/service.ts
-import { 
+import {
   generateEntityId,
   MedusaService,
   InjectManager,
-} from "@medusajs/framework/utils" 
-import { 
-  InferTypeOf, 
+} from "@medusajs/framework/utils"
+import {
+  InferTypeOf,
   Logger,
   MedusaContainer
 } from "@medusajs/framework/types"
@@ -65,7 +65,7 @@ export default class ActionEngineService extends MedusaService({
   ActionRelation,
   ActionConnection,
   Execution,
-  ActionTemplate, 
+  ActionTemplate,
   ActionView
 }) {
   readonly logger_: Logger
@@ -78,41 +78,41 @@ export default class ActionEngineService extends MedusaService({
   redisClient: Redis
   readonly SESSION_TTL = 100
 
-constructor(container: any, options?: any) {
-  super(container)
+  constructor(container: any, options?: any) {
+    super(container)
 
-  this.container = container
-  this.logger_ = container.logger
-  this.dbService = new DbOperationService(container.postgresPool)
-  this.workerPool_ = container.workerPool
-  this.postgresPool = container.postgresPool
-  this.customEventBus = container.eventBus
+    this.container = container
+    this.logger_ = container.logger
+    this.dbService = new DbOperationService(container.postgresPool)
+    this.workerPool_ = container.workerPool
+    this.postgresPool = container.postgresPool
+    this.customEventBus = container.eventBus
 
-  const redisUrl = process.env.REDIS_URL
+    const redisUrl = process.env.REDIS_URL
 
-  if (!redisUrl) {
-    this.logger_.warn("⚠️ REDIS_URL is not set. Redis disabled.")
+    if (!redisUrl) {
+      this.logger_.warn("⚠️ REDIS_URL is not set. Redis disabled.")
+    }
+
+    this.redisClient = new Redis(redisUrl!, {
+      tls: redisUrl?.startsWith("rediss://") ? {} : undefined,
+      maxRetriesPerRequest: 3,
+    })
+
+    this.redisClient.on("connect", () => {
+      this.logger_.info("✅ Redis connected")
+    })
+
+    this.redisClient.on("error", (err) => {
+      this.logger_.error("❌ Redis connection error:", err)
+    })
+
+    this.logger_.info("✅ ActionEngineService initialized")
   }
 
-  this.redisClient = new Redis(redisUrl!, {
-    tls: redisUrl?.startsWith("rediss://") ? {} : undefined,
-    maxRetriesPerRequest: 3,
-  })
 
-  this.redisClient.on("connect", () => {
-    this.logger_.info("✅ Redis connected")
-  })
-
-  this.redisClient.on("error", (err) => {
-    this.logger_.error("❌ Redis connection error:", err)
-  })
-
-  this.logger_.info("✅ ActionEngineService initialized")
-}
-
-  
   // ========== EXECUTION CACHING ==========
-   getExecutionCacheKey(
+  getExecutionCacheKey(
     templateId: string,
     parameters: Record<string, any>,
     sessionId?: string
@@ -121,7 +121,7 @@ constructor(container: any, options?: any) {
     return `execution:${templateId}:${paramsHash}${sessionId ? `:${sessionId}` : ""}`;
   }
 
-   async getCachedExecution(
+  async getCachedExecution(
     templateId: string,
     parameters: Record<string, any>,
     sessionId?: string
@@ -140,7 +140,7 @@ constructor(container: any, options?: any) {
     return null;
   }
 
-   async setCachedExecution(
+  async setCachedExecution(
     templateId: string,
     parameters: Record<string, any>,
     sessionId: string | undefined,
@@ -159,7 +159,7 @@ constructor(container: any, options?: any) {
    * Invalidate all execution caches for a given template.
    * This is called when the template is updated or deleted.
    */
-   async invalidateExecutionCachesForTemplate(templateId: string): Promise<void> {
+  async invalidateExecutionCachesForTemplate(templateId: string): Promise<void> {
     if (!this.redisClient) return;
     const pattern = `execution:${templateId}:*`;
     let cursor = "0";
@@ -192,8 +192,8 @@ constructor(container: any, options?: any) {
       };
 
       await this.redisClient.setex(
-        sessionId, 
-        ttl || this.SESSION_TTL, 
+        sessionId,
+        ttl || this.SESSION_TTL,
         JSON.stringify(session)
       );
     } catch (error: any) {
@@ -218,7 +218,8 @@ constructor(container: any, options?: any) {
   async updateSession(sessionId: string, data: Record<string, any>): Promise<void> {
     const existingData = await this.getSession(sessionId);
     // if (!existingData) throw new Error(`Session ${sessionId} not found`);
-    await this.setSession(sessionId, { ...(existingData ?? {}), ...data });
+    return await this.setSession(sessionId, { ...(existingData ?? {}), ...data });
+
   }
 
   async deleteSession(sessionId: string): Promise<void> {
@@ -229,34 +230,34 @@ constructor(container: any, options?: any) {
     return (await this.redisClient.exists(sessionId)) === 1;
   }
 
-    /**
-     * Emit events through available channels
-     */
+  /**
+   * Emit events through available channels
+   */
   async emitEvent(eventType: string, data: any): Promise<void> {
-      // 1. Use custom event bus from loader
-      if (this.customEventBus) {
-        try {
-          this.customEventBus.emit(eventType, data)
-          this.logger_.debug(`Event emitted via custom event bus: ${eventType}`)
-        } catch (error) {
-          this.logger_.warn(`Failed to emit via custom event bus: ${error}`)
-        }
+    // 1. Use custom event bus from loader
+    if (this.customEventBus) {
+      try {
+        this.customEventBus.emit(eventType, data)
+        this.logger_.debug(`Event emitted via custom event bus: ${eventType}`)
+      } catch (error) {
+        this.logger_.warn(`Failed to emit via custom event bus: ${error}`)
       }
-      
-      // 3. Log as fallback
-      this.logger_.info(`Event: ${eventType}`)
+    }
+
+    // 3. Log as fallback
+    this.logger_.info(`Event: ${eventType}`)
   }
-  
+
   // ========== CORE METHODS ==========
   @InjectManager()
   async execute(
-    templateId: string, 
-    parameters: Record<string, any> = {}, 
+    templateId: string,
+    parameters: Record<string, any> = {},
     sessionId?: string
   ): Promise<any> {
     const startTime = Date.now()
     let executionId = generateEntityId(undefined, "exec")
-    
+
     try {
       let sessionData: Record<string, any> = {};
       if (sessionId) {
@@ -290,27 +291,27 @@ constructor(container: any, options?: any) {
         input_data: parameters,
         metadata: { templateId, templateName: template.name, sessionId: sessionId || null }
       })
-      
+
       const context = { params: parameters, outputs: {}, session: sessionData, executionId }
 
       let result;
       let output_template = template.output_template;
       let context_template = template.context_template;
 
-      if(template.type === 'WORKFLOW'){
+      if (template.type === 'WORKFLOW') {
         result = await this.executeWorkflow(template?.config, context);
       } else {
         let execResult = await this.executeAction(template, context);
         result = { context: context.session, data: execResult }
       }
-      
-      if(output_template){
-        result = await expressionEvaluator.resolvePlaceholders(output_template, {...context, result: result.data});
+
+      if (output_template) {
+        result = await expressionEvaluator.resolvePlaceholders(output_template, { ...context, result: result.data });
       }
-      
-      if(context_template){
-        let contextOutput = await expressionEvaluator.resolvePlaceholders(context_template, {...context, result: result.data });
-        
+
+      if (context_template) {
+        let contextOutput = await expressionEvaluator.resolvePlaceholders(context_template, { ...context, result: result.data });
+
         if (sessionId && contextOutput) {
           await this.updateSession(sessionId, { context: { ...sessionData.context, ...contextOutput } });
         }
@@ -318,7 +319,7 @@ constructor(container: any, options?: any) {
       }
 
       await this.updateExecutions({
-        id: executionId, 
+        id: executionId,
         status: 'completed',
         completed_at: new Date(),
         duration_ms: Date.now() - startTime,
@@ -367,13 +368,13 @@ constructor(container: any, options?: any) {
       case 'AI_ACTION': return await this.callAI(config, context);
       case 'WORKFLOW': return await this.executeWorkflow(removeNullKeys(template.config), context);
       case 'SCRIPT': return await this.executeScript(config, context);
-      default: return { success: false, status: 'error', message: `Unsupported action type: ${template.type}`}
+      default: return { success: false, status: 'error', message: `Unsupported action type: ${template.type}` }
     }
   }
 
   async executeDatabaseOperation(config: any): Promise<any> {
-    let queryConfig = {debug: true, limit: 10, ...config}
-    if(queryConfig.fields){
+    let queryConfig = { debug: true, limit: 10, ...config }
+    if (queryConfig.fields) {
       queryConfig.fields = typeof queryConfig.fields == 'string' ? parseFieldsString(queryConfig.fields) : ["*"]
     }
     if (!this.postgresPool) return { success: false, status: 'error', message: "Database pool not available." }
@@ -383,21 +384,21 @@ constructor(container: any, options?: any) {
     try {
       console.log(queryConfig, config, 'DB CONFIG')
       return await this.dbService.execute(queryConfig);
-    } catch(err) {
-      return { success: false, status: 'error', message: `Database operation failed: ${queryConfig.operation}`}
+    } catch (err) {
+      return { success: false, status: 'error', message: `Database operation failed: ${queryConfig.operation}` }
     }
   }
 
   async callAPI(config: ActionConfig, context: any): Promise<any> {
     const { method, url, headers: configHeaders, body } = config;
-    const { headers, timeout = 300000} = context
+    const { headers, timeout = 300000 } = context
 
     try {
       const response = await axios({
         method: method || "GET",
         url: url,
         data: body,
-        headers: {...headers, ...configHeaders},
+        headers: { ...headers, ...configHeaders },
         timeout
       })
       return response.data
@@ -413,40 +414,40 @@ constructor(container: any, options?: any) {
   private async callAI(config: ActionConfig, context: any): Promise<any> {
     this.logger_.info(`Executing AI call Config ${JSON.stringify(config)}`)
     // this.logger_.info(`Executing AI call Context ${JSON.stringify(context)}`)
-    
+
     try {
-    
-    let systemInstruction = await expressionEvaluator.evaluatePlaceholders(
-      context.model?.metadata?.template || context.model?.system,
-      context
-    )
+
+      let systemInstruction = await expressionEvaluator.evaluatePlaceholders(
+        context.model?.metadata?.template || context.model?.system,
+        context
+      )
 
 
 
 
-    let messages = [
-      {role: 'system', content: systemInstruction},
-      {role: 'user', content: config.message || config.prompt}
+      let messages = [
+        { role: 'system', content: systemInstruction },
+        { role: 'user', content: config.message || config.prompt }
 
-    ]
+      ]
 
 
-    let chatResult = await chatCompletion({messages, model: config.model, options: context.model?.config})
-    // let result = await generateCompletion({prompt: config.message || config.prompt, ...config, options: context.model.config})
-    
-    
-    // Implement your AI service integration here
-    // return { 
-    //   result: result.response,
-    //   success: true, 
-    //   model: config.model,
-    //   timestamp: new Date().toISOString(),
-    // }
+      let chatResult = await chatCompletion({ messages, model: config.model, options: context.model?.config })
+      // let result = await generateCompletion({prompt: config.message || config.prompt, ...config, options: context.model.config})
 
-          return JSON.parse(chatResult.message.content);
 
-   } catch(err) {
-    console.log(err, 'ERROR')
+      // Implement your AI service integration here
+      // return { 
+      //   result: result.response,
+      //   success: true, 
+      //   model: config.model,
+      //   timestamp: new Date().toISOString(),
+      // }
+
+      return JSON.parse(chatResult.message.content);
+
+    } catch (err) {
+      console.log(err, 'ERROR')
       return { success: false, status_code: 400, status: 'error', message: 'Chat AI Action Error:', err }
     }
   }
@@ -460,106 +461,106 @@ constructor(container: any, options?: any) {
     }
   }
 
-    private async executeWorkflow(template: any, session: any): Promise<any> {
-      let config = template.config;
-      let success = true;
-      let variables = {...session.context}
-      let oldParams = {...session.params};
-      let finalResult;
-      let index = 0;
-      const actions = config.actions || [];
-      const workflowResults: Record<string, any> = {};
-      let contextOutput = variables;
-  
-      for (const actionConfig of actions) {
-        let conf = await expressionEvaluator.resolvePlaceholders(
-          actionConfig.action_id || {}, 
-          {context: variables, outputs: workflowResults }
-        );
-  
-        const action = await this.getActionTemplate(conf);
-        if (!action) continue;
-        
-        let params = actionConfig.parameters;
-        
-        const mergedParams = {
-          // ...oldParams,
-          ...(await expressionEvaluator.resolvePlaceholders(
-            params || {}, 
-            {...session, ...oldParams, context: variables, outputs: workflowResults }
-          ))
-        };
-  
-        const result = await this.executeAction({...action, ...actionConfig}, {
-          ...session,
-          context: variables,
-          params: mergedParams,
-          outputs: workflowResults
-        });
-        let outputKey = action.output_as ? action.output_as : (action.handle || action.id);
-        let output = result;
-        let output_template = removeEmptyObjects(actionConfig).output_template ?? action.output_template;
-        let context_template = removeEmptyObjects(actionConfig).context_template ?? action.context_template;
-        if(output?.skip) continue;
-  
-        if(output_template && Object.keys(output_template).length){
-          output = await expressionEvaluator.resolvePlaceholders(
-            output_template, 
-            {...session, ...oldParams, context: variables, outputs: workflowResults, result }
-          );
-        }
-        
-        if(context_template && Object.keys(context_template).length){
-          contextOutput = await expressionEvaluator.resolvePlaceholders(
-            context_template, 
-            {...session, ...oldParams, context: variables, outputs: workflowResults, result: output }
-          );        
-          variables = {...variables, ...contextOutput};
-        }
-        
-  
-  
-        // workflowResults[outputKey] = {index: index + 1, parameters: mergedParams, context: variables, result: output};
-    const stepUuid = this.generateId('step');
-  
-    workflowResults[outputKey] = {
-          index: index + 1,
-          parameters: mergedParams,
-          context: contextOutput,
-          result: {
-            ...output,
-            uuid: stepUuid,
-            handle: outputKey,
-            noCompensation: action.noCompensation ?? false,
-          },
-        };
-  
-        finalResult = output;
-        success = result?.success ?? true;
-        oldParams = {...oldParams, ...mergedParams}
-       await this.updateSession(session.id, { result: output, context: {...session.context, ...result.context, ...contextOutput } });
-  
-        if (result?.exit || result?.status === 'error') break;
-  
-        index++;
-      }
-  
-  
-  
-    const workflowObject = this.generateWorkflowObject(oldParams, workflowResults, variables, finalResult, success, template);
-      await this.saveWorkflowObject(template, {...workflowObject, state: 'done', transaction_id: `${template.handle}-${new Date().getTime()}`})
-  
-      return {
-        success,
-        status_code: success ? 200 : 400,
-        data: finalResult,
-        outputs: workflowResults,
-        context: contextOutput,
-        workflowObject,
+  private async executeWorkflow(template: any, session: any): Promise<any> {
+    let config = template.config;
+    let success = true;
+    let variables = { ...session.context }
+    let oldParams = { ...session.params };
+    let finalResult;
+    let index = 0;
+    const actions = config.actions || [];
+    const workflowResults: Record<string, any> = {};
+    let contextOutput = variables;
+
+    for (const actionConfig of actions) {
+      let conf = await expressionEvaluator.resolvePlaceholders(
+        actionConfig.action_id || {},
+        { context: variables, outputs: workflowResults }
+      );
+
+      const action = await this.getActionTemplate(conf);
+      if (!action) continue;
+
+      let params = actionConfig.parameters;
+
+      const mergedParams = {
+        // ...oldParams,
+        ...(await expressionEvaluator.resolvePlaceholders(
+          params || {},
+          { ...session, ...oldParams, context: variables, outputs: workflowResults }
+        ))
       };
+
+      const result = await this.executeAction({ ...action, ...actionConfig }, {
+        ...session,
+        context: variables,
+        params: mergedParams,
+        outputs: workflowResults
+      });
+      let outputKey = action.output_as ? action.output_as : (action.handle || action.id);
+      let output = result;
+      let output_template = removeEmptyObjects(actionConfig).output_template ?? action.output_template;
+      let context_template = removeEmptyObjects(actionConfig).context_template ?? action.context_template;
+      if (output?.skip) continue;
+
+      if (output_template && Object.keys(output_template).length) {
+        output = await expressionEvaluator.resolvePlaceholders(
+          output_template,
+          { ...session, ...oldParams, context: variables, outputs: workflowResults, result }
+        );
+      }
+
+      if (context_template && Object.keys(context_template).length) {
+        contextOutput = await expressionEvaluator.resolvePlaceholders(
+          context_template,
+          { ...session, ...oldParams, context: variables, outputs: workflowResults, result: output }
+        );
+        variables = { ...variables, ...contextOutput };
+      }
+
+
+
+      // workflowResults[outputKey] = {index: index + 1, parameters: mergedParams, context: variables, result: output};
+      const stepUuid = this.generateId('step');
+
+      workflowResults[outputKey] = {
+        index: index + 1,
+        parameters: mergedParams,
+        context: contextOutput,
+        result: {
+          ...output,
+          uuid: stepUuid,
+          handle: outputKey,
+          noCompensation: action.noCompensation ?? false,
+        },
+      };
+
+      finalResult = output;
+      success = result?.success ?? true;
+      oldParams = { ...oldParams, ...mergedParams }
+      await this.updateSession(session.id, { result: output, context: { ...session.context, ...result.context, ...contextOutput } });
+
+      if (result?.exit || result?.status === 'error') break;
+
+      index++;
     }
 
- // Builds execution.definition from workflowResults recursively
+
+
+    const workflowObject = this.generateWorkflowObject(oldParams, workflowResults, variables, finalResult, success, template);
+    await this.saveWorkflowObject(template, { ...workflowObject, state: 'done', transaction_id: `${template.handle}-${new Date().getTime()}` })
+
+    return {
+      success,
+      status_code: success ? 200 : 400,
+      data: finalResult,
+      outputs: workflowResults,
+      context: contextOutput,
+      workflowObject,
+    };
+  }
+
+  // Builds execution.definition from workflowResults recursively
   buildExecutionDefinition(results: Record<string, any>, keys: string[]): any {
     if (!keys.length) return null;
 
@@ -582,186 +583,186 @@ constructor(container: any, options?: any) {
   }
 
   generateWorkflowObject(
-  inputs: any,
-  workflowResults: Record<string, any>,
-  variables: Record<string, any>,
-  finalResult: any,
-  success: boolean,
-  template?: any
-): any {
-  const runId = `wf_exec_${Date.now().toString(36).toUpperCase()}`;
-  const config = template.config;
-  const transactionId = `${template.handle}-${new Date().getTime()}`;
-  const workflowId = config.workflow_id || config.name || "workflow";
+    inputs: any,
+    workflowResults: Record<string, any>,
+    variables: Record<string, any>,
+    finalResult: any,
+    success: boolean,
+    template?: any
+  ): any {
+    const runId = `wf_exec_${Date.now().toString(36).toUpperCase()}`;
+    const config = template.config;
+    const transactionId = `${template.handle}-${new Date().getTime()}`;
+    const workflowId = config.workflow_id || config.name || "workflow";
 
-  // Build invoke object from workflowResults
-  const invoke: Record<string, any> = {};
-const sortedEntries = Object.entries(workflowResults)
-  .sort(([, a], [, b]) => (a.index ?? 0) + (b.index ?? 0))
+    // Build invoke object from workflowResults
+    const invoke: Record<string, any> = {};
+    const sortedEntries = Object.entries(workflowResults)
+      .sort(([, a], [, b]) => (a.index ?? 0) + (b.index ?? 0))
 
-  for (const [key, value] of sortedEntries) {
-    invoke[key] = {
-      __type: "Symbol(WorkflowWorkflowData)",
-      output: {
-        __type: "Symbol(WorkflowStepResponse)",
-        output: value.result ?? {},
-        compensateInput: value.result?.compensateInput ?? null,
+    for (const [key, value] of sortedEntries) {
+      invoke[key] = {
+        __type: "Symbol(WorkflowWorkflowData)",
+        output: {
+          __type: "Symbol(WorkflowStepResponse)",
+          output: value.result ?? {},
+          compensateInput: value.result?.compensateInput ?? null,
+        },
+      };
+    }
+
+    // Build compensate object (placeholder, can be extended)
+    const compensate: Record<string, any> = {};
+    for (const key of Object.keys(workflowResults)) {
+      compensate[key] = {};
+      if (workflowResults[key].result?.compensateInput) {
+        compensate[key].output = { __type: "Symbol(WorkflowStepResponse)" };
+      }
+    }
+
+    // Build execution steps
+    const steps: Record<string, any> = {};
+    const rootId = "_root";
+    steps[rootId] = {
+      id: rootId,
+      next: [],
+    };
+
+
+    const buildSteps = (parentKey: string, parentIndex = 0) => {
+      const resultKeys = Object.keys(workflowResults);
+      let prevKey = parentKey;
+
+      for (let i = parentIndex; i < resultKeys.length; i++) {
+        const key = resultKeys[i];
+        const step = workflowResults[key];
+        const stepId = `${parentKey}.${key}`;
+        const stepUuid = this.generateId('step');
+        steps[stepId] = {
+          _v: 0,
+          id: stepId,
+          next: [],
+          uuid: `${step.result.uuid}`,
+          depth: i + 1,
+          invoke: { state: "done", status: "ok" },
+          attempts: 0,
+          failures: 0,
+          compensate: { state: "dormant", status: "idle" },
+          definition: { uuid: `${step.result.uuid}`, handle: key, noCompensation: false, input: step.parameters },
+          stepFailed: false,
+          lastAttempt: null,
+          saveResponse: true,
+        };
+
+        steps[prevKey].next.push(stepId);
+        prevKey = stepId;
+      }
+    };
+
+    buildSteps(rootId);
+
+    let definitions = this.buildExecutionDefinition(workflowResults, Object.keys(workflowResults));
+
+
+    // Build errors array from failed actions
+    const errors = Object.entries(workflowResults)
+      .filter(([_, value]) => value.result?.status === "error" || value.result?.exit)
+      .map(([key, value]) => ({
+        error: {
+          date: new Date().toISOString(),
+          name: value.result?.name || "Error",
+          type: value.result?.type || "runtime_error",
+          stack: value.result?.stack || "",
+          message: value.result?.message || "Action failed",
+          __isMedusaError: true,
+        },
+        action: key,
+        handlerType: value.result?.handlerType || "invoke",
+      }));
+
+
+
+
+
+
+    return {
+      id: runId,
+      workflow_id: workflowId,
+      transaction_id: transactionId,
+      context: {
+        data: {
+          invoke,
+          payload: { inputs, context: variables },
+          compensate,
+        },
+        errors,
       },
+      execution: {
+        _v: 0,
+        runId,
+        state: success ? "completed" : "failed",
+        steps,
+        modelId: workflowId,
+        options: {
+          name: workflowId,
+          store: true,
+          idempotent: false,
+          retentionTime: 259200,
+        },
+        metadata: {
+          sourcePath: config.sourcePath ?? "",
+          eventGroupId: `evt_${Date.now().toString(36).toUpperCase()}`,
+          preventReleaseEvents: false,
+        },
+        definition: definitions,
+        timedOutAt: null,
+        hasAsyncSteps: false,
+        transactionId,
+        hasFailedSteps: errors.length > 0,
+        hasSkippedSteps: false,
+        hasWaitingSteps: false,
+        hasRevertedSteps: false,
+        hasSkippedOnFailureSteps: false,
+      },
+      state: "not_started",
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      deleted_at: null,
     };
   }
 
-  // Build compensate object (placeholder, can be extended)
-  const compensate: Record<string, any> = {};
-  for (const key of Object.keys(workflowResults)) {
-    compensate[key] = {};
-    if (workflowResults[key].result?.compensateInput) {
-      compensate[key].output = { __type: "Symbol(WorkflowStepResponse)" };
-    }
-  }
-
-  // Build execution steps
-  const steps: Record<string, any> = {};
-  const rootId = "_root";
-  steps[rootId] = {
-    id: rootId,
-    next: [],
-  };
-
-
-  const buildSteps = (parentKey: string, parentIndex = 0) => {
-    const resultKeys = Object.keys(workflowResults);
-    let prevKey = parentKey;
-
-    for (let i = parentIndex; i < resultKeys.length; i++) {
-      const key = resultKeys[i];
-      const step = workflowResults[key];
-      const stepId = `${parentKey}.${key}`;
-      const stepUuid = this.generateId('step');
-      steps[stepId] = {
-        _v: 0,
-        id: stepId,
-        next: [],
-        uuid: `${step.result.uuid}`,
-        depth: i + 1,
-        invoke: { state: "done", status: "ok" },
-        attempts: 0,
-        failures: 0,
-        compensate: { state: "dormant", status: "idle" },
-        definition: { uuid: `${step.result.uuid}`, handle: key, noCompensation: false, input: step.parameters },
-        stepFailed: false,
-        lastAttempt: null,
-        saveResponse: true,
-      };
-
-      steps[prevKey].next.push(stepId);
-      prevKey = stepId;
-    }
-  };
-
-  buildSteps(rootId);
-
-  let definitions = this.buildExecutionDefinition(workflowResults, Object.keys(workflowResults));
-
-
-  // Build errors array from failed actions
-  const errors = Object.entries(workflowResults)
-    .filter(([_, value]) => value.result?.status === "error" || value.result?.exit)
-    .map(([key, value]) => ({
-      error: {
-        date: new Date().toISOString(),
-        name: value.result?.name || "Error",
-        type: value.result?.type || "runtime_error",
-        stack: value.result?.stack || "",
-        message: value.result?.message || "Action failed",
-        __isMedusaError: true,
-      },
-      action: key,
-      handlerType: value.result?.handlerType || "invoke",
-    }));
-
-  
-
-  
-
-
-  return {
-    id: runId,
-    workflow_id: workflowId,
-    transaction_id: transactionId,
-    context: {
-      data: {
-        invoke,
-        payload: {inputs,context: variables},
-        compensate,
-      },
-      errors,
-    },
-    execution: {
-      _v: 0,
-      runId,
-      state: success ? "completed" : "failed",
-      steps,
-      modelId: workflowId,
-      options: {
-        name: workflowId,
-        store: true,
-        idempotent: false,
-        retentionTime: 259200,
-      },
-      metadata: {
-        sourcePath: config.sourcePath ?? "",
-        eventGroupId: `evt_${Date.now().toString(36).toUpperCase()}`,
-        preventReleaseEvents: false,
-      },
-      definition: definitions,
-      timedOutAt: null,
-      hasAsyncSteps: false,
-      transactionId,
-      hasFailedSteps: errors.length > 0,
-      hasSkippedSteps: false,
-      hasWaitingSteps: false,
-      hasRevertedSteps: false,
-      hasSkippedOnFailureSteps: false,
-    },
-    state: "not_started",
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-    deleted_at: null,
-  };
-}
-
 
   async saveWorkflowObject(template: any, workflow: any): Promise<any> {
- 
-await this.executeDatabaseOperation({
+
+    await this.executeDatabaseOperation({
       table: 'workflow_execution',
       operation: "create",
       data: {
-          ...workflow,
-          id: this.generateId('wf_exec'),
-          workflow_id: template.handle,
-          retention_time: 60000 * 3
+        ...workflow,
+        id: this.generateId('wf_exec'),
+        workflow_id: template.handle,
+        retention_time: 60000 * 3
       }
-})
+    })
 
     return template.length ? template[0] : null
   }
 
   async getActionTemplate(actionId: string): Promise<any> {
-    if(!actionId) return null
-    let template = await this.listActionTemplates({  
-      $or: [ { id: { $eq: actionId } }, { handle: { $eq: actionId } } ]
+    if (!actionId) return null
+    let template = await this.listActionTemplates({
+      $or: [{ id: { $eq: actionId } }, { handle: { $eq: actionId } }]
     })
     return template.length ? template[0] : null
   }
 
   async stepAction(templateId: string, input: Record<string, any>, session: any): Promise<any> {
-    let templates = await this.listActionTemplates({  
-      $or: [ { id: { $eq: templateId } }, { handle: { $eq: templateId } } ]
+    let templates = await this.listActionTemplates({
+      $or: [{ id: { $eq: templateId } }, { handle: { $eq: templateId } }]
     });
-      
+
     let template = templates[0] as any;
-    
+
     let validationResult = validateAndRefineParameters(input, template?.parameters);
 
     if (!validationResult.valid) {
@@ -770,29 +771,29 @@ await this.executeDatabaseOperation({
 
     let response = await this.executeAction(template, {
       session,
-      params: validationResult.refinedData, 
+      params: validationResult.refinedData,
       context: session?.context
     });
 
-      // let contextOutput = session.context;
-      let output = response;
-      let output_template =  template.output_template;
-      let context_template = template.context_template;
-      
+    // let contextOutput = session.context;
+    let output = response;
+    let output_template = template.output_template;
+    let context_template = template.context_template;
 
-      if(output_template && Object.keys(output_template).length){
-        output = await expressionEvaluator.resolvePlaceholders(
-          output_template, 
-          {...session, params: input, result: response, outputs: response?.outputs ?? {}}
-        );
-      }
-      
+
+    if (output_template && Object.keys(output_template).length) {
+      output = await expressionEvaluator.resolvePlaceholders(
+        output_template,
+        { ...session, params: input, result: response, outputs: response?.outputs ?? {} }
+      );
+    }
+
 
 
     return output;
   }
 
-    /** Generate a unique ID for a document */
+  /** Generate a unique ID for a document */
   generateId(type?: any) {
     return generateEntityId(undefined, type);
   }

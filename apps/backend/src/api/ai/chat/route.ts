@@ -15,34 +15,34 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
   try {
     const aiModule = req.scope.resolve(AI_MODULE) as any;
     const data = req.body as any;
-      const model = await aiModule.getModel(data.model);
+    const model = await aiModule.getModel(data.model);
 
 
 
-      const systemInstruction = await expressionEvaluator.evaluatePlaceholders(
-       data?.system || model?.metadata?.template || model.system,
-        { context: data?.context || {} }
-      );
+    const systemInstruction = await expressionEvaluator.evaluatePlaceholders(
+      data?.system || model?.metadata?.template || model.system,
+      { context: data?.context || {} }
+    );
 
-     const messages = [
-        { role: "system", content: data?.system ?? systemInstruction },
-        { role: "user", content: data.message }
-      ];
-
-
-      let fullResponse: any;
-
-        const result = await chatCompletion({
-          model: model?.model_name,
-          messages,
-          options: data?.config ?? model.config
-        });
-        fullResponse = result.message;
-        
-        
+    const messages = [
+      { role: "system", content: data?.system ?? systemInstruction },
+      { role: "user", content: data.message }
+    ];
 
 
-console.log(result, messages, data, 'CHAT AII')
+    let fullResponse: any;
+
+    const result = await chatCompletion({
+      model: model?.model_name,
+      messages,
+      options: data?.config ?? model.config
+    });
+    fullResponse = result.message;
+
+
+
+
+    console.log(result, messages, data, 'CHAT AII')
 
     return res.json(fullResponse?.content);
   } catch (error: any) {

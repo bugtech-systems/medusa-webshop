@@ -1,9 +1,9 @@
 import { Pool } from 'pg';
-import { 
+import {
   generateEntityId,
   MedusaService,
   InjectManager,
-} from "@medusajs/framework/utils" 
+} from "@medusajs/framework/utils"
 import { toSql } from 'pgvector';
 import {
   generateEmbedding,
@@ -37,28 +37,28 @@ export interface RagQueryConfig {
   offset?: number;
   sql?: string;
   params?: any[];
-  
+
   // Search specific
   query?: string;           // Natural language query for semantic search
   embedding?: number[];     // Precomputed embedding vector
   topK?: number;            // Number of nearest neighbors to retrieve
   minSimilarity?: number;   // Minimum similarity threshold (0-1)
   includeScore?: boolean;   // Include similarity and final scores
-  
+
   // Stats specific
   minSuccess?: number;      // Filter by minimum success rate
   minUsage?: number;        // Filter by minimum usage count
   searchTerm?: string;      // Text search in content
-  
+
   // Batch specific
   entries?: RagDocument[];  // For batch operations
   ids?: string[];           // For batch delete
-  
+
   // Cleanup specific
   unusedDays?: number;      // Days since creation without usage
   minSuccessRate?: number;  // Minimum success rate threshold
   dryRun?: boolean;         // Preview without executing
-  
+
   // Reindex specific
   reindexIds?: string[];    // IDs to reindex (all if empty)
 }
@@ -142,6 +142,8 @@ export class AiRagOperationService {
           return this.searchRAGSemantic(config as any);
         case 'updateRag':
           return this.updateRAG(config, config?.type, config?.text);
+        case 'upsertAiRag':
+          return this.upsertAiRAG(config?.data);
         case 'query':
           return this.query(config as any);
         default:
@@ -152,53 +154,52 @@ export class AiRagOperationService {
     }
   }
 
-  async query(config: RagQueryConfig): Promise<any>{
-  const { query: input } = config;
+  async query(config: RagQueryConfig): Promise<any> {
+    const { query: input } = config;
 
-  const rag = await this.searchRAG(config);
-  const action = await this.planner(input, rag);
-  const result = this.executor(action);
-  const evalResult = await this.critic(input, action, result);
+    const rag = await this.searchRAG(config);
+    const action = await this.planner(input, rag);
+    const result = this.executor(action);
+    const evalResult = await this.critic(input, action, result);
 
-  
-  console.log(rag, 'RAGG', action)
-  if(rag.length){
+
+    console.log(rag, 'RAGG', action)
+    if (rag.length) {
       await this.updateRAG(rag[0], evalResult.success, input);
+    }
+
+    if (action.confidence < 0.6) {
+      await this.autoCreateIntent(input);
+    }
+
+    return { action, result, eval: evalResult };
   }
 
-  if (action.confidence < 0.6) {
-    await this.autoCreateIntent(input);
-  }
-
-    return{ action, result, eval: evalResult };
-  }
-  
   // =============================
   // SEARCH (SEMANTIC NEGATIVE SCORING)
   // =============================
   async searchRAGSemantic(config) {
     const queryEmbedding = await generateEmbedding(config.query);
-       let embeddingVector = toSql(queryEmbedding);
-           const minSimilarity = config.minSimilarity ?? 0.6;
+    let embeddingVector = toSql(queryEmbedding);
+    const minSimilarity = config.minSimilarity ?? 0.6;
 
 
     const res = await this.pool.query(
-      `SELECT id, text, action as handle, usage_count, success_rate,
-        examples, negative_examples, (1 - (embedding <=> $1::vector)) AS similarity
-       FROM rag
+      `SELECT id, content, (1 - (embedding <=> $1::vector)) AS similarity
+       FROM ai_memory
        WHERE 1 - (embedding <=> $1::vector) >= $2
        ORDER BY similarity DESC
        LIMIT $3`,
       [embeddingVector, minSimilarity, config.topK]
     );
-  
+
     const enriched = await Promise.all(
       res.rows.map(async r => {
         const penalty = await this.semanticNegativePenalty(
           queryEmbedding,
           r.negative_examples
         );
-  
+
         return {
           ...r,
           penalty,
@@ -209,27 +210,27 @@ export class AiRagOperationService {
         };
       })
     );
-  
+
     return enriched.sort((a, b) => b.final_score - a.final_score)
   }
-  
+
   negativePenalty(query, negatives) {
     return negatives.some(n => query.includes(n)) ? 0.3 : 0;
   }
-  
+
   // =============================
   // SEARCH (WITH NEGATIVE SCORING)
   // =============================
-async searchRAG(config) {
+  async searchRAG(config) {
     const embedding = await generateEmbedding(config.query);
     const minSimilarity = config.minSimilarity ?? 0.6;
     const topK = config.topK ?? 5;
-   console.log(embedding, config, 'CONFIG')
+    console.log(embedding, config, 'CONFIG')
 
     const client = await this.pool.connect();
-     let embeddingVector = toSql(embedding);
+    let embeddingVector = toSql(embedding);
 
-console.log(embeddingVector, "EMBEDDDIING")
+    console.log(embeddingVector, "EMBEDDDIING")
     const res = await client.query(
       `SELECT id, text, action as handle, usage_count, success_rate,
         examples, negative_examples, (1 - (embedding <=> $1::vector)) AS similarity
@@ -239,11 +240,11 @@ console.log(embeddingVector, "EMBEDDDIING")
        LIMIT $3`,
       [embeddingVector, minSimilarity, topK]
     );
-  
+
     return res.rows
       .map(r => {
         const penalty = this.negativePenalty(config.query, r.negative_examples);
-  
+
         return {
           ...r,
           penalty,
@@ -270,7 +271,7 @@ console.log(embeddingVector, "EMBEDDDIING")
 
     for (const doc of dataArray) {
       const id = doc.id || this.generateId();
-      
+
       // Handle embedding: if provided as string, use it; otherwise generate from text
       let embeddingValue: string;
       if (doc.embedding) {
@@ -282,7 +283,7 @@ console.log(embeddingVector, "EMBEDDDIING")
         // Convert to pgvector format using toSql
         embeddingValue = toSql(embeddingArray);
       }
-      
+
       const sql = `
         INSERT INTO ${this.quoteIdentifier(table)}
         (id, text, action, embedding, usage_count, success_rate, examples, negative_examples, created_at, updated_at)
@@ -291,11 +292,11 @@ console.log(embeddingVector, "EMBEDDDIING")
       `;
 
       const params = [
-        id, 
-        doc.text, 
-        doc.action, 
+        id,
+        doc.text,
+        doc.action,
         embeddingValue,           // Pass as string with ::vector cast
-        doc.usage_count || 0, 
+        doc.usage_count || 0,
         doc.success_rate || 0,
         doc.examples || [],       // PostgreSQL array
         doc.negative_examples || [],
@@ -323,7 +324,7 @@ console.log(embeddingVector, "EMBEDDDIING")
     if (data.text) {
       setParts.push(`text = $${idx++}`);
       params.push(data.text);
-      
+
       // If text changed, update embedding
       if (!data.embedding) {
         const embeddingArray = await generateEmbedding(data.text);
@@ -332,32 +333,32 @@ console.log(embeddingVector, "EMBEDDDIING")
         params.push(embeddingValue);
       }
     }
-    
+
     if (data.action) {
       setParts.push(`action = $${idx++}`);
       params.push(data.action);
     }
-    
+
     if (data.embedding) {
       setParts.push(`embedding = $${idx++}::vector`);
       params.push(data.embedding);
     }
-    
+
     if (data.examples) {
       setParts.push(`examples = $${idx++}`);
       params.push(data.examples);
     }
-    
+
     if (data.negative_examples) {
       setParts.push(`negative_examples = $${idx++}`);
       params.push(data.negative_examples);
     }
-    
+
     if (data.usage_count !== undefined) {
       setParts.push(`usage_count = $${idx++}`);
       params.push(data.usage_count);
     }
-    
+
     if (data.success_rate !== undefined) {
       setParts.push(`success_rate = $${idx++}`);
       params.push(data.success_rate);
@@ -429,83 +430,131 @@ console.log(embeddingVector, "EMBEDDDIING")
     return res.rows.map((row: any) => this.parseDocument(row));
   }
 
-// =============================
-// VECTOR OPS
-// =============================
-async upsertRAG(item) {
-  const embedding = await generateEmbedding(item.text);
-      let embeddingVector = toSql(embedding || []);
+  // =============================
+  // VECTOR OPS
+  // =============================
+  async upsertRAG(item) {
+    const embedding = await generateEmbedding(item.text);
+    let embeddingVector = toSql(embedding || []);
 
     const client = await this.pool.connect();
 
-  await client.query(
-    `INSERT INTO rag VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+    await client.query(
+      `INSERT INTO rag VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
      ON CONFLICT (id) DO UPDATE SET
      text=$2, action=$3, embedding=$4,
      usage_count=$5, success_rate=$6,
      examples=$7, negative_examples=$8`,
-    [
-      item.id,
-      item.text,
-      item.action,
-      embeddingVector,
-      item.usage_count || 0,
-      item.success_rate || 0,
-      item.examples || [],
-      item.negative_examples || []
-    ]
-  );
-}
+      [
+        item.id,
+        item.text,
+        item.action,
+        embeddingVector,
+        item.usage_count || 0,
+        item.success_rate || 0,
+        item.examples || [],
+        item.negative_examples || []
+      ]
+    );
+  }
 
-// =============================
-// SEMANTIC NEGATIVE PENALTY (EMBEDDING-BASED)
-// =============================
-async  semanticNegativePenalty(queryEmbedding, negatives = []) {
-  if (!negatives || negatives.length === 0) return 0;
+  async upsertAiRAG(item) {
 
-  let maxSimilarity = 0;
+    const embedding = await generateEmbedding(item.content);
 
-  for (const neg of negatives) {
-    const negEmbedding = await generateEmbedding(neg);
-        const embeddingValue = toSql(negEmbedding);
+    if (!embedding || !embedding.length) {
+      throw new Error("Embedding failed");
+    }
 
-    const similarity = this.cosineSimilarity(queryEmbedding, negEmbedding);
 
-    if (similarity > maxSimilarity) {
-      maxSimilarity = similarity;
+    const vector = `[${embedding.join(",")}]`;
+
+    const client = await this.pool.connect();
+
+    try {
+
+      let oldRag = await this.readDocuments(client, { table: 'ai_memory', where: { scope_id: item.scope_id } })
+      let id = this.generateId()
+      console.log(oldRag)
+      if (oldRag.length) {
+        id = oldRag[0].id as any;
+      }
+
+
+      await client.query(
+        `INSERT INTO ai_memory (id, scope, scope_id, content, embedding, examples, metadata)
+       VALUES ($1,$2,$3,$4,$5::vector,$6,$7)
+       ON CONFLICT (id) DO UPDATE SET
+         scope=$2,
+         scope_id=$3,
+         content=$4,
+         embedding=$5::vector,
+         examples=$6,
+         metadata=$7`,
+        [
+          id,
+          item.scope,
+          item.scope_id,
+          item.content,
+          vector,
+          item.examples || [],
+          item.metadata || {}
+        ]
+      );
+    } finally {
+      client.release();
     }
   }
 
-  // scale penalty (only penalize if similarity is meaningful)
-  if (maxSimilarity > 0.6) {
-    return maxSimilarity; // stronger semantic match = stronger penalty
+  // =============================
+  // SEMANTIC NEGATIVE PENALTY (EMBEDDING-BASED)
+  // =============================
+  async semanticNegativePenalty(queryEmbedding, negatives = []) {
+    if (!negatives || negatives.length === 0) return 0;
+
+    let maxSimilarity = 0;
+
+    for (const neg of negatives) {
+      const negEmbedding = await generateEmbedding(neg);
+      const embeddingValue = toSql(negEmbedding);
+
+      const similarity = this.cosineSimilarity(queryEmbedding, negEmbedding);
+
+      if (similarity > maxSimilarity) {
+        maxSimilarity = similarity;
+      }
+    }
+
+    // scale penalty (only penalize if similarity is meaningful)
+    if (maxSimilarity > 0.6) {
+      return maxSimilarity; // stronger semantic match = stronger penalty
+    }
+
+    return 0;
   }
 
-  return 0;
-}
+  // cosine helper (reused)
+  cosineSimilarity(a, b) {
+    const dot = a.reduce((sum, val, i) => sum + val * b[i], 0);
+    const magA = Math.sqrt(a.reduce((sum, val) => sum + val * val, 0));
+    const magB = Math.sqrt(b.reduce((sum, val) => sum + val * val, 0));
+    return dot / (magA * magB);
+  }
 
-// cosine helper (reused)
-cosineSimilarity(a, b) {
-  const dot = a.reduce((sum, val, i) => sum + val * b[i], 0);
-  const magA = Math.sqrt(a.reduce((sum, val) => sum + val * val, 0));
-  const magB = Math.sqrt(b.reduce((sum, val) => sum + val * val, 0));
-  return dot / (magA * magB);
-}
+  // =============================
+  // AGENTS
+  // =============================
 
-// =============================
-// AGENTS
-// =============================
-
-// PLANNER
-async planner(userInput, ragResults) {
-  const prompt = `
+  // PLANNER
+  async planner(userInput, ragResults) {
+    const prompt = `
 You are a planner.
 Choose best action.
 Return lower confidence from 0.1 to 0.5, If No Available Action is provided in the context.
 Return higher confidence from 0.5 to 1, if action is provided in the context.  
 
 Context:
-${ragResults.length ? JSON.stringify(ragResults.map(a => ({text: a.text, action: a.action, examples: a.examples, negative_examples: a.negative_examples}))) : 'No Action'}
+${ragResults.length ? JSON.stringify(ragResults.map(a => ({ text: a.text, action: a.action, examples: a.examples, negative_examples: a.negative_examples }))) : 'No Action'}
 
 User: ${userInput}
 
@@ -513,17 +562,17 @@ Return JSON {action, confidence, parameters}`;
 
 
 
-  return JSON.parse(await callLLM(prompt));
-}
+    return JSON.parse(await callLLM(prompt));
+  }
 
-// EXECUTOR
-executor(action) {
-  return { success: true, output: `Executed ${action.action}` };
-}
+  // EXECUTOR
+  executor(action) {
+    return { success: true, output: `Executed ${action.action}` };
+  }
 
-// CRITIC
-async critic(userInput, action, result) {
-  const prompt = `
+  // CRITIC
+  async critic(userInput, action, result) {
+    const prompt = `
 Evaluate if action was correct.
 User: ${userInput}
 Action: ${JSON.stringify(action)}
@@ -531,51 +580,51 @@ Result: ${JSON.stringify(result)}
 
 Return JSON {success: true/false}`;
 
-  return JSON.parse(await callLLM(prompt));
-}
+    return JSON.parse(await callLLM(prompt));
+  }
 
-// =============================
-// LEARNING
-// =============================
-  
+  // =============================
+  // LEARNING
+  // =============================
 
-async updateRAG(item, success, userInput) {
-      const client = await this.pool.connect();
 
-  let ragData = await this.readDocuments(client, {table: 'rag', where: {id: item.id}})    
-  let ragItem = ragData[0] as any;
-  
-  if (success) {
-    ragItem.success_rate =
-      (ragItem.success_rate * (ragItem.usage_count - 1) + 1) /
-      ragItem.usage_count;
+  async updateRAG(item, success, userInput) {
+    const client = await this.pool.connect();
 
-    ragItem.examples = ragItem.examples || [];
+    let ragData = await this.readDocuments(client, { table: 'rag', where: { id: item.id } })
+    let ragItem = ragData[0] as any;
+
+    if (success) {
+      ragItem.success_rate =
+        (ragItem.success_rate * (ragItem.usage_count - 1) + 1) /
+        ragItem.usage_count;
+
+      ragItem.examples = ragItem.examples || [];
       if (!ragItem.examples.includes(userInput)) {
         ragItem.examples.push(userInput);
         ragItem.usage_count++;
       }
 
-  } else {
-    ragItem.negative_examples = ragItem.negative_examples || [];
-    ragItem.negative_examples.push(userInput);
+    } else {
+      ragItem.negative_examples = ragItem.negative_examples || [];
+      ragItem.negative_examples.push(userInput);
+    }
+
+    await this.upsertRAG({ ...item, ...ragItem });
   }
 
-  await this.upsertRAG({...item,...ragItem});
-}
-
-async autoCreateIntent(userInput) {
-  const prompt = `
+  async autoCreateIntent(userInput) {
+    const prompt = `
 Create intent JSON for: ${userInput}
 Return JSON {id,text,action}`;
 
-  const obj = JSON.parse(await callLLM(prompt));
-  obj.id = generateEntityId(undefined, 'rag')
-  obj.usage_count = 0;
-  obj.success_rate = 0;
-  console.log(obj, prompt, 'OBJ INTENT')
-  await this.upsertRAG({text: userInput, ...obj});
-}
+    const obj = JSON.parse(await callLLM(prompt));
+    obj.id = generateEntityId(undefined, 'rag')
+    obj.usage_count = 0;
+    obj.success_rate = 0;
+    console.log(obj, prompt, 'OBJ INTENT')
+    await this.upsertRAG({ text: userInput, ...obj });
+  }
 
 
 
@@ -589,9 +638,9 @@ Return JSON {id,text,action}`;
     const table = config.table || 'rag';
     const topK = config.topK || 5;
     const minSimilarity = config.minSimilarity || 0.5;
-    
+
     let embeddingVector: string;
-    
+
     if (config.embedding) {
       // Convert provided embedding array to pgvector format
       embeddingVector = toSql(config.embedding);
@@ -614,9 +663,9 @@ Return JSON {id,text,action}`;
       ORDER BY embedding <=> $1::vector
       LIMIT $3
     `;
-    
+
     const result = await client.query(sql, [embeddingVector, minSimilarity, topK]);
-    
+
     let rows = result.rows.map((row: any) => ({
       ...this.parseDocument(row),
       similarity: parseFloat(row.similarity)
@@ -645,7 +694,7 @@ Return JSON {id,text,action}`;
     recentActivity: RagDocument[];
   }> {
     const table = config.table || 'rag';
-    
+
     const statsQuery = `
       SELECT 
         COUNT(*) as total_entries,
@@ -660,28 +709,28 @@ Return JSON {id,text,action}`;
         COALESCE(MIN(success_rate), 0) as min_success_rate
       FROM ${this.quoteIdentifier(table)}
     `;
-    
+
     const statsResult = await client.query(statsQuery);
-    
+
     const topByUsage = await client.query(`
       SELECT * FROM ${this.quoteIdentifier(table)}
       ORDER BY usage_count DESC
       LIMIT 10
     `);
-    
+
     const topBySuccess = await client.query(`
       SELECT * FROM ${this.quoteIdentifier(table)}
       WHERE usage_count > 0
       ORDER BY success_rate DESC
       LIMIT 10
     `);
-    
+
     const recentActivity = await client.query(`
       SELECT * FROM ${this.quoteIdentifier(table)}
       ORDER BY updated_at DESC
       LIMIT 20
     `);
-    
+
     return {
       summary: statsResult.rows[0],
       topByUsage: topByUsage.rows.map((r: any) => this.parseDocument(r)),
@@ -699,7 +748,7 @@ Return JSON {id,text,action}`;
     const threshold = config.threshold || 0.5;
     const minUsage = config.minUsage || 5;
     const table = config.table || 'rag';
-    
+
     const result = await this.pool.query(`
       SELECT id, text, action, usage_count, success_rate,
              examples, negative_examples, created_at, updated_at,
@@ -709,7 +758,7 @@ Return JSON {id,text,action}`;
       WHERE success_rate < $1 AND usage_count >= $2
       ORDER BY success_rate ASC
     `, [threshold, minUsage]);
-    
+
     return {
       threshold,
       underperforming_count: result.rows.length,
@@ -742,29 +791,29 @@ Return JSON {id,text,action}`;
       try {
         const doc = entry as RagDocument;
         const id = doc.id || this.generateId();
-        
+
         // Generate embedding for each document
         const embeddingArray = await generateEmbedding(doc.text);
         const embeddingValue = toSql(embeddingArray);
-        
+
         await client.query(
           `INSERT INTO ${this.quoteIdentifier(config.table || 'rag')}
            (id, text, action, embedding, usage_count, success_rate, examples, negative_examples, created_at, updated_at)
            VALUES ($1, $2, $3, $4::vector, $5, $6, $7, $8, $9, $10)`,
           [
-            id, 
-            doc.text, 
-            doc.action, 
+            id,
+            doc.text,
+            doc.action,
             embeddingValue,
-            doc.usage_count || 0, 
+            doc.usage_count || 0,
             doc.success_rate || 0,
             doc.examples || [],
             doc.negative_examples || [],
-            new Date(), 
+            new Date(),
             new Date()
           ]
         );
-        
+
         results.push({ id, status: 'success' });
       } catch (error: any) {
         errors.push({ entry, error: error.message });
@@ -789,15 +838,15 @@ Return JSON {id,text,action}`;
   }> {
     const ids = config.ids!;
     const table = config.table || 'rag';
-    
+
     const result = await client.query(
       `DELETE FROM ${this.quoteIdentifier(table)} WHERE id = ANY($1::text[]) RETURNING id`,
       [ids]
     );
-    
+
     const deleted = result.rows.map((r: any) => r.id);
     const notFound = ids.filter(id => !deleted.includes(id));
-    
+
     return {
       success: notFound.length === 0,
       deleted,
@@ -805,7 +854,7 @@ Return JSON {id,text,action}`;
     };
   }
 
-  async feedback({id, type, text}): Promise<{
+  async feedback({ id, type, text }): Promise<{
     success: boolean;
     result: any;
     not_found: string[];
@@ -817,24 +866,24 @@ Return JSON {id,text,action}`;
       `SELECT * FROM rag WHERE id = $1`,
       [id]
     );
-    
-    if(result.rows[0]){
+
+    if (result.rows[0]) {
       let record = result.rows[0];
       let examples = [...record.examples] as any;
       let negativeExamples = [...record.negative_examples] as any;
 
-          if (type) {
-              if (!examples.includes(text)) {
-                  examples.push(text);
-              }
-          } else {
-              if (!negativeExamples.includes(text)) {
-                  negativeExamples.push(text);
-              }
-          }
+      if (type) {
+        if (!examples.includes(text)) {
+          examples.push(text);
+        }
+      } else {
+        if (!negativeExamples.includes(text)) {
+          negativeExamples.push(text);
+        }
+      }
 
-   
-      this.updateDocuments(client, {table: "rag", data: {examples, negative_examples: negativeExamples} as any, where: {id}})
+
+      this.updateDocuments(client, { table: "rag", data: { examples, negative_examples: negativeExamples } as any, where: { id } })
 
     }
 
@@ -862,47 +911,47 @@ Return JSON {id,text,action}`;
     try {
       let query = `SELECT * FROM ${this.quoteIdentifier(table)}`;
       let params: any[] = [];
-      
+
       if (config.ids && config.ids.length > 0) {
         query += ` WHERE id = ANY($1::text[])`;
         params.push(config.ids);
       }
-      
+
       const entries = await client.query(query, params);
       let updated = 0;
       let failed = 0;
-      
+
       for (const entry of entries.rows) {
         try {
           console.log(entry, 'ENTRY')
-        let completeTextContent = ``;
-        let examplesText = `Examples:\n`;
-        let negativeExamplesText = `Negative Examples:\n`;
+          let completeTextContent = ``;
+          let examplesText = `Examples:\n`;
+          let negativeExamplesText = `Negative Examples:\n`;
 
-        completeTextContent += `${entry.text}\n\n`;
+          completeTextContent += `${entry.text}\n\n`;
 
-        
-        if(entry.examples.length){
-        for(const example of entry.examples){
+
+          if (entry.examples.length) {
+            for (const example of entry.examples) {
               examplesText += `- ${example}\n`;
-        }
-        completeTextContent += `${examplesText}\n\n`
-        }
+            }
+            completeTextContent += `${examplesText}\n\n`
+          }
 
-      //   if(entry.negative_examples.length){
-      //   for(const example of entry.negative_examples){
-      //         negativeExamplesText += `- ${example}\n`;
-      //   }
+          //   if(entry.negative_examples.length){
+          //   for(const example of entry.negative_examples){
+          //         negativeExamplesText += `- ${example}\n`;
+          //   }
 
-      //   completeTextContent += `${negativeExamplesText}\n\n`
-      // }
+          //   completeTextContent += `${negativeExamplesText}\n\n`
+          // }
 
 
-        updatedTexts.push(completeTextContent);
+          updatedTexts.push(completeTextContent);
           // Generate new embedding
           const embeddingArray = await generateEmbedding(completeTextContent);
           const embeddingValue = toSql(embeddingArray);
-          
+
           await client.query(
             `UPDATE ${this.quoteIdentifier(table)} 
              SET embedding = $1::vector, updated_at = $2 
@@ -915,7 +964,7 @@ Return JSON {id,text,action}`;
           failed++;
         }
       }
-      
+
       return {
         total: entries.rows.length,
         updated,
@@ -927,7 +976,7 @@ Return JSON {id,text,action}`;
     }
   }
 
-  
+
 
   /** Clean up low-quality or unused documents */
   private async cleanupOperation(client: any, config: RagQueryConfig): Promise<{
@@ -941,7 +990,7 @@ Return JSON {id,text,action}`;
     const unusedDays = config.unusedDays || 30;
     const minSuccessRate = config.minSuccessRate || 0.3;
     const dryRun = config.dryRun || false;
-    
+
     const query = `
       ${dryRun ? 'SELECT' : 'DELETE FROM'}
       ${this.quoteIdentifier(table)}
@@ -950,9 +999,9 @@ Return JSON {id,text,action}`;
         OR (success_rate < ${minSuccessRate} AND usage_count > 0)
       ${dryRun ? '' : 'RETURNING id, text, action, success_rate, usage_count'}
     `;
-    
+
     const result = await client.query(query);
-    
+
     if (dryRun) {
       return {
         dry_run: true,
@@ -960,7 +1009,7 @@ Return JSON {id,text,action}`;
         entries: result.rows.map((r: any) => this.parseDocument(r))
       };
     }
-    
+
     return {
       dry_run: false,
       deleted_count: result.rows.length,
@@ -981,18 +1030,18 @@ Return JSON {id,text,action}`;
     const table = config.table || 'rag';
     let query = `SELECT id, text, action, usage_count, success_rate, examples, negative_examples FROM ${this.quoteIdentifier(table)}`;
     let params: any[] = [];
-    
+
     if (config.ids && config.ids.length > 0) {
       query += ` WHERE id = ANY($1::text[])`;
       params.push(config.ids);
     }
-    
+
     const result = await this.pool.query(query, params);
     const documents = result.rows.map((r: any) => this.parseDocument(r));
-    
+
     if (config.format === 'csv') {
       const headers = ['id', 'text', 'action', 'usage_count', 'success_rate', 'examples', 'negative_examples'];
-      const csvRows = documents.map(doc => 
+      const csvRows = documents.map(doc =>
         headers.map(header => {
           const value = doc[header as keyof RagDocument];
           // Handle arrays properly for CSV
@@ -1004,7 +1053,7 @@ Return JSON {id,text,action}`;
       );
       return [headers.join(','), ...csvRows].join('\n');
     }
-    
+
     return documents;
   }
 
@@ -1019,15 +1068,15 @@ Return JSON {id,text,action}`;
     let imported = 0;
     let updated = 0;
     let failed = 0;
-    
+
     for (const entry of config.entries) {
       try {
         const id = entry.id || this.generateId();
-        
+
         // Generate embedding for imported document
         const embeddingArray = await generateEmbedding(entry.text);
         const embeddingValue = toSql(embeddingArray);
-        
+
         const sql = overwrite
           ? `INSERT INTO ${this.quoteIdentifier(table)}
              (id, text, action, embedding, usage_count, success_rate, examples, negative_examples, created_at, updated_at)
@@ -1043,20 +1092,20 @@ Return JSON {id,text,action}`;
              (id, text, action, embedding, usage_count, success_rate, examples, negative_examples, created_at, updated_at)
              VALUES ($1, $2, $3, $4::vector, $5, $6, $7, $8, $9, $10)
              ON CONFLICT (id) DO NOTHING`;
-        
+
         const result = await this.pool.query(sql, [
-          id, 
-          entry.text, 
-          entry.action, 
+          id,
+          entry.text,
+          entry.action,
           embeddingValue,
-          entry.usage_count || 0, 
+          entry.usage_count || 0,
           entry.success_rate || 0,
-          entry.examples || [], 
+          entry.examples || [],
           entry.negative_examples || [],
-          new Date(), 
+          new Date(),
           new Date()
         ]);
-        
+
         if (overwrite) {
           if (result.rowCount === 1) imported++;
           else updated++;
@@ -1068,7 +1117,7 @@ Return JSON {id,text,action}`;
         console.error(`Failed to import ${entry.id}:`, error);
       }
     }
-    
+
     return {
       total: config.entries.length,
       imported,
