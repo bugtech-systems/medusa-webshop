@@ -143,7 +143,7 @@ export class AiRagOperationService {
         case 'updateRag':
           return this.updateRAG(config, config?.type, config?.text);
         case 'upsertAiRag':
-          return this.upsertAiRAG(config?.data);
+          return this.upsertAiRAG(config.table, config?.data);
         case 'query':
           return this.query(config as any);
         default:
@@ -458,7 +458,7 @@ export class AiRagOperationService {
     );
   }
 
-  async upsertAiRAG(item) {
+  async upsertAiRAG(table, item) {
 
     const embedding = await generateEmbedding(item.content);
 
@@ -467,13 +467,15 @@ export class AiRagOperationService {
     }
 
 
+    console.log(table, item, 'UPSEERT')
+
     const vector = `[${embedding.join(",")}]`;
 
     const client = await this.pool.connect();
 
     try {
 
-      let oldRag = await this.readDocuments(client, { table: 'ai_memory', where: { scope_id: item.scope_id } })
+      let oldRag = await this.readDocuments(client, { table, where: { scope_id: item.scope_id } })
       let id = this.generateId()
       console.log(oldRag)
       if (oldRag.length) {
@@ -481,8 +483,18 @@ export class AiRagOperationService {
       }
 
 
+
+      console.log([
+        id,
+        item.scope,
+        item.scope_id,
+        item.content,
+        vector,
+        item.examples || [],
+        item.metadata || {}
+      ], 'RAG CONT')
       await client.query(
-        `INSERT INTO ai_memory (id, scope, scope_id, content, embedding, examples, metadata)
+        `INSERT INTO ${this.quoteIdentifier(table)} (id, scope, scope_id, content, embedding, examples, metadata)
        VALUES ($1,$2,$3,$4,$5::vector,$6,$7)
        ON CONFLICT (id) DO UPDATE SET
          scope=$2,

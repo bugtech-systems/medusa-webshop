@@ -76,7 +76,7 @@ interface Message {
   id: string
   role: 'user' | 'assistant' | 'system'
   content: string
-  timestamp: Date
+  created_at: Date
   isEditing?: boolean
   feedback?: 'like' | 'dislike' | null
 }
@@ -298,8 +298,8 @@ export const AIModelTestDrawer = ({
   const groupMessagesToPairs = (messages: Message[]): MessagePair[] => {
     // First, sort messages by created_at to ensure proper order
     const sortedMessages = [...messages].sort((a, b) => {
-      const dateA = new Date(a.timestamp).getTime();
-      const dateB = new Date(b.timestamp).getTime();
+      const dateA = new Date(a.created_at).getTime();
+      const dateB = new Date(b.created_at).getTime();
       return dateA - dateB;
     });
 
@@ -353,7 +353,6 @@ export const AIModelTestDrawer = ({
   const handleMessages = async () => {
     let { data } = await fetchMessages({ parameters: { id: model.id } });
     let newPairs = groupMessagesToPairs(data)
-    console.log(newPairs, 'NEW PAIRS')
     setMessagePairs(newPairs)
   }
 
@@ -566,7 +565,9 @@ export const AIModelTestDrawer = ({
   }
 
   console.log(messagesData, 'MESSAGES DATA')
+  let newPairs = groupMessagesToPairs(messagesData?.data ?? [])
 
+  console.log(newPairs, messagesData, 'MESSAGE')
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
       <Drawer.Content className="!max-w-4xl">
@@ -622,7 +623,7 @@ export const AIModelTestDrawer = ({
               <div className="flex flex-col h-[600px]">
                 {/* Messages Container */}
                 <div className="flex-1 overflow-y-auto space-y-6 pr-2">
-                  {messagePairs.map((pair) => (
+                  {newPairs.map((pair) => (
                     <div key={pair.id} className="space-y-4">
                       {/* User Message */}
                       {showSystem && <>

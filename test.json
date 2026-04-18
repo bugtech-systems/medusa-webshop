@@ -1,107 +1,149 @@
 {
+  "name": "Intent RAG Generator (Fixed)",
   "nodes": [
     {
-      "id": "1",
-      "name": "Manual Trigger",
-      "type": "n8n-nodes-base.manualTrigger",
+      "id": "trigger_1",
+      "name": "Scheduled Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
       "position": [
-        200,
-        300
-      ]
-    },
-    {
-      "id": "2",
-      "name": "Fetch Medusa Products",
-      "type": "n8n-nodes-base.httpRequest",
-      "position": [
-        400,
+        0,
         300
       ],
       "parameters": {
-        "url": "http://YOUR_MEDUSA_URL/store/products",
-        "responseFormat": "json",
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "fetch_intents",
+      "name": "Fetch Intents Relation",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        220,
+        300
+      ],
+      "parameters": {
+        "url": "http://192.168.1.100:5678/webhook/relation-targets?id=start-node",
         "options": {}
       }
     },
     {
-      "id": "3",
-      "name": "Split Products",
-      "type": "n8n-nodes-base.itemLists",
+      "id": "split_items",
+      "name": "Split Items",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
       "position": [
-        600,
+        440,
         300
       ],
       "parameters": {
-        "operation": "splitOutItems",
-        "fieldToSplitOut": "products"
+        "batchSize": 1
       }
     },
     {
-      "id": "4",
+      "id": "build_rag",
       "name": "Build RAG Content",
       "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
       "position": [
-        800,
+        680,
         300
       ],
       "parameters": {
-        "functionCode": "const p = $json;\n\nconst keywords = [\n  p.title,\n  p.handle,\n  ...(p.tags || []).map(t => t.value),\n  ...(p.variants || []).map(v => v.title),\n  ...(p.options || []).flatMap(o => o.values.map(v => v.value))\n].filter(Boolean);\n\nconst attributes = {\n  material: p.material,\n  origin_country: p.origin_country,\n  weight: p.weight\n};\n\nconst variants = (p.variants || []).map(v => {\n  return `- ${v.title} (SKU: ${v.sku || \"N/A\"}, Barcode: ${v.barcode || \"N/A\"})`;\n}).join(\"\\n\");\n\nconst options = (p.options || []).map(o => {\n  return `- ${o.title}: ${o.values.map(v => v.value).join(\", \")}`;\n}).join(\"\\n\");\n\nconst content = `\n[PRODUCT]\nID: ${p.id}\nTITLE: ${p.title}\nHANDLE: ${p.handle}\n\n[DESCRIPTION]\n${p.description || \"No description available\"}\n\n[KEYWORDS]\n${keywords.join(\", \")}\n\n[ATTRIBUTES]\n${JSON.stringify(attributes, null, 2)}\n\n[OPTIONS]\n${options}\n\n[VARIANTS]\n${variants}\n\n[SEARCH_HINTS]\n${p.title} ${keywords.join(\" \")} buy ${p.title} price Philippines LPG canister refill gas\n`;\n\nreturn [{\n  json: {\n    id: p.id,\n    content,\n    metadata: {\n      title: p.title,\n      handle: p.handle\n    }\n  }\n}];"
+        "functionCode": "const p = $input.first().json;\n\nconst intent = p.label || 'unknown_intent';\nconst type = p.type || 'unknown_type';\n\nconst rag = [\n  `INTENT: ${intent}`,\n  `TYPE: ${type}`,\n  `ACTION_ID: ${p.action_id}`,\n  `NAME: ${p.name || ''}`,\n  `LABEL: ${p.label || ''}`,\n  `DESCRIPTION: ${p.description || ''}`,\n  `TABLE: ${p.config?.table || ''}`,\n  `OPERATION: ${p.config?.operation || ''}`,\n  `PARAMETERS: ${(p.parameters || []).map(x => x.name).join(', ')}`,\n  `KEYWORDS: ${(p.label + ' ' + p.name + ' ' + (p.description || '')).toLowerCase()}`,\n  `CONTEXT: intent_rag_system`\n].join(' | ');\n\nreturn [{\n  json: {\n    ...p,\n    content: rag\n  }\n}];"
       }
     },
     {
-      "id": "5",
-      "name": "Generate Embedding (Ollama)",
+      "id": "embed",
+      "name": "Generate Embedding",
       "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
       "position": [
-        1000,
+        920,
         300
       ],
       "parameters": {
+        "url": "http://192.168.1.120:11434/api/embed",
         "method": "POST",
-        "url": "http://localhost:11434/api/embeddings",
-        "jsonParameters": true,
-        "options": {},
-        "bodyParametersJson": "{\n  \"model\": \"nomic-embed-text\",\n  \"prompt\": \"{{$json[\"content\"]}}\"\n}"
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"nomic-embed-text\",\n  \"input\": \"{{ $json.content }}\"\n}"
       }
     },
     {
-      "id": "6",
-      "name": "Prepare Vector Record",
+      "id": "prepare_db",
+      "name": "Prepare DB Payload",
       "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
       "position": [
-        1200,
+        1160,
         300
       ],
       "parameters": {
-        "functionCode": "return [{\n  json: {\n    id: $json.id,\n    embedding: $json.embedding,\n    content: $node[\"Build RAG Content\"].json.content,\n    metadata: $node[\"Build RAG Content\"].json.metadata\n  }\n}];"
+        "functionCode": "const p = $input.first().json;\n\nconst embedding = $node[\"Generate Embedding\"].json.embedding;\n\nreturn [{\n  json: {\n    table: \"ai_memory\",\n    operation: \"upsertAiRag\",\n    data: {\n      id: p.action_id,\n      scope: \"intent\",\n      scope_id: p.relation_id,\n      content: p.content,\n      embedding: embedding,\n      metadata: {\n        intent: p.label,\n        type: p.type\n      }\n    }\n  }\n}];"
       }
+    },
+    {
+      "id": "save",
+      "name": "Save AI Memory",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1400,
+        300
+      ],
+      "parameters": {
+        "url": "http://192.168.1.100:9010/ai/rag",
+        "method": "POST",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json }}"
+      }
+    },
+    {
+      "id": "loop_back",
+      "name": "Loop Back",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1600,
+        300
+      ]
     }
   ],
   "connections": {
-    "Manual Trigger": {
+    "Scheduled Trigger": {
       "main": [
         [
           {
-            "node": "Fetch Medusa Products",
+            "node": "Fetch Intents Relation",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Fetch Medusa Products": {
+    "Fetch Intents Relation": {
       "main": [
         [
           {
-            "node": "Split Products",
+            "node": "Split Items",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Split Products": {
+    "Split Items": {
       "main": [
+        [],
         [
           {
             "node": "Build RAG Content",
@@ -115,23 +157,49 @@
       "main": [
         [
           {
-            "node": "Generate Embedding (Ollama)",
+            "node": "Generate Embedding",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Generate Embedding (Ollama)": {
+    "Generate Embedding": {
       "main": [
         [
           {
-            "node": "Prepare Vector Record",
+            "node": "Prepare DB Payload",
             "type": "main",
             "index": 0
           }
         ]
       ]
+    },
+    "Prepare DB Payload": {
+      "main": [
+        [
+          {
+            "node": "Save AI Memory",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save AI Memory": {
+      "main": [
+        [
+          {
+            "node": "Split Items",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
     }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
   }
 }

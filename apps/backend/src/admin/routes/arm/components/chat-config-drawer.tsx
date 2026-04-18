@@ -253,7 +253,6 @@ export const ChatSessionConfigDrawer: React.FC<
             })
 
             const json = await res.json()
-            console.log(json, 'SESSS')
             localStorage.setItem('session_id', json.id)
             setConfig({ ...DEFAULT_CONFIG, ...json, session_id: json.id });
             setContext({});

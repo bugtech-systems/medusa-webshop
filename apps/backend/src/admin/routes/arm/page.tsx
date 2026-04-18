@@ -159,8 +159,6 @@ export default function Home() {
       const assistantText = json.data.message   // 👈 the field you want
 
 
-
-
       const assistantMessage: Message = {
         id: `assistant-${Date.now()}`,
         role: 'assistant',
