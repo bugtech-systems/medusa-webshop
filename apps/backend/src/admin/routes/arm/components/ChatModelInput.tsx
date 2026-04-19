@@ -14,10 +14,10 @@ import {
   Tabs,
   Badge,
   Textarea,
-  Switch,
 } from "@medusajs/ui";
 import { ChatBubble, DocumentText, SettingsIcon, Sparkles } from "../../../components";
 import { ChatSessionConfigDrawer } from "./chat-config-drawer";
+import { ChatModelConfigDrawer } from "./chat-model-config-drawer";
 
 interface Props {
   conversationId?: string
@@ -104,7 +104,7 @@ const JSONEditor = ({
   )
 }
 
-export default function ChatInput({ isPending, onSend, config, setConfig, showSystem, setShowSystem }: any) {
+export default function ChatModelInput({ isPending, onSend, config, setConfig }: any) {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [content, setContent] = useState("")
 
@@ -139,6 +139,7 @@ export default function ChatInput({ isPending, onSend, config, setConfig, showSy
 
   const handleSave = (data) => {
     console.log(data, 'SAAAVEED')
+    setConfig(data)
     setDrawerOpen(false)
   }
 
@@ -185,13 +186,13 @@ export default function ChatInput({ isPending, onSend, config, setConfig, showSy
         {/* Actions */}
         <div className="mt-3 flex items-center justify-between">
           <div className="flex gap-2">
-            <button
+            {/* <button
               type="button"
               className="p-2 rounded-full hover:bg-neutral-100"
               disabled={isPending}
             >
               <Paperclip size={16} />
-            </button>
+            </button> */}
             <button
               type="button"
               className="p-2 rounded-full hover:bg-neutral-100"
@@ -200,15 +201,6 @@ export default function ChatInput({ isPending, onSend, config, setConfig, showSy
             >
               <Settings size={16} />
             </button>
-            <div
-              className="d-flex pt-1 rounded-full hover:bg-neutral-100"
-
-            >
-              <Switch
-                checked={showSystem}
-                onCheckedChange={(checked) => setShowSystem(checked)}
-              />
-            </div>
           </div>
 
           <button
@@ -221,8 +213,7 @@ export default function ChatInput({ isPending, onSend, config, setConfig, showSy
           </button>
         </div>
       </div>
-      <ChatSessionConfigDrawer config={config} setConfig={setConfig} open={drawerOpen} onOpenChange={setDrawerOpen} onSave={handleSave} />
-
+      <ChatModelConfigDrawer config={config} setConfig={setConfig} open={drawerOpen} onOpenChange={setDrawerOpen} onSave={handleSave} />
     </>
   )
 }

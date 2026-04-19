@@ -1,205 +1,559 @@
 {
-  "name": "Intent RAG Generator (Fixed)",
+  "name": "AI Assistant with PGVector + Training Mode",
   "nodes": [
     {
-      "id": "trigger_1",
-      "name": "Scheduled Trigger",
-      "type": "n8n-nodes-base.scheduleTrigger",
-      "typeVersion": 1.3,
-      "position": [
-        0,
-        300
-      ],
       "parameters": {
-        "rule": {
-          "interval": [
+        "httpMethod": "POST",
+        "path": "assistant",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-1",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [
+        250,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ============================================\n// LOAD OR INITIALIZE STATE\n// ============================================\nconst sessionId = $input.item.json.sessionId || `session_${Date.now()}`;\nlet state = $input.item.json.state;\nconst isTraining = $input.item.json.isTraining === true;\nconst userMessage = $input.item.json.message;\nconst feedback = $input.item.json.feedback; // optional\n\nif (!state) {\n  state = {\n    session_id: sessionId,\n    is_training: isTraining,\n    current_intent: null,\n    available_intents: [\"search_flight\", \"book_flight\", \"cancel_booking\", \"fallback\"],\n    slots: {},\n    action_results: [],\n    conversation_memory: [],\n    feedback_log: []\n  };\n}\n\n// Append user message to memory\nstate.conversation_memory.push({ role: \"user\", content: userMessage });\n\n// Keep only last 10 turns to avoid token overflow\nif (state.conversation_memory.length > 20) {\n  state.conversation_memory = state.conversation_memory.slice(-20);\n}\n\nreturn {\n  sessionId,\n  state,\n  userMessage,\n  isTraining,\n  feedback\n};"
+      },
+      "id": "code-load-state",
+      "name": "Load or Init State",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        450,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ============================================\n// BUILD RAG QUERY TEXT (for embedding)\n// ============================================\nconst state = $input.item.json.state;\nconst lastTwoUserMessages = state.conversation_memory\n  .filter(m => m.role === \"user\")\n  .slice(-2)\n  .map(m => m.content)\n  .join(\" \");\n\nconst queryText = `Current intent: ${state.current_intent || \"none\"}. User just said: ${lastTwoUserMessages}`;\nreturn { queryText };"
+      },
+      "id": "code-rag-query",
+      "name": "Build RAG Query",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        650,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/embeddings",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "openAiApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
             {
-              "field": "minutes"
+              "name": "Authorization",
+              "value": "Bearer {{$credentials.openAiApi.apiKey}}"
             }
           ]
-        }
-      }
-    },
-    {
-      "id": "fetch_intents",
-      "name": "Fetch Intents Relation",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.4,
-      "position": [
-        220,
-        300
-      ],
-      "parameters": {
-        "url": "http://192.168.1.100:5678/webhook/relation-targets?id=start-node",
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "model",
+              "value": "text-embedding-3-small"
+            },
+            {
+              "name": "input",
+              "value": "={{ $json.queryText }}"
+            }
+          ]
+        },
         "options": {}
-      }
-    },
-    {
-      "id": "split_items",
-      "name": "Split Items",
-      "type": "n8n-nodes-base.splitInBatches",
-      "typeVersion": 3,
-      "position": [
-        440,
-        300
-      ],
-      "parameters": {
-        "batchSize": 1
-      }
-    },
-    {
-      "id": "build_rag",
-      "name": "Build RAG Content",
-      "type": "n8n-nodes-base.function",
-      "typeVersion": 1,
-      "position": [
-        680,
-        300
-      ],
-      "parameters": {
-        "functionCode": "const p = $input.first().json;\n\nconst intent = p.label || 'unknown_intent';\nconst type = p.type || 'unknown_type';\n\nconst rag = [\n  `INTENT: ${intent}`,\n  `TYPE: ${type}`,\n  `ACTION_ID: ${p.action_id}`,\n  `NAME: ${p.name || ''}`,\n  `LABEL: ${p.label || ''}`,\n  `DESCRIPTION: ${p.description || ''}`,\n  `TABLE: ${p.config?.table || ''}`,\n  `OPERATION: ${p.config?.operation || ''}`,\n  `PARAMETERS: ${(p.parameters || []).map(x => x.name).join(', ')}`,\n  `KEYWORDS: ${(p.label + ' ' + p.name + ' ' + (p.description || '')).toLowerCase()}`,\n  `CONTEXT: intent_rag_system`\n].join(' | ');\n\nreturn [{\n  json: {\n    ...p,\n    content: rag\n  }\n}];"
-      }
-    },
-    {
-      "id": "embed",
-      "name": "Generate Embedding",
+      },
+      "id": "http-embedding",
+      "name": "Get Embedding",
       "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.4,
+      "typeVersion": 4.1,
       "position": [
-        920,
+        850,
         300
-      ],
+      ]
+    },
+    {
       "parameters": {
-        "url": "http://192.168.1.120:11434/api/embed",
+        "jsCode": "// ============================================\n// CONVERT EMBEDDING TO PG VECTOR STRING\n// ============================================\nconst embeddingArray = $input.item.json.data[0].embedding;\nconst vectorString = `[${embeddingArray.join(\",\")}]`;\nreturn { vectorString };"
+      },
+      "id": "code-vector-string",
+      "name": "Format Vector",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1050,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT id, content, intent, metadata, pos_count, neg_count FROM rag_chunks ORDER BY embedding <-> '{{ $json.vectorString }}'::vector LIMIT 5;",
+        "postgresId": "your-postgres-credential-id",
+        "options": {}
+      },
+      "id": "pg-vector-search",
+      "name": "PGVector Search",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        1250,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ============================================\n// PREPARE INTENT SELECTOR PROMPT WITH RAG CONTEXT\n// ============================================\nconst state = $input.item.json.state;\nconst userMessage = $input.item.json.userMessage;\nconst ragChunks = $input.item.json.ragChunks; // from previous node\n\nconst ragContextText = ragChunks.map(chunk => `- ${chunk.content}`).join(\"\\n\");\n\nconst systemPrompt = `You are an Intent Selector for a conversational assistant.\n\nAvailable intents: ${state.available_intents.join(\", \")}\nTraining mode: ${state.is_training}\n\nRAG context (similar examples/rules):\n${ragContextText}\n\nRules:\n- If training mode is true and confidence in any available intent is < 0.7, you MAY propose a new intent.\n- If training mode is false, you MUST choose ONLY from available intents. If confidence < 0.6, output intent = \"fallback\".\n- Output valid JSON only.\n\nOutput format:\n{\n  \"selected_intent\": \"string or null\",\n  \"confidence\": 0.0-1.0,\n  \"updated_slots\": {},\n  \"action_request\": { \"action_name\": \"...\", \"params\": {} },\n  \"new_intent_proposal\": { \"name\": \"string\", \"examples\": [\"...\"] } // only if training & low conf\n}`;\n\nconst userPrompt = `Conversation history (last 3 turns):\\n${JSON.stringify(state.conversation_memory.slice(-3))}\\n\\nLatest user message: \"${userMessage}\"`;\n\nreturn {\n  messages: [\n    { role: \"system\", content: systemPrompt },\n    { role: \"user\", content: userPrompt }\n  ]\n};"
+      },
+      "id": "code-intent-prompt",
+      "name": "Intent Selector Prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1450,
+        300
+      ]
+    },
+    {
+      "parameters": {
         "method": "POST",
+        "url": "https://api.openai.com/v1/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "openAiApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer {{$credentials.openAiApi.apiKey}}"
+            }
+          ]
+        },
         "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={\n  \"model\": \"nomic-embed-text\",\n  \"input\": \"{{ $json.content }}\"\n}"
-      }
-    },
-    {
-      "id": "prepare_db",
-      "name": "Prepare DB Payload",
-      "type": "n8n-nodes-base.function",
-      "typeVersion": 1,
-      "position": [
-        1160,
-        300
-      ],
-      "parameters": {
-        "functionCode": "const p = $input.first().json;\n\nconst embedding = $node[\"Generate Embedding\"].json.embedding;\n\nreturn [{\n  json: {\n    table: \"ai_memory\",\n    operation: \"upsertAiRag\",\n    data: {\n      id: p.action_id,\n      scope: \"intent\",\n      scope_id: p.relation_id,\n      content: p.content,\n      embedding: embedding,\n      metadata: {\n        intent: p.label,\n        type: p.type\n      }\n    }\n  }\n}];"
-      }
-    },
-    {
-      "id": "save",
-      "name": "Save AI Memory",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "model",
+              "value": "gpt-4o-mini"
+            },
+            {
+              "name": "messages",
+              "value": "={{ $json.messages }}"
+            },
+            {
+              "name": "response_format",
+              "value": "{\"type\":\"json_object\"}"
+            },
+            {
+              "name": "temperature",
+              "value": 0.2
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "http-intent-selector",
+      "name": "Intent Selector LLM",
       "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.4,
+      "typeVersion": 4.1,
       "position": [
-        1400,
+        1650,
         300
-      ],
-      "parameters": {
-        "url": "http://192.168.1.100:9010/ai/rag",
-        "method": "POST",
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ $json }}"
-      }
+      ]
     },
     {
-      "id": "loop_back",
-      "name": "Loop Back",
-      "type": "n8n-nodes-base.noOp",
+      "parameters": {
+        "jsCode": "// ============================================\n// PARSE INTENT + EXECUTE ACTION\n// ============================================\nconst intentOutput = JSON.parse($input.item.json.choices[0].message.content);\nlet state = $input.item.json.state;\nconst isTraining = state.is_training;\nconst retrievedChunkIds = $input.item.json.ragChunks?.map(c => c.id) || [];\n\nlet actionResult = null;\nlet updatedState = { ...state };\n\n// Handle low confidence & training mode\nif (intentOutput.confidence < 0.7 && isTraining && intentOutput.new_intent_proposal) {\n  updatedState.generated_intent = intentOutput.new_intent_proposal;\n  updatedState.current_intent = \"clarify_new_intent\";\n  actionResult = {\n    type: \"clarify\",\n    message: `Did you mean \"${intentOutput.new_intent_proposal.name}\"?`,\n    proposal: intentOutput.new_intent_proposal\n  };\n} else if (intentOutput.confidence < 0.6 && !isTraining) {\n  updatedState.current_intent = \"fallback\";\n  actionResult = { type: \"fallback\", message: \"I don't understand. Please rephrase.\" };\n} else {\n  // Normal intent\n  updatedState.current_intent = intentOutput.selected_intent;\n  updatedState.slots = { ...updatedState.slots, ...(intentOutput.updated_slots || {}) };\n  \n  const actionReq = intentOutput.action_request;\n  if (actionReq) {\n    // ---------- ACTION EXECUTOR (customizable) ----------\n    if (actionReq.action_name === \"search_flights\") {\n      // Simulate API call\n      actionResult = {\n        success: true,\n        data: { flights: [\"UA123\", \"AF456\"], message: \"Found 2 flights\" }\n      };\n    } else if (actionReq.action_name === \"book_flight\") {\n      actionResult = { success: true, data: { booking_id: \"B123\" } };\n    } else if (actionReq.action_name === \"cancel_booking\") {\n      actionResult = { success: true, data: { cancelled: true } };\n    } else {\n      actionResult = { success: false, error: `Unknown action: ${actionReq.action_name}` };\n    }\n    \n    updatedState.action_results.push({\n      action: actionReq.action_name,\n      result: actionResult,\n      timestamp: new Date().toISOString()\n    });\n  }\n}\n\nreturn {\n  state: updatedState,\n  actionResult,\n  intentInfo: intentOutput,\n  retrievedChunkIds,\n  needClarification: actionResult?.type === \"clarify\" || actionResult?.type === \"fallback\"\n};"
+      },
+      "id": "code-action-executor",
+      "name": "Parse Intent & Execute Action",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1850,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ============================================\n// PREPARE RESPONSE AGENT PROMPT\n// ============================================\nconst state = $input.item.json.state;\nconst actionResult = $input.item.json.actionResult;\nconst intentInfo = $input.item.json.intentInfo;\nconst userMessage = $input.item.json.userMessage;\n\nconst systemPrompt = `You are a helpful assistant.\nCurrent intent: ${state.current_intent}\nLast action result: ${JSON.stringify(actionResult)}\nTraining mode: ${state.is_training}\nAvailable next intents: ${state.available_intents.join(\", \")}\n\nInstructions:\n- Describe what action was executed and its result in natural language.\n- If training mode and a new intent was proposed, ask the user for confirmation.\n- If fallback, politely ask the user to rephrase or choose from available intents.\n- Suggest next steps based on the current state.\n- Do NOT output JSON – only natural language.`;\n\nconst userPrompt = `User said: \"${userMessage}\"`;\n\nreturn {\n  messages: [\n    { role: \"system\", content: systemPrompt },\n    { role: \"user\", content: userPrompt }\n  ]\n};"
+      },
+      "id": "code-response-prompt",
+      "name": "Response Agent Prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2050,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "openAiApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer {{$credentials.openAiApi.apiKey}}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "model",
+              "value": "gpt-4o-mini"
+            },
+            {
+              "name": "messages",
+              "value": "={{ $json.messages }}"
+            },
+            {
+              "name": "temperature",
+              "value": 0.7
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "http-response-agent",
+      "name": "Response Agent LLM",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        2250,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ============================================\n// APPEND ASSISTANT RESPONSE TO STATE MEMORY\n// ============================================\nconst assistantResponse = $input.item.json.choices[0].message.content;\nlet state = $input.item.json.state;\n\nstate.conversation_memory.push({ role: \"assistant\", content: assistantResponse });\n\nreturn { state, assistantResponse };"
+      },
+      "id": "code-update-memory",
+      "name": "Update Conversation Memory",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2450,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO conversation_states (session_id, state, updated_at) VALUES ('{{ $json.sessionId }}', '{{ $json.stateJson }}', NOW()) ON CONFLICT (session_id) DO UPDATE SET state = EXCLUDED.state, updated_at = NOW();",
+        "postgresId": "your-postgres-credential-id",
+        "options": {}
+      },
+      "id": "pg-save-state",
+      "name": "Save State to DB",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        2650,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ============================================\n// HANDLE FEEDBACK (if provided) FOR RETRIEVAL RANKING\n// ============================================\nconst feedback = $input.item.json.feedback;\nconst sessionId = $input.item.json.sessionId;\nconst retrievedChunkIds = $input.item.json.retrievedChunkIds;\n\nif (feedback && feedback.type && retrievedChunkIds && retrievedChunkIds.length > 0) {\n  // For each chunk, we'll update counters (simulated – actual update would be in PostgreSQL node)\n  // In a real workflow, you would loop over chunks and execute UPDATE queries.\n  // This node returns data that can be used by a subsequent PostgreSQL node.\n  const updates = retrievedChunkIds.map(chunkId => ({\n    chunkId,\n    feedbackType: feedback.type, // 'positive' or 'negative'\n    sessionId\n  }));\n  return { updates, hasFeedback: true };\n}\nreturn { hasFeedback: false };"
+      },
+      "id": "code-feedback-prep",
+      "name": "Prepare Feedback Updates",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2850,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE rag_chunks SET pos_count = pos_count + 1 WHERE id = '{{ $json.chunkId }}';",
+        "postgresId": "your-postgres-credential-id",
+        "options": {}
+      },
+      "id": "pg-update-positive",
+      "name": "Update Positive Feedback",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        3050,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE rag_chunks SET neg_count = neg_count + 1 WHERE id = '{{ $json.chunkId }}';",
+        "postgresId": "your-postgres-credential-id",
+        "options": {}
+      },
+      "id": "pg-update-negative",
+      "name": "Update Negative Feedback",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        3050,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO feedback_log (session_id, turn_id, chunk_id, feedback_type) VALUES ('{{ $json.sessionId }}', (SELECT COALESCE(MAX(turn_id),0)+1 FROM feedback_log WHERE session_id='{{ $json.sessionId }}'), '{{ $json.chunkId }}', '{{ $json.feedbackType }}');",
+        "postgresId": "your-postgres-credential-id",
+        "options": {}
+      },
+      "id": "pg-feedback-log",
+      "name": "Log Feedback",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        3250,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "responseBody": "={ { response: $json.assistantResponse, state: $json.state, sessionId: $json.sessionId } }",
+        "responseHeaders": {}
+      },
+      "id": "respond",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
       "position": [
-        1600,
+        3450,
         300
       ]
     }
   ],
   "connections": {
-    "Scheduled Trigger": {
+    "Webhook": {
       "main": [
         [
           {
-            "node": "Fetch Intents Relation",
+            "node": "Load or Init State",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Fetch Intents Relation": {
+    "Load or Init State": {
       "main": [
         [
           {
-            "node": "Split Items",
+            "node": "Build RAG Query",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Split Items": {
+    "Build RAG Query": {
       "main": [
-        [],
         [
           {
-            "node": "Build RAG Content",
+            "node": "Get Embedding",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Build RAG Content": {
+    "Get Embedding": {
       "main": [
         [
           {
-            "node": "Generate Embedding",
+            "node": "Format Vector",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Generate Embedding": {
+    "Format Vector": {
       "main": [
         [
           {
-            "node": "Prepare DB Payload",
+            "node": "PGVector Search",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Prepare DB Payload": {
+    "PGVector Search": {
       "main": [
         [
           {
-            "node": "Save AI Memory",
+            "node": "Intent Selector Prompt",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Save AI Memory": {
+    "Intent Selector Prompt": {
       "main": [
         [
           {
-            "node": "Split Items",
+            "node": "Intent Selector LLM",
             "type": "main",
-            "index": 1
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Intent Selector LLM": {
+      "main": [
+        [
+          {
+            "node": "Parse Intent & Execute Action",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Intent & Execute Action": {
+      "main": [
+        [
+          {
+            "node": "Response Agent Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Response Agent Prompt": {
+      "main": [
+        [
+          {
+            "node": "Response Agent LLM",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Response Agent LLM": {
+      "main": [
+        [
+          {
+            "node": "Update Conversation Memory",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Conversation Memory": {
+      "main": [
+        [
+          {
+            "node": "Save State to DB",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save State to DB": {
+      "main": [
+        [
+          {
+            "node": "Prepare Feedback Updates",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Feedback Updates": {
+      "main": [
+        [
+          {
+            "node": "Update Positive Feedback",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Update Negative Feedback",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Log Feedback",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Positive Feedback": {
+      "main": [
+        [
+          {
+            "node": "Log Feedback",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Negative Feedback": {
+      "main": [
+        [
+          {
+            "node": "Log Feedback",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Feedback": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
           }
         ]
       ]
     }
   },
-  "active": false,
   "settings": {
     "executionOrder": "v1"
-  }
+  },
+  "staticData": null,
+  "pinData": {},
+  "versionId": "1",
+  "triggerCount": 0
 }

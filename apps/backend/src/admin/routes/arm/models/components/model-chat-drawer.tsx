@@ -20,6 +20,7 @@ import {
   Check,
   PencilSquare,
   EllipsisHorizontal,
+  Eye,
 } from '@medusajs/icons'
 import { useExecuteAction } from '../../../../hooks/api/actions'
 
@@ -329,12 +330,12 @@ export const AIModelTestDrawer = ({
           userMessage: {
             ...userMessage,
             feedback: userMessage?.metadata?.feedback,
-            timestamp: new Date(userMessage.created_at)
+            created_at: new Date(userMessage.created_at)
           },
           assistantMessage: {
             ...message,
             feedback: message?.metadata?.feedback,
-            timestamp: new Date(message.created_at)
+            created_at: new Date(message.created_at)
           }
         });
       }
@@ -564,10 +565,8 @@ export const AIModelTestDrawer = ({
     }
   }
 
-  console.log(messagesData, 'MESSAGES DATA')
   let newPairs = groupMessagesToPairs(messagesData?.data ?? [])
 
-  console.log(newPairs, messagesData, 'MESSAGE')
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
       <Drawer.Content className="!max-w-4xl">
@@ -585,6 +584,15 @@ export const AIModelTestDrawer = ({
                   onClick={() => setShowDeletePrompt(model.id)}
                 >
                   <Trash />
+                </Button>
+              </Tooltip>
+              <Tooltip content="show system">
+                <Button
+                  variant="secondary"
+                  size="small"
+                  onClick={() => setShowSystem(!showSystem)}
+                >
+                  <Eye />
                 </Button>
               </Tooltip>
               <Drawer.Close asChild>
@@ -715,7 +723,7 @@ export const AIModelTestDrawer = ({
                                   {getMessageLabel('user')}
                                 </Badge>
                                 <span className="text-xs text-ui-fg-subtle">
-                                  {pair.userMessage.timestamp.toLocaleTimeString()}
+                                  {pair.userMessage.created_at.toLocaleTimeString()}
                                 </span>
                               </div>
                               <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -801,7 +809,7 @@ export const AIModelTestDrawer = ({
                                     {getMessageLabel('assistant')}
                                   </Badge>
                                   <span className="text-xs text-ui-fg-subtle">
-                                    {pair.assistantMessage.timestamp.toLocaleTimeString()}
+                                    {pair.assistantMessage.created_at.toLocaleTimeString()}
                                   </span>
                                 </div>
                                 <div className="flex items-center gap-1">

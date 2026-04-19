@@ -10,14 +10,15 @@ import clsx from "clsx"
 import { motion, AnimatePresence } from "framer-motion"
 import { useExecuteAction, useExecution } from "../../hooks/api/actions"
 import { Check } from "lucide-react"
-import { Button, IconButton, Textarea, Tooltip, Badge, Prompt } from "@medusajs/ui"
+import { Button, IconButton, Textarea, Tooltip, Badge, Prompt, Switch } from "@medusajs/ui"
 import { ChatConversation } from "./components/chat-conversation"
+import { DEFAULT_ENV } from "../../utils/commonData"
 
 interface Message {
   id: string
   role: 'user' | 'assistant' | 'system'
   content: string
-  timestamp: Date
+  created_at: Date
   isEditing?: boolean
   feedback?: 'like' | 'dislike' | null
 }
@@ -49,8 +50,8 @@ export const DEFAULT_CONFIG: any = {
   session_id: "",
   model_id: "alayon",
   relation_id: "start-node",
-  chat_url: "http://192.168.1.100:5678/webhook-test/ai-chat",
-  feedback_url: "http://192.168.1.100:5678/webhook-test/rag-feedback"
+  chat_url: "/ai-chat",
+  feedback_url: "/rag-feedback"
 };
 
 
@@ -87,18 +88,13 @@ const tryParseJsonMessage = (content: any) => {
 
 
 export default function Home() {
-  const { mutateAsync: chatAi, isPending } = useExecuteAction("chat-ai-conversation");
-  const { mutateAsync: getChats, isPending: isLoading } = useExecuteAction("get-conversation-messages")
-  const { mutateAsync: updateFeedback, isLoading: loadingFeedback } =
-    useExecuteAction('update-message-feedback') as any
+  const { mutateAsync: getChats, isPending } = useExecuteAction("get-conversation-messages")
   const { mutateAsync: deletePair } =
     useExecuteAction('delete-message-pair') as any
-  const { mutateAsync: updateMessage } =
-    useExecuteAction('update-message-content') as any
   const [messagePairs, setMessagePairs] = useState<any[]>([])
-  const [messages, setMessages] = useState<Message[]>([])
   const [inputMessage, setInputMessage] = useState('')
   const [isSending, setIsSending] = useState(false)
+  const [showSystem, setShowSystem] = useState(false)
   const [isRegenerating, setIsRegenerating] = useState<string | null>(null)
   const [config, setConfig] = useState<any>({});
   const [showDeletePrompt, setShowDeletePrompt] = useState<string | null>(null)
@@ -113,7 +109,7 @@ export default function Home() {
 
   const handleMessages = async (id) => {
     let { data } = await getChats({ parameters: { id } }) as any;
-    setMessages(data);
+    // setMessages(data);
     // let {data} =  await fetchMessages({parameters: {id: model.id}});
     let newPairs = groupMessagesToPairs(data)
     setMessagePairs(newPairs)
@@ -128,7 +124,7 @@ export default function Home() {
       id: `user-${Date.now()}`,
       role: 'user',
       content: text,
-      timestamp: new Date(),
+      created_at: new Date(),
     }
 
     const pairId = `pair-${Date.now()}`
@@ -145,7 +141,7 @@ export default function Home() {
     try {
       console.log(config, conf, 'cccd')
 
-      const res = await fetch(config.chat_url, {
+      const res = await fetch(`${DEFAULT_ENV.n8n_prod_url + config.chat_url}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -163,7 +159,7 @@ export default function Home() {
         id: `assistant-${Date.now()}`,
         role: 'assistant',
         content: assistantText,
-        timestamp: new Date(),
+        created_at: new Date(),
       }
 
       setMessagePairs(prev =>
@@ -298,12 +294,11 @@ export default function Home() {
 
   const groupMessagesToPairs = (messages: Message[]): MessagePair[] => {
     const sortedMessages = [...messages].sort((a, b) => {
-      return new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime();
+      return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
     });
 
     const pairs: MessagePair[] = [];
     let userMessageQueue: any[] = [];
-
     for (let i = 0; i < sortedMessages.length; i++) {
       const message = sortedMessages[i] as any;
 
@@ -324,6 +319,9 @@ export default function Home() {
             a.role === "system"
         );
 
+
+
+
         pairs.push({
           id: pairId,
 
@@ -337,14 +335,14 @@ export default function Home() {
           userMessage: {
             ...userMessage,
             feedback: userMessage?.metadata?.feedback,
-            timestamp: new Date(userMessage.created_at),
+            created_at: new Date(userMessage.created_at),
           },
 
           assistantMessage: {
             ...message,
             content: tryParseJsonMessage(message.content),
             feedback: message?.metadata?.feedback,
-            timestamp: new Date(message.created_at),
+            created_at: new Date(message.created_at),
           },
         });
       }
@@ -352,8 +350,8 @@ export default function Home() {
 
     pairs.sort((a, b) => {
       return (
-        new Date(a.userMessage.timestamp).getTime() -
-        new Date(b.userMessage.timestamp).getTime()
+        new Date(a.userMessage.created_at).getTime() -
+        new Date(b.userMessage.created_at).getTime()
       );
     });
 
@@ -366,13 +364,14 @@ export default function Home() {
 
   return (
     <SidebarProvider>
-      <main className="relative min-h-screen flex flex-col items-center justify-start bg-gray-50">
+      <main className="relative overflow-hidden min-h-screen flex flex-col items-center justify-start bg-gray-50">
         {/* Title */}
 
 
         {/* Chat Window */}
 
         <ChatConversation
+          showSystem={showSystem}
           onFeedback={handleFeedback}
           onRegenerate={handleRegenerateMessage}
           messagePairs={messagePairs}
@@ -380,7 +379,7 @@ export default function Home() {
         />
         {/* Chat Input */}
         <div className="w-full max-w-4xl mt-4">
-          <ChatInput onSend={handleSendMessage} isPending={isPending} config={config} setConfig={handleConfig} />
+          <ChatInput onSend={handleSendMessage} isPending={isPending} showSystem={showSystem} setShowSystem={setShowSystem} config={config} setConfig={handleConfig} />
         </div>
       </main>
       {/* Delete Confirmation Prompt */}

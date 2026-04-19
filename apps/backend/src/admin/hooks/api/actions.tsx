@@ -25,6 +25,7 @@ import {
 import { sdk } from "../../lib/client";
 import { queryKeysFactory } from "../../lib/query-key-factory"
 import { useEffect, useState } from "react"
+import { DEFAULT_ENV } from "../../utils/commonData";
 
 export const actionsQueryKey = queryKeysFactory("actions")
 
@@ -38,14 +39,14 @@ export const useActions = (
   >
 ) => {
   const filterQuery = new URLSearchParams(query).toString()
-      const session_id = localStorage.getItem('session_id');
+  const session_id = localStorage.getItem('session_id');
 
   const fetchActions = async () =>
     sdk.client.fetch<AdminActionListResponse>(
       `/admin/actions${filterQuery ? `?${filterQuery}` : ""}`,
       {
         method: "GET",
-        headers: {session_id}
+        headers: { session_id }
       }
     )
 
@@ -67,15 +68,15 @@ export const useAction = (
   >
 ) => {
   const filterQuery = new URLSearchParams(query).toString()
-      const session_id = localStorage.getItem('session_id');
+  const session_id = localStorage.getItem('session_id');
 
   const fetchAction = async () => {
-    let token = await sdk.client.getToken(); 
+    let token = await sdk.client.getToken();
 
     return sdk.client.fetch<AdminActionResponse>(
       `/actions/${actionId}${filterQuery ? `?${filterQuery}` : ""}`,
       {
-        headers: {"Authorization": `Bearer ${token}`, session_id},
+        headers: { "Authorization": `Bearer ${token}`, session_id },
         method: "GET",
       }
     )
@@ -373,9 +374,9 @@ const CACHE_CONFIG = {
   MAX_CACHE_SIZE: 100,
   // Cache keys for different types
   keys: {
-    actionExecution: (actionId: string, paramsHash?: string) => 
+    actionExecution: (actionId: string, paramsHash?: string) =>
       `action-execution-${actionId}${paramsHash ? `-${paramsHash}` : ''}`,
-    actionHistory: (actionId: string, page?: number) => 
+    actionHistory: (actionId: string, page?: number) =>
       `action-history-${actionId}${page ? `-page-${page}` : ''}`,
   }
 };
@@ -394,7 +395,7 @@ class ActionCache {
       const oldestKey = this.cache.keys().next().value;
       this.cache.delete(oldestKey);
     }
-    
+
     this.cache.set(key, {
       data,
       timestamp: Date.now(),
@@ -404,15 +405,15 @@ class ActionCache {
 
   get(key: string): any | null {
     const entry = this.cache.get(key);
-    
+
     if (!entry) return null;
-    
+
     // Check if cache has expired
     if (Date.now() - entry.timestamp > entry.ttl) {
       this.cache.delete(key);
       return null;
     }
-    
+
     return entry.data;
   }
 
@@ -421,7 +422,7 @@ class ActionCache {
       this.cache.clear();
       return;
     }
-    
+
     for (const key of this.cache.keys()) {
       if (pattern.test(key)) {
         this.cache.delete(key);
@@ -456,7 +457,7 @@ const generateSimpleHash = (str: string): string => {
 // Browser-compatible params hash generator (no Buffer dependency)
 const generateParamsHash = (params: any): string => {
   if (!params) return '';
-  
+
   try {
     // Create deterministic string representation
     const sortedParams = Object.keys(params)
@@ -467,13 +468,13 @@ const generateParamsHash = (params: any): string => {
         }
         return acc;
       }, {} as Record<string, any>);
-    
+
     // Stringify and create a simple hash
     const paramsString = JSON.stringify(sortedParams);
-    
+
     // Use a simple hashing algorithm instead of Buffer
     return generateSimpleHash(paramsString);
-    
+
   } catch (error) {
     console.warn('Failed to generate params hash:', error);
     // Fallback to timestamp to avoid cache collisions but still function
@@ -509,8 +510,8 @@ export const useExecuteAction = (
 
     onSuccess: (data: any, variables, context) => {
       // ✅ Invalidate ONLY relevant queries
-      if(data?.session_id){
-      localStorage.setItem('session_id', data.session_id)
+      if (data?.session_id) {
+        localStorage.setItem('session_id', data.session_id)
       }
       queryClient.invalidateQueries({
         queryKey: ["execution", actionId],
@@ -523,6 +524,49 @@ export const useExecuteAction = (
   });
 };
 
+
+export const useN8nWebhook = (
+  url: string,
+  options?: any
+) => {
+  const queryClient = useQueryClient();
+  const session_id = localStorage.getItem("session_id");
+
+  return useMutation({
+    mutationFn: async (execution?: any) => {
+
+      let resp = await fetch(
+        `${DEFAULT_ENV[options?.test ? 'n8n_test_url' : 'n8n_prod_url'] + url}`,
+        {
+          body: JSON.stringify(execution),
+          method: options?.method || "POST",
+          headers: {
+            "content-type": "application/json",
+            "session_id": session_id
+          } as any
+        }
+      );
+
+      let json = resp.json();
+
+      return json;
+    },
+
+    onSuccess: (data: any, variables, context) => {
+      // ✅ Invalidate ONLY relevant queries
+      if (data?.session_id) {
+        localStorage.setItem('session_id', data.session_id)
+      }
+      queryClient.invalidateQueries({
+        queryKey: ["webhook", url],
+      });
+
+      options?.onSuccess?.(data, variables, context);
+    },
+
+    ...options,
+  });
+};
 // List executions with caching
 export const useExecution = (
   actionId?: string,
@@ -539,18 +583,17 @@ export const useExecution = (
 
       const filterQuery = query
         ? new URLSearchParams(
-            Object.entries(query).reduce((acc, [key, value]) => {
-              if (value !== undefined && value !== null && value !== "") {
-                acc[key] = String(value);
-              }
-              return acc;
-            }, {} as Record<string, string>)
-          ).toString()
+          Object.entries(query).reduce((acc, [key, value]) => {
+            if (value !== undefined && value !== null && value !== "") {
+              acc[key] = String(value);
+            }
+            return acc;
+          }, {} as Record<string, string>)
+        ).toString()
         : "";
 
-      const url = `/actions/${actionId}/execute${
-        filterQuery ? `?${filterQuery}` : ""
-      }`;
+      const url = `/actions/${actionId}/execute${filterQuery ? `?${filterQuery}` : ""
+        }`;
 
       return sdk.client.fetch<AdminExecuteActionResponse>(url, {
         method: "POST",
@@ -578,12 +621,12 @@ export const actionCacheUtils = {
   clearCache: () => {
     actionCache.invalidate();
   },
-  
+
   // Invalidate cache for specific action
   invalidateAction: (actionId: string) => {
     actionCache.invalidateAction(actionId);
   },
-  
+
   // Get cache stats
   getCacheStats: () => {
     return {
@@ -591,17 +634,17 @@ export const actionCacheUtils = {
       maxSize: CACHE_CONFIG.MAX_CACHE_SIZE,
     };
   },
-  
+
   // Prefetch action execution
   prefetchExecution: async (actionId: string, query?: any) => {
     const paramsHash = query ? generateParamsHash(query) : '';
     const cacheKey = CACHE_CONFIG.keys.actionExecution(actionId, paramsHash);
-    
+
     // Skip if already cached
     if (actionCache.get(cacheKey)) {
       return;
     }
-    
+
     const filterQuery = query ? new URLSearchParams(
       Object.entries(query).reduce((acc, [key, value]) => {
         if (value !== undefined && value !== null && value !== "") {
@@ -610,9 +653,9 @@ export const actionCacheUtils = {
         return acc;
       }, {} as Record<string, string>)
     ).toString() : "";
-    
+
     const url = `/admin/actions/${actionId}/execute${filterQuery ? `?${filterQuery}` : ''}`;
-    
+
     const response = await sdk.client.fetch<AdminExecuteActionResponse>(
       url,
       {
@@ -623,11 +666,11 @@ export const actionCacheUtils = {
         body: query ? query : {},
       }
     );
-    
+
     actionCache.set(cacheKey, response);
     return response;
   },
-  
+
   // Set custom TTL for specific action
   setCustomTTL: (actionId: string, ttl: number) => {
     // This would require extending the cache implementation
@@ -639,7 +682,7 @@ export const actionCacheUtils = {
 // // Optional: Add persistence to localStorage/sessionStorage
 // export const usePersistentCache = (enabled: boolean = false) => {
 //   if (!enabled) return;
-  
+
 //   // Load cache from storage on mount
 //   React.useEffect(() => {
 //     try {
@@ -652,7 +695,7 @@ export const actionCacheUtils = {
 //     } catch (error) {
 //       console.error('Failed to load cache from storage:', error);
 //     }
-    
+
 //     // Save cache to storage on unmount
 //     return () => {
 //       try {

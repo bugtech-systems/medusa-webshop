@@ -1,5 +1,4 @@
 "use client";
-
 import React, { useState, useRef, useEffect } from "react";
 import {
     Drawer,
@@ -60,6 +59,7 @@ export interface ChatConversationProps {
     /** Initial list of message pairs */
     config?: any;
     setConfig?: any;
+    showSystem?: any;
     messagePairs?: MessagePair[];
     setMessagePairs?: any;
     /** Callback when user sends a new message */
@@ -82,6 +82,33 @@ export interface ChatConversationProps {
     /** Whether the chat is in a loading state (e.g. waiting for response) */
     isLoading?: boolean;
 }
+
+
+// Helper function to decide how to render content
+const renderMessageContent = (content: any) => {
+    // Plain string
+    if (typeof content === 'string') {
+        return <div className="whitespace-pre-wrap">{content}</div>;
+    }
+    // Object with a 'message' string field (common in some APIs)
+    if (content && typeof content === 'object' && typeof content.message === 'string') {
+        return <div className="whitespace-pre-wrap">{content.message}</div>;
+    }
+    // Any other object/array → JSON viewer
+    if (content && typeof content === 'object') {
+        return (
+            <div className="mt-2 border rounded-md bg-ui-bg-subtle p-2 overflow-auto max-h-96">
+                <pre className="text-xs font-mono text-ui-fg-default whitespace-pre-wrap break-all">
+                    {JSON.stringify(content, null, 2)}
+                </pre>
+            </div>
+        );
+    }
+    // Fallback (numbers, booleans, etc.)
+    return <div className="whitespace-pre-wrap">{String(content)}</div>;
+};
+
+
 
 const RangeSlider = ({
     value,
@@ -365,8 +392,7 @@ const EditMessageDrawer: React.FC<EditDrawerProps> = ({
 // Main Chat Conversation Component
 // ----------------------------------------------------------------------
 export const ChatConversation: React.FC<ChatConversationProps> = ({
-    config,
-    setConfig,
+    showSystem,
     messagePairs = [],
     setMessagePairs,
     onSendMessage,
@@ -505,7 +531,6 @@ export const ChatConversation: React.FC<ChatConversationProps> = ({
         );
     };
 
-    console.log(messagePairs, "MESS")
 
     return (
         <Container className="flex flex-col h-[80vh] max-h-[80vh] bg-ui-bg-base rounded-lg shadow-elevation-card">
@@ -520,7 +545,7 @@ export const ChatConversation: React.FC<ChatConversationProps> = ({
                         messagePairs.map((pair: any) => (
                             <div key={pair.id} className="space-y-4">
                                 {/* Optional system message */}
-                                {pair.systemMessage && (
+                                {(showSystem && pair.systemMessage) && (
                                     <div className="bg-ui-bg-subtle rounded-lg p-3 text-sm text-ui-fg-subtle border">
                                         <div className="flex items-center gap-2 mb-1">
                                             <Badge size="small" color="grey">
@@ -545,7 +570,7 @@ export const ChatConversation: React.FC<ChatConversationProps> = ({
                                                 {getMessageLabel("user")}
                                             </Badge>
                                             <Text size="small" className="text-ui-fg-subtle">
-                                                {pair.userMessage.timestamp.toLocaleTimeString()}
+                                                {pair.userMessage.created_at?.toLocaleTimeString()}
                                             </Text>
                                         </div>
                                         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -585,7 +610,7 @@ export const ChatConversation: React.FC<ChatConversationProps> = ({
                                                     {getMessageLabel("assistant")}
                                                 </Badge>
                                                 <Text size="small" className="text-ui-fg-subtle">
-                                                    {pair.assistantMessage.timestamp.toLocaleTimeString()}
+                                                    {pair.assistantMessage.created_at?.toLocaleTimeString()}
                                                 </Text>
                                             </div>
                                             <div className="flex items-center gap-1">
@@ -599,7 +624,7 @@ export const ChatConversation: React.FC<ChatConversationProps> = ({
                                                                 : "transparent"
                                                         }
                                                         onClick={() =>
-                                                            handleFeedback(pair.assistantMessage!.id, "like")
+                                                            handleFeedback(pair!.id, "like")
                                                         }
                                                     >
                                                         <ThumbUp />
@@ -614,7 +639,7 @@ export const ChatConversation: React.FC<ChatConversationProps> = ({
                                                                 : "transparent"
                                                         }
                                                         onClick={() =>
-                                                            handleFeedback(pair.assistantMessage!.id, "dislike")
+                                                            handleFeedback(pair!.id, "dislike")
                                                         }
                                                     >
                                                         <ThumbDown />
@@ -646,7 +671,7 @@ export const ChatConversation: React.FC<ChatConversationProps> = ({
                                             </div>
                                         </div>
                                         <div className="whitespace-pre-wrap">
-                                            {pair.assistantMessage.content?.message ?? pair.assistantMessage.content}
+                                            {renderMessageContent(pair.assistantMessage.content?.message ?? pair.assistantMessage.content)}
                                         </div>
                                         {pair.assistantMessage.fineTuneParams?.notes && (
                                             <div className="mt-2 text-xs text-ui-fg-subtle border-t pt-2">

@@ -40,7 +40,7 @@ const AIModelDetails = () => {
   const { modelId } = useParams();
   const { data, isPending, refetch } = useAiModel(modelId || "");
   const { mutateAsync: updateModel } = useUpdateAiModel(modelId || "");
-  const { mutateAsync: retrainModel, isPending: isTraining } = useExecuteAction('push-model')
+  const { mutateAsync: retrainModel, isPending: isTraining } = useExecuteAction('train-model')
 
   const { data: baseModelsData, mutateAsync: executeAction, isPending: isExecuting, isError, error } = useExecuteAction('get-local-ollama-models')
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
@@ -72,7 +72,7 @@ const AIModelDetails = () => {
   });
 
   const model = data?.ai_model;
-  const availableBaseModels = useMemo(() => 
+  const availableBaseModels = useMemo(() =>
     baseModelsData?.data?.models?.filter((m: AdminAiModel) => m.id !== modelId) || [],
     [baseModelsData, modelId]
   );
@@ -107,8 +107,8 @@ const AIModelDetails = () => {
       }
 
       // Initialize JSON fields from schema if present
-      const schema = model.metadata?.response_format?.type === 'json' 
-        ? model.metadata?.response_format?.schema 
+      const schema = model.metadata?.response_format?.type === 'json'
+        ? model.metadata?.response_format?.schema
         : null;
       if (schema && schema.properties) {
         const fields = Object.entries(schema.properties).map(([key, prop]: [string, any]) => ({
@@ -183,7 +183,7 @@ const AIModelDetails = () => {
           messages: messages,
         },
       };
-      
+
       if (formData.metadata.base_model) {
         const selectedBaseModel = availableBaseModels.find(
           (m: AdminAiModel) => m.id === formData.metadata.base_model
@@ -193,7 +193,7 @@ const AIModelDetails = () => {
           payload.metadata.base_model_provider = selectedBaseModel.provider;
         }
       }
-      
+
       await updateModel(payload);
       setIsDrawerOpen(false);
       refetch();
@@ -256,23 +256,25 @@ const AIModelDetails = () => {
     const baseModel = availableBaseModels.find((m: AdminAiModel) => m.id === baseModelId);
     return baseModel ? `${baseModel.name} (${baseModel.provider})` : baseModelId;
   };
-  
+
   const handleModels = async () => {
     let modelData = await executeAction({});
   };
-  
+
   const handleTraining = async () => {
-    let trainData = await retrainModel({ parameters: {
-      model: model?.model_name,
-      from: model?.base_model,
-      system: model?.system,
-      parameters: model?.config
-    }});
+    await retrainModel({
+      parameters: {
+        id: model?.model_name
+      }
+    });
   };
 
   if (!model) {
     return <div>AI Model not found</div>;
   }
+
+
+  console.log(availableBaseModels, baseModelsData, 'BASE MODELS')
 
   return (
     <div className="flex flex-col gap-4">
@@ -288,7 +290,7 @@ const AIModelDetails = () => {
                 {model.name}
               </Heading>
               <Text className="text-ui-fg-muted txt-small">
-               {model.model_name}
+                {model.model_name}
               </Text>
             </div>
           </div>
@@ -353,8 +355,8 @@ const AIModelDetails = () => {
                     model.status === "active"
                       ? "green"
                       : model.status === "disabled"
-                      ? "red"
-                      : "grey"
+                        ? "red"
+                        : "grey"
                   }
                 >
                   {model.status || "unknown"}
@@ -378,15 +380,15 @@ const AIModelDetails = () => {
             Current Configuration
           </Heading>
           <div className="space-x-3">
-          <Button variant="secondary" disabled={isTraining}  onClick={() => handleTraining()}>
-            <ArrowPath /> Re-train
-          </Button>
-            <Button variant="secondary" disabled={isChatDrawerOpen}  onClick={() => setIsChatDrawerOpen(true)}>
-         <ChatBubble className="text-ui-fg-subtle mr-2" />
-            Chat-test
-          </Button>
+            <Button variant="secondary" disabled={isTraining} onClick={() => handleTraining()}>
+              <ArrowPath /> Re-train
+            </Button>
+            {/*          <Button variant="secondary" disabled={isChatDrawerOpen} onClick={() => setIsChatDrawerOpen(true)}>
+              <ChatBubble className="text-ui-fg-subtle mr-2" />
+              Chat-test
+            </Button> */}
           </div>
-         
+
         </div>
 
         <div className="p-6 space-y-6">
@@ -477,7 +479,7 @@ const AIModelDetails = () => {
               Configure settings for {model.name}
             </Drawer.Description>
           </Drawer.Header>
-          
+
           <div className="overflow-y-auto flex-1">
             <Drawer.Body className="pb-8">
               <Tabs defaultValue="system" className="w-full">
@@ -839,9 +841,9 @@ const AIModelDetails = () => {
                       Select Base Model
                     </Label>
                     <Select
-                      value={formData.base_model || "llama3.2:1b"}
+                      value={formData.base_model || "llama3.2:3b"}
                       onValueChange={(value) => {
-                         handleMetadataChange("base_model", value)
+                        handleMetadataChange("base_model", value)
                         handleInputChange("base_model", value)
                       }}
                     >
@@ -907,7 +909,7 @@ const AIModelDetails = () => {
                         Base Model Inheritance
                       </Label>
                       <Text className="txt-small text-ui-fg-muted">
-                        When a base model is selected, this model will inherit the base model's configuration. 
+                        When a base model is selected, this model will inherit the base model's configuration.
                         You can override specific settings in this customization.
                       </Text>
                       <ul className="list-disc pl-4 txt-small text-ui-fg-muted space-y-1">
@@ -933,7 +935,7 @@ const AIModelDetails = () => {
         </Drawer.Content>
       </Drawer>
 
-        <AIModelTestDrawer
+      <AIModelTestDrawer
         open={isChatDrawerOpen}
         onOpenChange={setIsChatDrawerOpen}
         // onSendMessage={handleSendMessage}

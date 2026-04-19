@@ -65,25 +65,30 @@ export const ModelActionsMenu = ({ model }: ActionActionsMenuProps) => {
       })
     }
   }
-  
+
   const handleEdit = () => {
-    // navigate(`/app/actions/${model.id}/edit`)
-    setOpen(true)
-    
+    navigate(`/arm/models/${model.id}`)
+    // setOpen(true)
+
+  }
+
+  const handleChatNavigate = () => {
+    navigate(`/arm/models/${model.id}/chat`)
   }
 
   const handleDeploy = async () => {
     try {
-    
-    
-      await executeAction({ parameters: {
-        model: model.model_name,
-        from: model.base_model,
-        system: model.system,
-        parameters: model.config
-      }
+
+
+      await executeAction({
+        parameters: {
+          model: model.model_name,
+          from: model.base_model,
+          system: model.system,
+          parameters: model.config
+        }
       })
-      
+
       toast.success('Success', {
         description: "Action executed successfully",
       })
@@ -93,13 +98,13 @@ export const ModelActionsMenu = ({ model }: ActionActionsMenuProps) => {
       })
     }
   }
-  
-    const handleSendMessage = async (message: string, context: any) => {
+
+  const handleSendMessage = async (message: string, context: any) => {
     // Implement your actual AI model API call here
-    
+
     // Simulate API call
     await new Promise(resolve => setTimeout(resolve, 1000))
-    
+
     return `This is a response from the ${context.model} model. You said: "${message}"`
   }
 
@@ -110,13 +115,13 @@ export const ModelActionsMenu = ({ model }: ActionActionsMenuProps) => {
 
 
   return (
-  <>
-  <ModelFormDrawer 
-     model={model}
-     isOpen={open}
-     handleOpen={setOpen}
-  />
-        <AIModelTestDrawer
+    <>
+      <ModelFormDrawer
+        model={model}
+        isOpen={open}
+        handleOpen={setOpen}
+      />
+      <AIModelTestDrawer
         open={isChatDrawerOpen}
         onOpenChange={setIsChatDrawerOpen}
         onSendMessage={handleSendMessage}
@@ -126,36 +131,36 @@ export const ModelActionsMenu = ({ model }: ActionActionsMenuProps) => {
         model={model}
       />
       <DropdownMenu>
-      <DropdownMenu.Trigger asChild>
-        <IconButton variant="transparent">
-          <EllipsisHorizontal />
-        </IconButton>
-      </DropdownMenu.Trigger>
-      <DropdownMenu.Content>
-        <DropdownMenu.Item onClick={handleEdit}>
-          <PencilSquare className="text-ui-fg-subtle mr-2" />
-          Edit
-        </DropdownMenu.Item>
-        {/* ✅ Correct separator usage */}
-        <DropdownMenu.Separator />
-      
-        <DropdownMenu.Item onClick={handleDeploy} disabled={isDuplicating}>
+        <DropdownMenu.Trigger asChild>
+          <IconButton variant="transparent">
+            <EllipsisHorizontal />
+          </IconButton>
+        </DropdownMenu.Trigger>
+        <DropdownMenu.Content>
+          <DropdownMenu.Item onClick={handleEdit}>
+            <PencilSquare className="text-ui-fg-subtle mr-2" />
+            Edit
+          </DropdownMenu.Item>
+          {/* ✅ Correct separator usage */}
+          <DropdownMenu.Separator />
+
+          {/*        <DropdownMenu.Item onClick={handleDeploy} disabled={isDuplicating}>
           <PlaneTakeoff className="text-ui-fg-subtle mr-2" />
           Re-deploy
-        </DropdownMenu.Item>
-        <DropdownMenu.Item onClick={() => setIsChatDrawerOpen(true)} >
-          <ChatBubble className="text-ui-fg-subtle mr-2" />
-          Chat-test
-        </DropdownMenu.Item>
-        {/* ✅ Correct separator usage */}
-        <DropdownMenu.Separator />
-        <DropdownMenu.Item onClick={handleDelete} disabled={isDeleting} className="text-ui-fg-error">
-          <Trash className="text-ui-fg-error mr-2" />
-          Delete
-        </DropdownMenu.Item>
-      </DropdownMenu.Content>
-    </DropdownMenu>
+        </DropdownMenu.Item> */}
+          <DropdownMenu.Item onClick={() => handleChatNavigate(true)} >
+            <ChatBubble className="text-ui-fg-subtle mr-2" />
+            Chat-test
+          </DropdownMenu.Item>
+          {/* ✅ Correct separator usage */}
+          <DropdownMenu.Separator />
+          <DropdownMenu.Item onClick={handleDelete} disabled={isDeleting} className="text-ui-fg-error">
+            <Trash className="text-ui-fg-error mr-2" />
+            Delete
+          </DropdownMenu.Item>
+        </DropdownMenu.Content>
+      </DropdownMenu>
     </>
-     
+
   )
 }

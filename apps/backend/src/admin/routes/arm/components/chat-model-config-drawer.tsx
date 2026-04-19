@@ -18,8 +18,7 @@ import {
 } from "@medusajs/ui";
 import { Sparkles, DocumentText } from "@medusajs/icons";
 import { Settings } from "lucide-react";
-import { useExecuteAction, useExecution } from "../../../../admin/hooks/api/actions";
-import { DEFAULT_CONFIG } from "../page";
+import { DEFAULT_ENV } from "../../../utils/commonData";
 
 // Types
 interface ChatConfig {
@@ -54,12 +53,10 @@ interface ChatSessionConfigDrawerProps {
 // Default values
 
 
-const DEFAULT_CONTEXT: Record<string, any> = {
-    system_prompt: "You are a helpful assistant.",
-    user_info: {
-        name: "",
-        preferences: {},
-    },
+const DEFAULT_CONFIG: Record<string, any> = {
+    chat_url: "/ai-chat",
+    feedback_url: "/feedback_model",
+    train_url: "/train-model",
     conversation_history: [],
 };
 
@@ -152,78 +149,46 @@ const JSONEditor: React.FC<{
     );
 };
 
-export const ChatSessionConfigDrawer: React.FC<
+export const ChatModelConfigDrawer: React.FC<
     ChatSessionConfigDrawerProps
 > = ({
     open,
     onOpenChange,
     onSave,
-    config,
-    setConfig,
+    config: modelConfig,
     isLoading = false,
 }) => {
-        const { data: actionRelations, mutateAsync: fetchActionRelations } = useExecuteAction('get-relation-workflows')
-        const { data: modelsData, refetch: fetchBaseModels } = useExecution('get-db-models') as any;
         const [activeTab, setActiveTab] = useState<
             "config" | "context" | "parameters"
-        >("config");
+        >("parameters");
 
-        const [context, setContext] = useState<Record<string, any>>({});
-        const [parameters, setParameters] = useState<GenerateParameters>({});
+        const [config, setConfig] = useState({
+            ...DEFAULT_CONFIG, ...modelConfig.metadata
+        });
+        const [parameters, setParameters] = useState<GenerateParameters>({
+            ...DEFAULT_PARAMETERS,
+        });
 
 
 
-        // const handleSession = async (id) => {
-
-        //     const res = await fetch(`/actions/session/${id}`, {
-        //         method: "GET",
-        //         headers: {
-        //             "Content-Type": "application/json",
-        //         }
-        //     })
-
-        //     const json = await res.json()
-        //     setConfig({ ...(config?.id ? config : DEFAULT_CONFIG), ...json, ...json.metadata, session_id: id });
-        //     setContext({ ...json.context || {} });
-        //     setParameters({ ...json.metadata.chat_params });
-        // }
-
-        const handleSaveSession = async () => {
-
-            let res = await fetch(`/actions/session/${config?.session_id}`, {
+        const handleSaveConfig = async () => {
+            let { chat_url, feedback_url, train_url } = config;
+            let res = await fetch(`${DEFAULT_ENV.n8n_prod_url}/update-model-config`, {
                 method: "PUT",
                 headers: {
                     "Content-Type": "application/json",
                 },
-                body: JSON.stringify({ id: config?.session_id, ...config, context, metadata: { chat_params: parameters, model_id: config.model_id, chat_url: config?.chat_url, feedback_url: config?.feedback_url } })
+                body: JSON.stringify({ id: modelConfig?.id, config: parameters, metadata: { ...modelConfig.metadata, chat_url, feedback_url, train_url } })
             })
 
             let json = await res.json();
-            console.log(json, 'SAVVED')
-            // await onSave({ config, context, parameters });
+            await onSave({ ...config, parameters, metadata: { ...modelConfig.metadata, chat_url, feedback_url, train_url } });
             // handleSession(config?.session_id)
-            await onSave({ ...json, ...json.metadata });
             localStorage.removeItem('config')
 
 
         }
-        const handleSession = async (id) => {
 
-            const res = await fetch(`/actions/session/${id}`, {
-                method: "GET",
-                headers: {
-                    "Content-Type": "application/json",
-                }
-            })
-
-            const json = await res.json()
-            console.log(json, "LATEST SESSION")
-            setConfig({ ...config, ...json, ...json.metadata, session_id: id, id });
-            setContext({ ...config.context, ...json?.context });
-            setParameters({ ...config.chat_params, ...json.metadata?.chat_params });
-
-
-        }
 
 
         // Reset form when drawer opens with new initial values
@@ -231,11 +196,8 @@ export const ChatSessionConfigDrawer: React.FC<
             let session_id = localStorage.getItem("session_id") as any;
 
             if (open) {
-                if (session_id) {
-                    handleSession(session_id)
-                }
-                fetchBaseModels();
-                fetchActionRelations({ parameters: { id: { "$notnull": true } } })
+                setParameters({ ...parameters, ...(modelConfig?.config ? modelConfig.config : {}) })
+
             }
         }, [open]);
 
@@ -245,33 +207,15 @@ export const ChatSessionConfigDrawer: React.FC<
 
 
 
-        const handleReset = async () => {
-            const res = await fetch(`/actions/session/reset`, {
-                method: "GET",
-                headers: {
-                    "Content-Type": "application/json",
-                }
-            })
-
-            const json = await res.json()
-            localStorage.setItem('session_id', json.id)
-            setConfig({ ...DEFAULT_CONFIG, ...json, session_id: json.id });
-            setContext({});
-            setParameters({ ...DEFAULT_PARAMETERS });
-        };
 
 
-        let models = modelsData?.data ?? [];
-        let actions = actionRelations?.data ? actionRelations?.data : [];
 
-
-        console.log(config, 'CONFFGF')
         return (
             <Drawer open={open} onOpenChange={onOpenChange}>
                 <Drawer.Content className="flex flex-col h-[90vh] max-h-[90vh]">
                     {/* HEADER */}
                     <Drawer.Title className="shrink-0 border-b px-6 py-4">
-                        <Heading>Chat Session Configuration</Heading>
+                        <Heading>Chat Model Configuration</Heading>
                         <Text size="small" className="text-ui-fg-subtle">
                             Configure session settings, context data, and generation parameters
                         </Text>
@@ -288,17 +232,18 @@ export const ChatSessionConfigDrawer: React.FC<
                         {/* FIXED TAB NAV */}
                         <div className="border-b px-6 shrink-0 bg-ui-bg-base z-10">
                             <Tabs.List>
-                                <Tabs.Trigger value="config">
-                                    <Sparkles />
-                                    Config
-                                </Tabs.Trigger>
-                                <Tabs.Trigger value="context">
+
+                                {/* <Tabs.Trigger value="context">
                                     <DocumentText />
                                     Context
-                                </Tabs.Trigger>
+                                </Tabs.Trigger> */}
                                 <Tabs.Trigger value="parameters">
                                     <Settings />
                                     Parameters
+                                </Tabs.Trigger>
+                                <Tabs.Trigger value="config">
+                                    <Sparkles />
+                                    Config
                                 </Tabs.Trigger>
                             </Tabs.List>
                         </div>
@@ -307,19 +252,19 @@ export const ChatSessionConfigDrawer: React.FC<
                         <div className="flex-1 overflow-y-auto px-6 py-4">
                             {/* CONFIG TAB */}
                             <Tabs.Content value="config" className="space-y-6">
-                                <div>
+                                {/* <div>
                                     <Label htmlFor="session_id">Session ID</Label>
                                     <Input
                                         id="session_id"
-                                        value={config.session_id}
+                                        value={modelConfig.session_id}
                                         onChange={(e) =>
                                             setConfig({ ...config, session_id: e.target.value })
                                         }
                                         placeholder="Enter unique session identifier"
                                     />
-                                </div>
+                                </div> */}
 
-                                <div>
+                                {/* <div>
                                     <Label htmlFor="model_id">AI Model</Label>
                                     <Select
                                         value={config?.model_id}
@@ -338,9 +283,9 @@ export const ChatSessionConfigDrawer: React.FC<
                                             ))}
                                         </Select.Content>
                                     </Select>
-                                </div>
+                                </div> */}
 
-                                <div>
+                                {/*      <div>
                                     <Label htmlFor="relation_id">Relation ID</Label>
                                     <Select
                                         value={config.relation_id}
@@ -359,8 +304,7 @@ export const ChatSessionConfigDrawer: React.FC<
                                             ))}
                                         </Select.Content>
                                     </Select>
-                                </div>
-
+                                </div> */}
                                 <div>
                                     <Label htmlFor="chat_url">Chat URL</Label>
                                     <Input
@@ -369,6 +313,18 @@ export const ChatSessionConfigDrawer: React.FC<
                                         value={config.chat_url}
                                         onChange={(e) =>
                                             setConfig({ ...config, chat_url: e.target.value })
+                                        }
+                                        placeholder="https://api.example.com/chat"
+                                    />
+                                </div>
+                                <div>
+                                    <Label htmlFor="train_url">Train URL</Label>
+                                    <Input
+                                        id="train_url"
+                                        type="url"
+                                        value={config.train_url}
+                                        onChange={(e) =>
+                                            setConfig({ ...config, train_url: e.target.value })
                                         }
                                         placeholder="https://api.example.com/chat"
                                     />
@@ -388,33 +344,7 @@ export const ChatSessionConfigDrawer: React.FC<
                                 </div>
                             </Tabs.Content>
 
-                            {/* CONTEXT TAB */}
-                            <Tabs.Content value="context" className="h-full">
-                                <div className="h-full flex flex-col">
-                                    <div className="bg-ui-bg-subtle rounded-lg p-4 flex flex-col flex-1 min-h-0">
-                                        <div className="flex items-center justify-between mb-3 shrink-0">
-                                            <Heading level="h3" className="text-sm font-medium">
-                                                Full Context (JSON)
-                                            </Heading>
-                                            <Badge color="blue" size="small">
-                                                Editable
-                                            </Badge>
-                                        </div>
 
-                                        <div className="flex-1 min-h-0 overflow-auto border rounded-md">
-                                            <JSONEditor
-                                                data={context}
-                                                onChange={(newData) => setContext(newData)}
-                                            />
-                                        </div>
-
-                                        <Text size="small" className="text-ui-fg-subtle mt-3">
-                                            Edit the JSON above to customize conversation context,
-                                            system prompts, user information, and other metadata.
-                                        </Text>
-                                    </div>
-                                </div>
-                            </Tabs.Content>
 
                             {/* PARAMETERS TAB */}
                             <Tabs.Content value="parameters" className="space-y-6">
@@ -552,13 +482,13 @@ export const ChatSessionConfigDrawer: React.FC<
                         </Button>
 
                         <div className="flex gap-2">
-                            <Button variant="secondary" onClick={handleReset} disabled={isLoading}>
+                            {/*    <Button variant="secondary" onClick={handleReset} disabled={isLoading}>
                                 Reset
-                            </Button>
+                            </Button> */}
 
                             <Button
                                 variant="primary"
-                                onClick={handleSaveSession}
+                                onClick={handleSaveConfig}
                                 isLoading={isLoading}
                                 disabled={isLoading}
                             >
