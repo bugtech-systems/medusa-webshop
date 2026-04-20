@@ -107,6 +107,7 @@ const JSONEditor = ({
 export default function ChatInput({ isPending, onSend, config, setConfig, showSystem, setShowSystem }: any) {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [content, setContent] = useState("")
+  const { data: modelsData, refetch: fetchBaseModels } = useExecution('get-db-models') as any;
 
 
   const handleSend = async () => {
@@ -142,11 +143,16 @@ export default function ChatInput({ isPending, onSend, config, setConfig, showSy
     setDrawerOpen(false)
   }
 
+  useEffect(() => {
+    fetchBaseModels();
+  }, [])
 
 
+  let serviceModels = modelsData?.data || [];
 
+  let model = serviceModels.find((m) => m.id === config.model_id)
 
-
+  console.log(modelsData, model, serviceModels, config, "CONFF ")
 
 
   return (
@@ -208,6 +214,9 @@ export default function ChatInput({ isPending, onSend, config, setConfig, showSy
                 checked={showSystem}
                 onCheckedChange={(checked) => setShowSystem(checked)}
               />
+            </div>
+            <div className="d-flex flex-col ml-3 pt-1 rounded-full hover:bg-neutral-100">
+              <Text size="large" className="text-neutral-500">Model:  {model?.name || "Select a model"}</Text>
             </div>
           </div>
 

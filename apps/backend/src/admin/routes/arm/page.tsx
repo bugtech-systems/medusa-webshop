@@ -50,8 +50,8 @@ export const DEFAULT_CONFIG: any = {
   session_id: "",
   model_id: "alayon",
   relation_id: "start-node",
-  chat_url: "/ai-chat",
-  feedback_url: "/rag-feedback"
+  chat_url: "/webhook/ai-chat",
+  feedback_url: "/webhook/model-feedback"
 };
 
 
