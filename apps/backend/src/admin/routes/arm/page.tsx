@@ -8,7 +8,7 @@ import { SidebarProvider } from "../../lib/context/sidebar-context"
 import { AiAssistent, ArrowPath, PencilSquare, ThumbDown, ThumbUp, Trash } from "@medusajs/icons"
 import clsx from "clsx"
 import { motion, AnimatePresence } from "framer-motion"
-import { useExecuteAction, useExecution } from "../../hooks/api/actions"
+import { useExecuteAction, useExecution, useN8nWebhook } from "../../hooks/api/actions"
 import { Check } from "lucide-react"
 import { Button, IconButton, Textarea, Tooltip, Badge, Prompt, Switch } from "@medusajs/ui"
 import { ChatConversation } from "./components/chat-conversation"
@@ -88,7 +88,7 @@ const tryParseJsonMessage = (content: any) => {
 
 
 export default function Home() {
-  const { mutateAsync: getChats, isPending } = useExecuteAction("get-conversation-messages")
+  const { mutateAsync: getChats, isPending } = useN8nWebhook("/get-conversation-messages") as any;
   const { mutateAsync: deletePair } =
     useExecuteAction('delete-message-pair') as any
   const [messagePairs, setMessagePairs] = useState<any[]>([])
@@ -108,7 +108,7 @@ export default function Home() {
 
 
   const handleMessages = async (id) => {
-    let { data } = await getChats({ parameters: { id } }) as any;
+    let data = await getChats({ id }) as any;
     // setMessages(data);
     // let {data} =  await fetchMessages({parameters: {id: model.id}});
     let newPairs = groupMessagesToPairs(data)
@@ -267,6 +267,19 @@ export default function Home() {
     }
   }
 
+  const handleSession = async (id) => {
+
+    const res = await fetch(`/actions/session/${id}`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      }
+    })
+
+    const json = await res.json()
+    console.log(json, "LATEST SESSION")
+    setConfig({ ...config, ...json, ...json.metadata, session_id: id, id });
+  }
 
 
 
@@ -274,13 +287,21 @@ export default function Home() {
     let session_id = localStorage.getItem("session_id") as any;
 
     if (session_id && session_id != 'undefined') {
-      handleMessages(session_id)
-      // handleSession(session_id)
+      handleSession(session_id)
+
     } else {
       localStorage.removeItem('session_id')
     }
-
   }, [])
+
+  useEffect(() => {
+
+    if (config.model_id) {
+      handleMessages(config.model_id)
+    } else {
+      handleMessages('alayon')
+    }
+  }, [config.model_id])
 
 
 

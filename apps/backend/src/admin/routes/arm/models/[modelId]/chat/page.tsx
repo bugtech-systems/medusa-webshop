@@ -90,7 +90,7 @@ export default function Home() {
   const { mutateAsync: getChats, isPending } = useN8nWebhook("/get-conversation-messages") as any;
   const { mutateAsync: deletePair } = useExecuteAction('delete-message-pair') as any
   const { mutateAsync: getModelConfig, isPending: isLoadingModel } = useExecuteAction('get-model-config') // New action to fetch model config
-
+  const [showSystem, setShowSystem] = useState(false)
   const [messagePairs, setMessagePairs] = useState<any[]>([])
   const [inputMessage, setInputMessage] = useState('')
   const [isSending, setIsSending] = useState(false)
@@ -467,6 +467,7 @@ export default function Home() {
           onRegenerate={handleRegenerateMessage}
           messagePairs={messagePairs}
           setMessagePairs={setMessagePairs}
+          showSystem={showSystem}
         />
 
         {/* Chat Input */}
@@ -476,6 +477,7 @@ export default function Home() {
             isPending={isPending}
             config={modelConfig}
             setConfig={handleConfig}
+            showSystem={showSystem} setShowSystem={setShowSystem}
           />
         </div>
       </main>

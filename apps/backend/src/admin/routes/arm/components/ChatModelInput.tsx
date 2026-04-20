@@ -14,6 +14,7 @@ import {
   Tabs,
   Badge,
   Textarea,
+  Switch,
 } from "@medusajs/ui";
 import { ChatBubble, DocumentText, SettingsIcon, Sparkles } from "../../../components";
 import { ChatSessionConfigDrawer } from "./chat-config-drawer";
@@ -104,7 +105,7 @@ const JSONEditor = ({
   )
 }
 
-export default function ChatModelInput({ isPending, onSend, config, setConfig }: any) {
+export default function ChatModelInput({ isPending, onSend, config, setConfig, showSystem, setShowSystem }: any) {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [content, setContent] = useState("")
 
@@ -193,6 +194,7 @@ export default function ChatModelInput({ isPending, onSend, config, setConfig }:
             >
               <Paperclip size={16} />
             </button> */}
+
             <button
               type="button"
               className="p-2 rounded-full hover:bg-neutral-100"
@@ -201,6 +203,10 @@ export default function ChatModelInput({ isPending, onSend, config, setConfig }:
             >
               <Settings size={16} />
             </button>
+            <Switch
+              checked={showSystem}
+              onCheckedChange={(checked) => setShowSystem(checked)}
+            />
           </div>
 
           <button
