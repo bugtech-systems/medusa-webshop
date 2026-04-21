@@ -152,7 +152,6 @@ export default function ChatInput({ isPending, onSend, config, setConfig, showSy
 
   let model = serviceModels.find((m) => m.id === config.model_id)
 
-  console.log(modelsData, model, serviceModels, config, "CONFF ")
 
 
   return (

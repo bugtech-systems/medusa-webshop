@@ -730,7 +730,7 @@ const WorkflowEditor: React.FC<WorkflowEditorProps> = ({
     const node = nodes.find(n => n.id === id);
     console.log(node, "NODE CLICKK")
     if (node) {
-      setSelectedAction(node.data);
+      setSelectedAction(node?.data);
       setIsEditing(true);
       onNodeClick(id);
       openDrawer();
@@ -828,6 +828,7 @@ const WorkflowEditor: React.FC<WorkflowEditorProps> = ({
       onDelete: handleNodeDelete,
     }
   }));
+
 
   // Handle new connections
   const onConnect = useCallback((params: Connection) => {
@@ -1027,7 +1028,7 @@ const WorkflowEditor: React.FC<WorkflowEditorProps> = ({
   const handleDrawerSubmit = async (actionData: any) => {
     if (readOnly) return;
 
-
+    console.log(actionData, selectedAction, 'Submittt')
 
     if (actionData._delete && selectedAction) {
       await handleNodeDelete(selectedAction.id);
@@ -1235,8 +1236,7 @@ const WorkflowEditor: React.FC<WorkflowEditorProps> = ({
   };
 
 
-  console.log(nodesWithHandlers, "NODD")
-
+  console.log(nodesWithHandlers, 'NODES WITH HANDLES')
   return (
     <Container className="h-full w-full p-0">
       <div className="h-[800px] w-full relative" ref={reactFlowWrapper}>

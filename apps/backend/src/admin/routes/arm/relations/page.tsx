@@ -7,7 +7,7 @@ import WorkflowEditor from "../components/workflow-canvas"
 import { useEffect, useState, useCallback } from "react"
 import { useWorkflows, useUpdateWorkflow } from "../../../hooks/api/workflows"
 import { WorkflowDefinition, ActionRelation, Connection, ActionNode, ConnectionEdge } from "../../../../types"
-import { useExecuteAction } from "../../../hooks/api/actions"
+import { useExecuteAction, useN8nWebhook } from "../../../hooks/api/actions"
 import { toast } from "@medusajs/ui"
 import { Position } from "@xyflow/react"
 
@@ -33,7 +33,7 @@ const ActionFlowsPage = () => {
   const { mutateAsync: deleteConnection, isLoading: deletingConnection } =
     useExecuteAction('delete-action-relation-connection') as any
   const { mutateAsync: updateRelation } =
-    useExecuteAction('update-relation-workflows-by-id') as any
+    useN8nWebhook('/webhook/update-relation-by-id') as any
 
   // Update workflow mutation
   const { mutate: updateWorkflow, isLoading: isUpdating } = useUpdateWorkflow(selectedWorkflowId || "")
@@ -72,7 +72,6 @@ const ActionFlowsPage = () => {
       },
       data: {
         ...action,
-        ...action.metadata,
         onClick: (id: string) => handleNodeClick(id)
       }
     }))
@@ -88,7 +87,7 @@ const ActionFlowsPage = () => {
 
 
 
-    return { nodes: [startNode, ...nodes], edges }
+    return { nodes: [...nodes], edges }
   }, [])
 
   // Handle node click to edit
@@ -120,6 +119,8 @@ const ActionFlowsPage = () => {
         workflowsData.data,
         connectionsData.data
       )
+
+
       setWorkflowNodes(nodes)
       setWorkflowEdges(edges)
     }
@@ -259,9 +260,7 @@ const ActionFlowsPage = () => {
   const handleEdit = async (id, data) => {
     console.log(id, data, "EDIT")
     await updateRelation({
-      parameters: {
-        id, ...data
-      }
+      ...data, id,
     })
     await refetchWorkflows()
   }
@@ -292,6 +291,7 @@ const ActionFlowsPage = () => {
           onNodeDelete={handleDeleteNode}
           onNodeClick={(e) => console.log(e, 'Node CLicked')}
           onEdgeDelete={handleDeleteConnection}
+          onAddSubFlow={(e) => console.log(e, 'ADD SUB WORKFLOW')}
           onCreateNodeFromEdge={handleCreateNodeFromEdge}
           onNodeEdit={handleEdit}
           selectedWorkflowId={selectedWorkflowId}

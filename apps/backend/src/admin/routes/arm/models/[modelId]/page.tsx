@@ -264,7 +264,7 @@ const AIModelDetails = () => {
   const handleTraining = async () => {
     await retrainModel({
       parameters: {
-        id: model?.model_name
+        id: model?.id
       }
     });
   };

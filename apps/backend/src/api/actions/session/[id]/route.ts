@@ -70,15 +70,19 @@ export async function POST(
     // delete updateData.deleted_at;
     // Also remove any other fields that should never be updated directly
     // e.g., id is kept as identifier but not as a field to update
-
+    let sessionData = await aiService.retrieveConversation(id);
+    if (!sessionData?.id) {
+      sessionData = await aiService.createSession({ id, relation_id: 'start-node', metadata: { model_id: 'alayon' }, ...data });
+    } else {
+      sessionData = await aiService.updateAiConversationSessions({ id, ...data });
+    }
     // Now call the update method
     // Check the method signature: if it expects a single update object, you may need:
     // const template = await actionEngine.updateActionTemplates(id, updateData);
     // But based on your code, it expects an array of updates.
 
-    const session = await actionEngine.updateSession({ id, ...data });
 
-    return res.json(session);
+    return res.json(sessionData);
 
   } catch (error: any) {
     console.log(error, 'ERROR');

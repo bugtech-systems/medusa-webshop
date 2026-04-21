@@ -45,6 +45,7 @@ export const ActionDrawer: React.FC<ActionDrawerProps> = ({ open, onClose, onSub
   const [formData, setFormData] = useState({
     id: '',
     action_id: '',
+    model_id: 'alayon',
     label: '',
     type: '',
     description: '',
@@ -54,15 +55,16 @@ export const ActionDrawer: React.FC<ActionDrawerProps> = ({ open, onClose, onSub
 
   const [configFields, setConfigFields] = useState<Array<{ key: string; value: string }>>([]);
   const [actions, setActions] = useState<any[]>([]);
+  const [models, setModels] = useState<any[]>([]);
   const [isLoadingActions, setIsLoadingActions] = useState(false);
-  const [selectedTemplate, setSelectedTemplate] = useState<any>(null);
-
+  const { data: modelsData, mutateAsync: fetchBaseModels } = useExecuteAction('get-db-models') as any;
   const { data, mutateAsync: getActions, isError } = useExecuteAction('get-action-templates') as any;
 
   // Fetch action templates when drawer opens
   useEffect(() => {
     if (open) {
       fetchActionTemplates();
+      fetchBaseModels();
     }
   }, [open]);
 
@@ -80,30 +82,22 @@ export const ActionDrawer: React.FC<ActionDrawerProps> = ({ open, onClose, onSub
 
   // Update actions when data changes
   useEffect(() => {
+    console.log(modelsData, 'MODELS')
+    if (modelsData?.data) {
+      setModels(modelsData.data);
+    }
     if (data?.data) {
       setActions(data.data);
     }
-  }, [data]);
+  }, [data, modelsData]);
 
   // Update form when action changes (for editing)
   useEffect(() => {
     if (action) {
-      // Convert metadata object to config fields array for editing
-      const metadataFields = Object.entries(action.metadata || {}).map(([key, value]) => ({
-        key,
-        value: String(value),
-      }));
-
-      setConfigFields(metadataFields);
 
       setFormData({
         ...action,
-        id: action.id || '',
-        action_id: action.action_id || action.id || '',
-        label: action.label || '',
-        type: action.type || '',
-        status: action.status || 'draft',
-        metadata: action.metadata || {},
+
       });
     } else {
       setFormData({
@@ -116,13 +110,12 @@ export const ActionDrawer: React.FC<ActionDrawerProps> = ({ open, onClose, onSub
       });
       setConfigFields([]);
     }
-  }, [action]);
+  }, [actions, action]);
 
   // Handle action template selection
   const handleActionTemplateSelect = (actionId: string) => {
     const selectedAction = actions.find(a => a.id === actionId);
     if (selectedAction) {
-      setSelectedTemplate(selectedAction);
 
       // Auto-populate label from action name
       const actionLabel = selectedAction.label || selectedAction.name || '';
@@ -138,9 +131,7 @@ export const ActionDrawer: React.FC<ActionDrawerProps> = ({ open, onClose, onSub
 
       setFormData({
         ...formData,
-        action_id: selectedAction.id,
-        label: actionLabel, // Auto-populate label
-        type: selectedAction.type || ''
+        action_id: actionId,
       });
     }
   };
@@ -218,16 +209,9 @@ export const ActionDrawer: React.FC<ActionDrawerProps> = ({ open, onClose, onSub
     e.preventDefault();
 
 
-
-    const submitData = {
-      ...formData,
-      id: formData.id || formData.action_id,
-    };
-
-    onSubmit(submitData);
+    onSubmit(formData);
   };
 
-  console.log(formData, 'form data')
 
   return (
     <Drawer open={open} onOpenChange={onClose}>
@@ -270,10 +254,34 @@ export const ActionDrawer: React.FC<ActionDrawerProps> = ({ open, onClose, onSub
                 </Text>
               )}
             </div>
-
-
-            {/* Hidden action_id field */}
-            <input type="hidden" name="action_id" value={formData.action_id} />
+            <div>
+              <Label htmlFor="model_id" className="mb-2 block">
+                Select Model
+              </Label>
+              <Select
+                value={formData?.model_id}
+                onValueChange={(e) => setFormData({ ...formData, model_id: e })}
+                disabled={isLoadingActions}
+              >
+                <Select.Trigger>
+                  <Select.Value placeholder={isLoadingActions ? "Loading models..." : "Choose an ai model"} />
+                </Select.Trigger>
+                <Select.Content>
+                  {models.map((modelItem) => (
+                    <Select.Item key={modelItem.id} value={modelItem.id}>
+                      <div className="flex flex-col">
+                        <span>{modelItem.model_name || modelItem.name}</span>
+                      </div>
+                    </Select.Item>
+                  ))}
+                </Select.Content>
+              </Select>
+              {isError && (
+                <Text className="text-red-500 text-xs mt-1">
+                  Failed to load action templates
+                </Text>
+              )}
+            </div>
 
 
             <div>

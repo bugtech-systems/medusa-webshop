@@ -88,7 +88,8 @@ const tryParseJsonMessage = (content: any) => {
 
 
 export default function Home() {
-  const { mutateAsync: getChats, isPending } = useN8nWebhook("/get-conversation-messages") as any;
+  const { mutateAsync: getChats, isPending } = useN8nWebhook("/webhook/get-conversation-messages") as any;
+  const { mutateAsync: updatedMessage, isPending: updatingMessage } = useN8nWebhook("/webhook/update-conversation-message") as any;
   const { mutateAsync: deletePair } =
     useExecuteAction('delete-message-pair') as any
   const [messagePairs, setMessagePairs] = useState<any[]>([])
@@ -249,13 +250,13 @@ export default function Home() {
 
 
       console.log(config, "CONFF")
-      const res = await fetch(config.feedback_url, {
+      const res = await fetch(`${DEFAULT_ENV.n8n_prod_url}${config.feedback_url}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           "session_id": session_id as any
         },
-        body: JSON.stringify({ id, feedback })
+        body: JSON.stringify({ id, feedback, model_id: config.model_id, relation_id: config.relation_id })
       })
 
       const json = await res.json()
@@ -380,6 +381,12 @@ export default function Home() {
   };
 
 
+  const handleEditMessage = async (id, newContent) => {
+    console.log(id, newContent, 'EDDIT MESSAGE')
+    await updatedMessage({ id, data: newContent });
+
+  }
+
 
 
 
@@ -397,6 +404,7 @@ export default function Home() {
           onRegenerate={handleRegenerateMessage}
           messagePairs={messagePairs}
           setMessagePairs={setMessagePairs}
+          onEditMessage={handleEditMessage}
         />
         {/* Chat Input */}
         <div className="w-full max-w-4xl mt-4">

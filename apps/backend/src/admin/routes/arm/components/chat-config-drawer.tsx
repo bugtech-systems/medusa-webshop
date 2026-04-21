@@ -265,7 +265,6 @@ export const ChatSessionConfigDrawer: React.FC<
         let actions = actionRelations?.data ? actionRelations?.data : [];
 
 
-        console.log(config, 'CONFFGF')
         return (
             <Drawer open={open} onOpenChange={onOpenChange}>
                 <Drawer.Content className="flex flex-col h-[90vh] max-h-[90vh]">

@@ -171,6 +171,8 @@ const JSONEditor: React.FC<{
         }
     };
 
+
+
     return (
         <div className="w-full">
             <Textarea
@@ -531,6 +533,9 @@ export const ChatConversation: React.FC<ChatConversationProps> = ({
         );
     };
 
+
+
+    console.log(messagePairs, 'MESSSAAAGGE PAAIIRS')
 
     return (
         <Container className="flex flex-col h-[80vh] max-h-[80vh] bg-ui-bg-base rounded-lg shadow-elevation-card">

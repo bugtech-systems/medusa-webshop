@@ -3,14 +3,14 @@ import { AI_MODULE } from "@/modules/ai";
 import { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
 
 export async function GET(
-    req: MedusaRequest,
+    req: MedusaRequest | any,
     res: MedusaResponse
 ) {
     try {
 
         const actionEngine = req.scope.resolve(ACTION_ENGINE_MODULE) as any
         const aiService = req.scope.resolve(AI_MODULE) as any
-        const session_id = actionEngine.generateId('aisess')
+        const session_id = req?.session_id || actionEngine.generateId('aisess')
 
 
         let dbSession = await aiService.createSession({ id: session_id, relation_id: 'start-node', metadata: { model_id: 'alayon' } });
