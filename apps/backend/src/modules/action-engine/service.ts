@@ -794,8 +794,8 @@ export default class ActionEngineService extends MedusaService({
   }
 
   /** Generate a unique ID for a document */
-  generateId(type?: any) {
-    return generateEntityId(undefined, type);
+  generateId(type?: any, prop = undefined) {
+    return generateEntityId(prop, type);
   }
 
   async onApplicationShutdown(): Promise<void> {
