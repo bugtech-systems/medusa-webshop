@@ -70,7 +70,9 @@ export async function POST(
     // delete updateData.deleted_at;
     // Also remove any other fields that should never be updated directly
     // e.g., id is kept as identifier but not as a field to update
-    let sessionData = await aiService.retrieveConversation(id);
+    let sessionData = await aiService.retrieveAiConversationSession(id).catch(() => null);
+
+    console.log(sessionData, 'SESSION DATA')
     if (!sessionData?.id) {
       sessionData = await aiService.createSession({ id, relation_id: 'start-node', metadata: { model_id: 'alayon' }, ...data });
     } else {

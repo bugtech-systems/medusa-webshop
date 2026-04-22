@@ -740,6 +740,7 @@ const WorkflowEditor: React.FC<WorkflowEditorProps> = ({
   // Handle node edit
   const handleNodeEdit = useCallback((id: string) => {
     const node = nodes.find(n => n.id === id);
+    console.log(node?.data, 'SELECTED')
     if (node) {
       setSelectedAction(node.data);
       setIsEditing(true);

@@ -259,9 +259,19 @@ export default function Home() {
         body: JSON.stringify({ id, feedback, model_id: config.model_id, relation_id: config.relation_id })
       })
 
+
       const json = await res.json()
       console.log(json, 'FEEDBACK RESPONSE')
+      console.log(messagePairs, 'paairs')
 
+      let messages = messagePairs.map(a => {
+        if (a.id == id) {
+
+        } else {
+          return a;
+        }
+
+      })
 
     } catch (error) {
       console.error('Error regenerating message:', error)
@@ -271,7 +281,7 @@ export default function Home() {
   const handleSession = async (id) => {
 
     const res = await fetch(`/actions/session/${id}`, {
-      method: "GET",
+      method: "POST",
       headers: {
         "Content-Type": "application/json",
       }
@@ -356,14 +366,12 @@ export default function Home() {
 
           userMessage: {
             ...userMessage,
-            feedback: userMessage?.metadata?.feedback,
             created_at: new Date(userMessage.created_at),
           },
 
           assistantMessage: {
             ...message,
             content: tryParseJsonMessage(message.content),
-            feedback: message?.metadata?.feedback,
             created_at: new Date(message.created_at),
           },
         });
@@ -388,6 +396,7 @@ export default function Home() {
   }
 
 
+  console.log(messagePairs, 'PAIIIRS')
 
 
   return (
