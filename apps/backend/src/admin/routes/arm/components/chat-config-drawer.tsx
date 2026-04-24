@@ -246,10 +246,12 @@ export const ChatSessionConfigDrawer: React.FC<
 
 
         const handleReset = async () => {
+            let session_id = localStorage.getItem("session_id") as any;
             const res = await fetch(`/actions/session/reset`, {
                 method: "GET",
                 headers: {
                     "Content-Type": "application/json",
+                    "session_id": session_id
                 }
             })
 

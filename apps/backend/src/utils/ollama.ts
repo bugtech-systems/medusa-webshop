@@ -1,6 +1,6 @@
 import axios from "axios"
 
-const OLLAMA_BASE_URL = process.env.OLLAMA_URL || "http://192.168.1.120:11434"
+const OLLAMA_BASE_URL = process.env.OLLAMA_URL || "http://192.168.1.140:11434"
 
 export async function generateEmbedding(input: string): Promise<number[]> {
   const { data } = await axios.post(

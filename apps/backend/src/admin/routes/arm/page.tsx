@@ -154,7 +154,10 @@ export default function Home() {
       const json = await res.json()
 
       const assistantText = json.data.message   // 👈 the field you want
-
+      const assistantModel = json.model   // 👈 the field you want
+      if (assistantModel && assistantModel != config.model_id) {
+        setConfig({ ...config, model_id: assistantModel })
+      }
 
       const assistantMessage: Message = {
         id: `assistant-${Date.now()}`,

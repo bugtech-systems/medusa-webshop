@@ -151,6 +151,44 @@ export default class AiModuleService extends MedusaService({
     return this.createAiConversationMessages(input);
   }
 
+
+  // Update all messages by ai_conversation_session_id
+  async updateMessagesBySessionId(
+    sessionId: string,
+    updateData: Partial<{
+      ai_conversation_session_id: Record<string, any>;
+    }>
+  ): Promise<{ updated: any[]; count: number }> {
+    try {
+      // Find all messages with this session_id
+      const messages = await this.listAiConversationMessages({
+        ai_conversation_session_id: sessionId
+      });
+
+      if (!messages || messages.length === 0) {
+        return { updated: [], count: 0 };
+      }
+
+      const updatedMessages = [];
+      for (const message of messages) {
+        const updated = await this.updateAiConversationMessages(
+          {
+            id: message.id,
+            deleted_at: new Date()
+          }
+        );
+        updatedMessages.push(updated);
+      }
+
+      return {
+        updated: updatedMessages,
+        count: updatedMessages.length
+      };
+    } catch (error) {
+      throw new Error(`Failed to update messages by session_id: ${error.message}`);
+    }
+  }
+
   /* -------------------------------
      CHAT ENGINE
   ------------------------------- */
